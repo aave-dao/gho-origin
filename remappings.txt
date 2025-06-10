@@ -1,0 +1,4 @@
+forge-std/=lib/aave-v3-origin/lib/forge-std/src/
+aave-v3-origin/=lib/aave-v3-origin/src/
+aave-v3-origin-tests/=lib/aave-v3-origin/tests/
+solidity-utils/=lib/aave-v3-origin/lib/solidity-utils/src/

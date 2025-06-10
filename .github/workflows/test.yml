@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  lint:
+    uses: bgd-labs/github-workflows/.github/workflows/foundry-lint-prettier.yml@main
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    env:
+      ALCHEMY_KEY: "${{secrets.ALCHEMY_KEY}}"
+      ETH_RPC_URL: "https://eth-mainnet.g.alchemy.com/v2/${{secrets.ALCHEMY_KEY}}"
+      RPC_MAINNET: "https://eth-mainnet.g.alchemy.com/v2/${{secrets.ALCHEMY_KEY}}"
+      RPC_ARBITRUM: "https://arb-mainnet.g.alchemy.com/v2/${{secrets.ALCHEMY_KEY}}"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Show Forge version
+        run: |
+          forge --version
+
+      - name: Run Forge build
+        run: |
+          forge build --sizes
+        id: build
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv
+        id: test

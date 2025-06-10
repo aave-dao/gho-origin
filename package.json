@@ -1,0 +1,27 @@
+{
+  "name": "gho-origin",
+  "version": "1.1.0",
+  "scripts": {
+    "lint": "prettier . --check",
+    "lint:fix": "prettier . --write"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aave-dao/gho-origin.git"
+  },
+  "keywords": [],
+  "author": "Aave",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aave-dao/gho-origin/issues"
+  },
+  "homepage": "https://github.com/aave-dao/gho-origin#readme",
+  "type": "module",
+  "devDependencies": {
+    "prettier": "2.8.7",
+    "prettier-plugin-solidity": "1.1.3"
+  }
+}

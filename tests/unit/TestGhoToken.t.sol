@@ -51,25 +51,24 @@ contract TestGhoToken is TestGhoBase {
 
   function testGetPopulatedFacilitatorsList() public view {
     address[] memory facilitatorList = GHO_TOKEN.getFacilitatorsList();
-    assertEq(facilitatorList.length, 6, 'Unexpected number of facilitators');
+    assertEq(facilitatorList.length, 5, 'Unexpected number of facilitators');
     assertEq(facilitatorList[0], address(GHO_ATOKEN), 'Unexpected address for mock facilitator 1');
     assertEq(
       facilitatorList[1],
-      address(GHO_FLASH_MINTER),
+      address(OWNABLE_FACILITATOR),
       'Unexpected address for mock facilitator 2'
     );
     assertEq(
       facilitatorList[2],
+      address(GHO_FLASH_MINTER),
+      'Unexpected address for mock facilitator 2'
+    );
+    assertEq(
+      facilitatorList[3],
       address(FLASH_BORROWER),
       'Unexpected address for mock facilitator 3'
     );
-    assertEq(facilitatorList[3], address(GHO_GSM), 'Unexpected address for mock facilitator 4');
-    assertEq(
-      facilitatorList[4],
-      address(GHO_GSM_4626),
-      'Unexpected address for mock facilitator 4'
-    );
-    assertEq(facilitatorList[5], FAUCET, 'Unexpected address for mock facilitator 5');
+    assertEq(facilitatorList[4], FAUCET, 'Unexpected address for mock facilitator 5');
   }
 
   function testAddFacilitator() public {
@@ -78,7 +77,7 @@ contract TestGhoToken is TestGhoBase {
     GHO_TOKEN.addFacilitator(ALICE, 'Alice', DEFAULT_CAPACITY);
 
     address[] memory facilitatorList = GHO_TOKEN.getFacilitatorsList();
-    assertEq(facilitatorList.length, 7, 'Unexpected number of facilitators');
+    assertEq(facilitatorList.length, 6, 'Unexpected number of facilitators');
   }
 
   function testAddFacilitatorWithRole() public {
@@ -157,7 +156,7 @@ contract TestGhoToken is TestGhoBase {
     GHO_TOKEN.removeFacilitator(address(GHO_ATOKEN));
 
     address[] memory facilitatorList = GHO_TOKEN.getFacilitatorsList();
-    assertEq(facilitatorList.length, 5, 'Unexpected number of facilitators');
+    assertEq(facilitatorList.length, 4, 'Unexpected number of facilitators');
     assertEq(facilitatorList[0], address(FAUCET), 'Unexpected address for facilitator 1');
   }
 

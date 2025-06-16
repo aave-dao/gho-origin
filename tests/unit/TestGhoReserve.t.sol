@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import './TestGhoBase.t.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
 contract TestGhoReserve is TestGhoBase {
   function testConstructor() public {
@@ -194,7 +195,9 @@ contract TestGhoReserve is TestGhoBase {
     address facilitator = makeAddr('facilitator');
     uint256 amount = 1_000 ether;
 
-    vm.expectRevert('Ownable: caller is not the owner');
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(GHO_TOKEN))
+    );
     vm.prank(address(GHO_TOKEN));
     reserve.transfer(facilitator, amount);
   }

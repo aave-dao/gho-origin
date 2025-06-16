@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import './TestGhoBase.t.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
 contract TestOwnableFacilitator is TestGhoBase {
   function testConstructor() public {
@@ -11,7 +12,9 @@ contract TestOwnableFacilitator is TestGhoBase {
   }
 
   function testRevertConstructorInvalidOwner() public {
-    vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0))
+    );
     new OwnableFacilitator(address(0), address(GHO_TOKEN));
   }
 

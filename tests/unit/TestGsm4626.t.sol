@@ -46,9 +46,9 @@ contract TestGsm4626 is TestGhoBase {
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
     );
-    vm.expectEmit(true, true, true, true);
+    vm.expectEmit(true, true, true, true, address(gsm));
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
-    vm.expectEmit(true, true, false, true);
+    vm.expectEmit(true, true, false, true, address(gsm));
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
@@ -228,7 +228,7 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(fee, fee2, 'Unexpected GHO fee amount');
   }
 
-  function testGetGhoAmountForSellAssetWithZeroAmount() public {
+  function testGetGhoAmountForSellAssetWithZeroAmount() public view {
     (uint256 exactAssetAmount, uint256 ghoBought, uint256 grossAmount, uint256 fee) = GHO_GSM_4626
       .getGhoAmountForSellAsset(0);
     assertEq(exactAssetAmount, 0, 'Unexpected exact asset amount');
@@ -568,7 +568,7 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(fee, fee2, 'Unexpected GHO fee amount');
   }
 
-  function testGetGhoAmountForBuyAssetWithZeroAmount() public {
+  function testGetGhoAmountForBuyAssetWithZeroAmount() public view {
     (uint256 exactAssetAmount, uint256 ghoSold, uint256 grossAmount, uint256 fee) = GHO_GSM_4626
       .getGhoAmountForBuyAsset(0);
     assertEq(exactAssetAmount, 0, 'Unexpected exact asset amount');
@@ -1091,8 +1091,8 @@ contract TestGsm4626 is TestGhoBase {
       DEFAULT_GSM_GHO_AMOUNT / 2,
       0
     );
-    uint256 USDXUsedForBacking = GHO_GSM_4626.backWithUnderlying(DEFAULT_GSM_USDX_AMOUNT);
-    assertEq(DEFAULT_GSM_USDX_AMOUNT, USDXUsedForBacking);
+    uint256 usdxUsedForBacking = GHO_GSM_4626.backWithUnderlying(DEFAULT_GSM_USDX_AMOUNT);
+    assertEq(DEFAULT_GSM_USDX_AMOUNT, usdxUsedForBacking);
     vm.stopPrank();
 
     (excess, deficit) = GHO_GSM_4626.getCurrentBacking();
@@ -1132,8 +1132,8 @@ contract TestGsm4626 is TestGhoBase {
       DEFAULT_GSM_GHO_AMOUNT / 2,
       0
     );
-    uint256 USDXUsedForBacking = GHO_GSM_4626.backWithUnderlying(DEFAULT_GSM_USDX_AMOUNT + 1);
-    assertEq(DEFAULT_GSM_USDX_AMOUNT, USDXUsedForBacking);
+    uint256 usdxUsedForBacking = GHO_GSM_4626.backWithUnderlying(DEFAULT_GSM_USDX_AMOUNT + 1);
+    assertEq(DEFAULT_GSM_USDX_AMOUNT, usdxUsedForBacking);
     vm.stopPrank();
 
     (excess, deficit) = GHO_GSM_4626.getCurrentBacking();

@@ -50,11 +50,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
-    vm.expectEmit(true, true, true, true);
+    vm.expectEmit(true, true, true, true, address(gsm));
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
-    vm.expectEmit(true, true, false, true);
+    vm.expectEmit(true, true, false, true, address(gsm));
     emit GhoTreasuryUpdated(address(0), address(TREASURY));
-    vm.expectEmit(true, true, false, true);
+    vm.expectEmit(true, true, false, true, address(gsm));
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
@@ -375,7 +375,7 @@ contract TestGsm is TestGhoBase {
     );
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Bucket Cap', DEFAULT_CAPACITY - 1);
-    uint256 defaultCapInUSDX = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
+    uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
 
     vm.prank(FAUCET);
     USDX_TOKEN.mint(ALICE, defaultCapInUsdx);
@@ -455,7 +455,7 @@ contract TestGsm is TestGhoBase {
     assertEq(fee, fee2, 'Unexpected GHO fee amount');
   }
 
-  function testGetGhoAmountForSellAssetWithZeroAmount() public {
+  function testGetGhoAmountForSellAssetWithZeroAmount() public view {
     (uint256 exactAssetAmount, uint256 ghoBought, uint256 grossAmount, uint256 fee) = GHO_GSM
       .getGhoAmountForSellAsset(0);
     assertEq(exactAssetAmount, 0, 'Unexpected exact asset amount');
@@ -953,7 +953,7 @@ contract TestGsm is TestGhoBase {
     assertEq(fee, fee2, 'Unexpected GHO fee amount');
   }
 
-  function testGetGhoAmountForBuyAssetWithZeroAmount() public {
+  function testGetGhoAmountForBuyAssetWithZeroAmount() public view {
     (uint256 exactAssetAmount, uint256 ghoSold, uint256 grossAmount, uint256 fee) = GHO_GSM
       .getGhoAmountForBuyAsset(0);
     assertEq(exactAssetAmount, 0, 'Unexpected exact asset amount');

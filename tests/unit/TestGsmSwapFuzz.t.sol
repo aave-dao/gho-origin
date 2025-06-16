@@ -34,7 +34,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
     FixedPriceStrategy priceStrat,
     uint256 assetAmount,
     uint256 ghoAmount
-  ) internal {
+  ) internal view {
     assertApproxEqAbs(
       priceStrat.getAssetPriceInGho(assetAmount, false),
       ghoAmount,

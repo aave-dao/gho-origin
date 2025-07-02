@@ -19,4 +19,3 @@ ignored_warnings_from = [
 ]
 optimizer = true
 optimizer_runs = 200
-

@@ -45,6 +45,16 @@ interface IsGHO {
    */
   error SupplyCapMustBeGreaterThanTotalAssets();
 
+  /**
+   * @notice Thrown when a zero address is provided for a critical parameter during initialization.
+   */
+  error ZeroAddressNotAllowed();
+
+  /**
+   * @notice Thrown when an ERC20 transfer fails during rescue operation.
+   */
+  error TransferFailed();
+
   // --- Events ---
 
   /**

@@ -54,6 +54,9 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     address _aclmanager,
     uint256 _supplyCap
   ) public payable initializer {
+    if (_gho == address(0)) revert ZeroAddressNotAllowed();
+    if (_aclmanager == address(0)) revert ZeroAddressNotAllowed();
+
     __ERC20_init('sGHO', 'sGHO');
     __ERC4626_init(IERC20(_gho));
     __ERC20Permit_init('sGHO');
@@ -309,7 +312,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     if (amount > balance) {
       amount = balance;
     }
-    IERC20(erc20Token).transfer(to, amount);
+    bool success = IERC20(erc20Token).transfer(to, amount);
+    if (!success) {
+      revert TransferFailed();
+    }
     emit ERC20Rescued(_msgSender(), erc20Token, to, amount);
   }
 
@@ -348,6 +354,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
   /**
    * @notice Calculates the current yield index, including yield accrued since the last update.
    * @dev This is a view function and does not modify state. It's used for previews.
+   * The interest calculation is linear within each update period, but compounds across multiple updates.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint256) {
@@ -363,8 +370,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     // Calculate the rate per second
     uint256 ratePerSecond = annualRateRay.rayDiv(365 days);
     
-    // For simple linear interest: newIndex = oldIndex * (1 + rate * time)
-    // This provides true compound interest when called with intermediate updates
+    // Linear interest calculation for this update period: newIndex = oldIndex * (1 + rate * time)
+    // True compounding occurs through multiple updates as each update builds on the previous index
     uint256 accumulatedRate = ratePerSecond.rayMul(timeSinceLastUpdate);
     uint256 growthFactor = WadRayMath.RAY + accumulatedRate;
     

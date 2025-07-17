@@ -1036,7 +1036,7 @@ contract sGhoTest is TestnetProcedures {
     uint256 user1Shares = sgho.balanceOf(user1);
     vm.stopPrank();
 
-    // Warp time to the middle of the year
+    // Warp time and trigger updates daily to simulate compounding
     for (uint i = 0; i < 365; i++) {
       vm.warp(block.timestamp + 1 days);
       vm.prank(yManager);
@@ -1052,9 +1052,8 @@ contract sGhoTest is TestnetProcedures {
     uint256 simpleInterestAssets = depositAmount + simpleYield;
 
     // Calculate the expected assets with daily compounding.
+    // Each daily update applies linear interest for that day, but builds on the previous index
     // APY = (1 + APR/n)^n - 1, where n=365 for daily.
-    // This is a theoretical calculation. The actual result will be slightly different
-    // due to per-second interest calculation in the contract.
     uint256 WAD = 1e18;
     uint256 aprWad = (rate * WAD) / 10000;
     uint256 dailyCompoundingTerm = WAD + (aprWad / 365);
@@ -1070,10 +1069,10 @@ contract sGhoTest is TestnetProcedures {
       'Final assets should be close to theoretical daily compounded value'
     );
 
-    // With compounding due to the intermediate update, user1's final assets should be greater than with simple interest.
+    // With compounding due to the intermediate updates, user1's final assets should be greater than with simple interest.
     assertTrue(
       user1FinalAssets > simpleInterestAssets,
-      'Compounded assets for user1 should be greater than simple interest assets'
+      'Daily compounded assets for user1 should be greater than simple interest assets'
     );
   }
 
@@ -1686,4 +1685,5 @@ contract sGhoTest is TestnetProcedures {
     }
     return res;
   }
+  
 }

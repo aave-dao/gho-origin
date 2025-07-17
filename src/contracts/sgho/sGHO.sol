@@ -279,6 +279,51 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     return _convertToAssets(totalSupply(), Math.Rounding.Floor);
   }
 
+   /**
+   * @inheritdoc IsGHO
+   */
+   function vaultAPR() external view returns (uint256) {
+    return targetRate;
+  }
+
+  /**
+   * @inheritdoc IsGHO
+   */
+  function setTargetRate(uint256 newRate) public onlyYieldManager {
+    // Update the yield index before changing the rate to ensure proper accrual
+    if (newRate > maxTargetRate) {
+      revert RateMustBeLessThanMaxRate();
+    }
+    _updateYieldIndex();
+    targetRate = newRate;
+    emit TargetRateUpdated(newRate);
+  }
+
+    /**
+   * @inheritdoc IsGHO
+   */
+   function setSupplyCap(uint256 newSupplyCap) public onlyYieldManager {
+    if (newSupplyCap < totalAssets()) {
+      revert SupplyCapMustBeGreaterThanTotalAssets();
+    }
+    supplyCap = newSupplyCap;
+    emit SupplyCapUpdated(newSupplyCap);
+  }
+
+  /**
+   * @inheritdoc IsGHO
+   */
+  function rescueERC20(address erc20Token, address to, uint256 amount) external onlyFundsAdmin {
+    if (erc20Token == gho) {
+      revert CannotRescueGHO();
+    }
+    uint256 max = IERC20(erc20Token).balanceOf(address(this));
+    amount = max > amount ? amount : max;
+    IERC20(erc20Token).transfer(to, amount);
+    emit ERC20Rescued(_msgSender(), erc20Token, to, amount);
+  }
+
+
   /**
    * @notice Converts a GHO asset amount to a sGHO share amount based on the current yield index.
    * @dev Overrides the standard ERC4626 implementation to use the custom yield-based conversion.
@@ -346,44 +391,11 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
   }
 
   /**
-   * @inheritdoc IsGHO
-   */
-  function vaultAPR() external view returns (uint256) {
-    return targetRate;
-  }
-
-  /**
-   * @inheritdoc IsGHO
-   */
-  function setTargetRate(uint256 newRate) public onlyYieldManager {
-    // Update the yield index before changing the rate to ensure proper accrual
-    if (newRate > maxTargetRate) {
-      revert RateMustBeLessThanMaxRate();
-    }
-    _updateYieldIndex();
-    targetRate = newRate;
-    emit TargetRateUpdated(newRate);
-  }
-
-  /**
-   * @inheritdoc IsGHO
-   */
-  function rescueERC20(address erc20Token, address to, uint256 amount) external onlyFundsAdmin {
-    if (erc20Token == gho) {
-      revert CannotRescueGHO();
-    }
-    uint256 max = IERC20(erc20Token).balanceOf(address(this));
-    amount = max > amount ? amount : max;
-    IERC20(erc20Token).transfer(to, amount);
-    emit ERC20Rescued(msg.sender, erc20Token, to, amount);
-  }
-
-  /**
    * @notice Internal view function to check if the caller has the FUNDS_ADMIN role.
    * @return A boolean indicating if the caller is a Funds Admin.
    */
   function _onlyFundsAdmin() internal view returns (bool) {
-    return aclManager.hasRole(FUNDS_ADMIN_ROLE, msg.sender);
+    return aclManager.hasRole(FUNDS_ADMIN_ROLE, _msgSender());
   }
 
   /**
@@ -391,6 +403,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @return A boolean indicating if the caller is a Yield Manager.
    */
   function _onlyYieldManager() internal view returns (bool) {
-    return aclManager.hasRole(YIELD_MANAGER_ROLE, msg.sender);
+    return aclManager.hasRole(YIELD_MANAGER_ROLE, _msgSender());
   }
 }

@@ -158,6 +158,28 @@ contract sGhoTest is TestnetProcedures {
     assertEq(sgho.targetRate(), MAX_TARGET_RATE, 'Target rate should be updated to max rate');
   }
 
+  function test_setSupplyCap_event() external {
+    vm.startPrank(yManager);
+    uint256 newSupplyCap = 1000 ether;
+    vm.expectEmit(true, true, true, true, address(sgho));
+    emit IsGHO.SupplyCapUpdated(newSupplyCap);
+    sgho.setSupplyCap(newSupplyCap);
+    vm.stopPrank();
+    assertEq(sgho.supplyCap(), newSupplyCap, 'Supply cap should be updated');
+  }
+
+  function test_revert_setSupplyCap_lessThanTotalAssets() external {
+    uint256 amount = 100 ether;
+    vm.startPrank(user1);
+    uint256 shares = sgho.deposit(amount, user1);
+    vm.stopPrank();
+    vm.startPrank(yManager);
+    uint256 newSupplyCap = amount - 1;
+    vm.expectRevert(IsGHO.SupplyCapMustBeGreaterThanTotalAssets.selector);
+    sgho.setSupplyCap(newSupplyCap);
+    vm.stopPrank();
+  }
+
   // --- ERC4626 Tests ---
 
   function test_4626_initialState() external view {

@@ -11,11 +11,6 @@ interface IsGHO {
   // --- Custom Errors ---
 
   /**
-   * @notice Thrown when an invalid signature is provided.
-   */
-  error InvalidSignature();
-
-  /**
    * @notice Thrown when a direct ETH transfer is attempted.
    */
   error NoEthAllowed();
@@ -45,6 +40,11 @@ interface IsGHO {
    */
   error SupplyCapExceeded();
 
+  /**
+   * @notice Thrown when the supply cap is set to a value less than the total assets.
+   */
+  error SupplyCapMustBeGreaterThanTotalAssets();
+
   // --- Events ---
 
   /**
@@ -52,6 +52,12 @@ interface IsGHO {
    * @param newRate The new target rate.
    */
   event TargetRateUpdated(uint256 newRate);
+
+  /**
+   * @notice Emitted when the supply cap is updated.
+   * @param newSupplyCap The new supply cap.
+   */
+  event SupplyCapUpdated(uint256 newSupplyCap);
 
   /**
    * @notice Emitted when ERC20 tokens are rescued from the contract.
@@ -172,6 +178,13 @@ interface IsGHO {
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
    */
   function setTargetRate(uint256 newRate) external;
+
+  /**
+   * @notice Sets the supply cap for the vault.
+   * @dev This function can only be called by an address with the YIELD_MANAGER role.
+   * @param newSupplyCap The new supply cap.
+   */
+  function setSupplyCap(uint256 newSupplyCap) external;
 
   /**
    * @notice Calculates and returns the current vault Annual Percentage Rate (APR).

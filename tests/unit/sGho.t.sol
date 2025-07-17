@@ -18,6 +18,8 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {ERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ECDSA} from 'openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol';
+import {WadRayMath} from 'lib/aave-v3-origin/src/contracts/protocol/libraries/math/WadRayMath.sol';
+
 
 // --- Test Contract ---
 
@@ -1058,7 +1060,7 @@ contract sGhoTest is TestnetProcedures {
     uint256 dailyCompoundingTerm = WAD + (aprWad / 365);
 
     // Calculate (1 + apr/365)^365 using a helper for WAD math to prevent overflow
-    uint256 compoundedMultiplier = _wadPow(dailyCompoundingTerm, 365);
+    uint256 compoundedMultiplier =  _wadPow(dailyCompoundingTerm, 365);
     uint256 expectedAssets = (depositAmount * compoundedMultiplier) / WAD;
 
     assertApproxEqAbs(
@@ -1235,7 +1237,158 @@ contract sGhoTest is TestnetProcedures {
   }
 
   // --- Precision Tests ---
+  function test_precision_yieldIndex_smallValues() external view {
+      // Small values for prevYieldIndex, targetRate, and time
+      uint256 prevYieldIndex = 1; // 1 wei
+      uint16 targetRate = 1; // 0.01%
+      uint256 timeSinceLastUpdate = 1; // 1 second
+      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
+      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
+  }
 
+  function test_precision_yieldIndex_largeValues() external view {
+      // Large values for prevYieldIndex, targetRate, and time
+      uint256 prevYieldIndex = 1e30; // Large but safe value
+      uint16 targetRate = 5000; // Max safe rate
+      uint256 timeSinceLastUpdate = 365 days; // 1 year
+      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
+      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
+      assertTrue(newYieldIndex <= type(uint256).max, 'Yield index should not overflow');
+  }
+
+  function test_precision_yieldIndex_realisticValues() external view {
+      // Test with realistic starting values
+      uint256 prevYieldIndex = WadRayMath.RAY; // Start from RAY (1e27)
+      uint16 targetRate = 1000; // 10% APR
+      uint256 timeSinceLastUpdate = 365 days; // 1 year
+      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
+      
+      // After 1 year at 10%, index should be approximately 1.1 * RAY
+      uint256 expectedIndex = (WadRayMath.RAY * 11) / 10; // 1.1 * RAY
+      assertApproxEqRel(newYieldIndex, expectedIndex, 0.01e18, 'Yield index should approximate 10% growth'); // 1% tolerance
+      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
+  }
+
+  function test_precision_yieldIndex_granularTime() external view {
+      // Test with very small time increments
+      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint16 targetRate = 1000; // 10% APR
+      
+      // Test 1 second increment
+      uint256 newYieldIndex1s = _emulateYieldIndex(prevYieldIndex, targetRate, 1);
+      assertTrue(newYieldIndex1s > prevYieldIndex, 'Should accrue yield even for 1 second');
+      
+      // Test 1 minute increment  
+      uint256 newYieldIndex1m = _emulateYieldIndex(prevYieldIndex, targetRate, 60);
+      assertTrue(newYieldIndex1m > newYieldIndex1s, 'More time should yield more index growth');
+      
+      // Test 1 hour increment
+      uint256 newYieldIndex1h = _emulateYieldIndex(prevYieldIndex, targetRate, 3600);
+      assertTrue(newYieldIndex1h > newYieldIndex1m, 'More time should yield more index growth');
+  }
+
+  function test_precision_yieldIndex_cumulativePrecision() external view {
+      // Test cumulative precision loss over multiple small updates vs one large update
+      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint16 targetRate = 1000; // 10% APR
+      uint256 totalTime = 30 days;
+      
+      // Single large update
+      uint256 singleUpdate = _emulateYieldIndex(prevYieldIndex, targetRate, totalTime);
+      
+      // Multiple small updates (simulate daily updates)
+      uint256 cumulativeIndex = prevYieldIndex;
+      uint256 dailyTime = 1 days;
+      for (uint256 i = 0; i < 30; i++) {
+          cumulativeIndex = _emulateYieldIndex(cumulativeIndex, targetRate, dailyTime);
+      }
+      
+      // Cumulative should be slightly higher due to compounding
+      assertTrue(cumulativeIndex >= singleUpdate, 'Cumulative updates should compound yield');
+      
+      // But the difference should be small (within 0.1% for reasonable rates)
+      assertApproxEqRel(cumulativeIndex, singleUpdate, 0.001e18, 'Precision loss should be minimal');
+  }
+
+  function test_precision_yieldIndex_edgeCases() external view {
+      uint256 RAY = WadRayMath.RAY;
+      
+      // Test minimum non-zero yield index
+      uint256 minYieldIndex = _emulateYieldIndex(1, 1, 1);
+      assertTrue(minYieldIndex >= 1, 'Should not underflow with minimum values');
+      
+      // Test with yield index exactly at RAY
+      uint256 rayYieldIndex = _emulateYieldIndex(RAY, 1000, 1 days);
+      assertTrue(rayYieldIndex > RAY, 'Should grow from RAY baseline');
+      
+      // Test maximum safe rate for extended period
+      uint256 maxRateIndex = _emulateYieldIndex(RAY, MAX_SAFE_RATE, 365 days);
+      assertTrue(maxRateIndex > RAY, 'Should handle max rate without overflow');
+      assertTrue(maxRateIndex < RAY * 2, 'Max rate for 1 year should not double the index');
+  }
+
+  function test_precision_yieldIndex_fuzz(uint256 timeSkip, uint16 rate) external view {
+      // Bound inputs to reasonable ranges
+      timeSkip = bound(timeSkip, 1, 365 days * 10); // 1 second to 10 years
+      rate = uint16(bound(rate, 1, MAX_SAFE_RATE)); // 0.01% to 50%
+      
+      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
+      
+      // Basic invariants
+      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should never decrease');
+      assertTrue(newYieldIndex <= type(uint256).max, 'Should not overflow');
+      
+      // Reasonable growth bounds (max 50% per year * 10 years = 500% max theoretical)
+      assertTrue(newYieldIndex <= prevYieldIndex * 6, 'Growth should be bounded by reasonable limits');
+  }
+
+  function test_precision_yieldIndex_zeroRateOrTime() external view {
+      uint256 prevYieldIndex = WadRayMath.RAY;
+      // Zero target rate
+      assertEq(_emulateYieldIndex(prevYieldIndex, 0, 1000), prevYieldIndex, 'Zero rate should not change index');
+      // Zero time
+      assertEq(_emulateYieldIndex(prevYieldIndex, 1000, 0), prevYieldIndex, 'Zero time should not change index');
+  }
+
+  function test_precision_yieldIndex_consistency() external {
+      // Compare contract's yieldIndex calculation to _emulateYieldIndex for a real scenario
+      uint256 prevYieldIndex = sgho.yieldIndex();
+      uint16 rate = sgho.targetRate();
+      uint256 timeSkip = 1 days;
+      // Warp time and trigger yield update
+      vm.warp(block.timestamp + timeSkip);
+      // Call a state-changing function to update yieldIndex
+      vm.startPrank(user1);
+      sgho.deposit(1 ether, user1);
+      vm.stopPrank();
+      uint256 contractYieldIndex = sgho.yieldIndex();
+      uint256 emulatedYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
+      // Allow for 1 wei rounding error
+      assertApproxEqAbs(contractYieldIndex, emulatedYieldIndex, 1, 'Yield index calculation mismatch');
+  }
+
+  function test_precision_yieldIndex_monotonic() external view {
+      // Test that yield index is always monotonically increasing
+      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint16 targetRate = 1000;
+      
+      uint256 index1 = _emulateYieldIndex(prevYieldIndex, targetRate, 1 days);
+      uint256 index2 = _emulateYieldIndex(index1, targetRate, 1 days);
+      uint256 index3 = _emulateYieldIndex(index2, targetRate, 1 days);
+      
+      assertTrue(index1 > prevYieldIndex, 'First update should increase index');
+      assertTrue(index2 > index1, 'Second update should increase index');
+      assertTrue(index3 > index2, 'Third update should increase index');
+      
+      // Growth should be roughly equal for equal time periods (compound growth)
+      uint256 growth1 = index1 - prevYieldIndex;
+      uint256 growth2 = index2 - index1;
+      uint256 growth3 = index3 - index2;
+      
+      assertTrue(growth2 > growth1, 'Compound growth should accelerate');
+      assertTrue(growth3 > growth2, 'Compound growth should continue accelerating');
+  }
 
   // --- Target Rate Tests ---
   function test_setTargetRate() external {
@@ -1494,17 +1647,19 @@ contract sGhoTest is TestnetProcedures {
 
   // --- Internal Utility Functions ---
 
-  function _wadPow(uint256 base, uint256 exp) internal pure returns (uint256) {
-    uint256 res = 1e18; // WAD
-    while (exp > 0) {
-      if (exp % 2 == 1) {
-        res = (res * base) / 1e18;
-      }
-      base = (base * base) / 1e18;
-      exp /= 2;
+    /// @dev Emulates the yieldIndex calculation as in sGHO._getCurrentYieldIndex(), using WadRayMath for all operations
+    function _emulateYieldIndex(uint256 prevYieldIndex, uint16 targetRate, uint256 timeSinceLastUpdate) internal view returns (uint256) {
+        if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
+        uint256 RAY = 1e27;
+        // Convert targetRate from basis points to ray
+        uint256 annualRateRay = WadRayMath.rayDiv(uint256(targetRate), 10000);
+        // Calculate the rate per second
+        uint256 ratePerSecond = WadRayMath.rayDiv(annualRateRay, 365 days);
+        // Calculate accumulated rate and growth factor
+        uint256 accumulatedRate = WadRayMath.rayMul(ratePerSecond, timeSinceLastUpdate);
+        uint256 growthFactor = RAY + accumulatedRate;
+        return WadRayMath.rayMul(prevYieldIndex, growthFactor);
     }
-    return res;
-  }
 
   function _createPermitSignature(
     address owner,
@@ -1518,5 +1673,17 @@ contract sGhoTest is TestnetProcedures {
     bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
     bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
     return vm.sign(privateKey, hash);
+  }
+
+  function _wadPow(uint256 base, uint256 exp) internal pure returns (uint256) {
+    uint256 res = 1e18; // WAD
+    while (exp > 0) {
+      if (exp % 2 == 1) {
+        res = (res * base) / 1e18;
+      }
+      base = (base * base) / 1e18;
+      exp /= 2;
+    }
+    return res;
   }
 }

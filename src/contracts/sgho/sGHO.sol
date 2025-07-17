@@ -356,14 +356,19 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     uint256 timeSinceLastUpdate = block.timestamp - lastUpdate;
     if (timeSinceLastUpdate == 0) return yieldIndex;
 
-    // Calculate the rate per second based on the target rate
-    uint256 currentRatePerSecond = uint256(targetRate).rayMul(WadRayMath.RAY).rayDiv(365 days);
-
-    // Calculate the index change per second and total change
-    uint256 currentIndexChangePerSecond = yieldIndex.rayMul(currentRatePerSecond).rayDiv(10000);
-    uint256 yieldIndexChange = currentIndexChangePerSecond.rayMul(timeSinceLastUpdate);
-
-    return yieldIndex + yieldIndexChange;
+    // Convert targetRate from basis points to ray (1e27 scale)
+    // targetRate is in basis points (e.g., 1000 = 10%)
+    uint256 annualRateRay = uint256(targetRate).rayDiv(10000);
+    
+    // Calculate the rate per second
+    uint256 ratePerSecond = annualRateRay.rayDiv(365 days);
+    
+    // For simple linear interest: newIndex = oldIndex * (1 + rate * time)
+    // This provides true compound interest when called with intermediate updates
+    uint256 accumulatedRate = ratePerSecond.rayMul(timeSinceLastUpdate);
+    uint256 growthFactor = WadRayMath.RAY + accumulatedRate;
+    
+    return yieldIndex.rayMul(growthFactor);
   }
 
   /**

@@ -88,12 +88,12 @@ interface IsGHO {
   function supplyCap() external view returns (uint256);
 
   /**
-   * @notice Returns the chain ID of the network where the contract is deployed.
-   * @dev This is used for EIP-712 signature validation to prevent replay attacks across different chains.
-   * @return The chain ID.
+   * @notice Returns the maximum safe rate for the vault.
+   * @return The maximum safe rate.
    */
-  function deploymentChainId() external view returns (uint256);
+  function MAX_SAFE_RATE() external view returns (uint16);
 
+ 
   /**
    * @notice Returns the current yield index, representing the accumulated yield.
    * @dev This index is used to calculate the value of sGHO in terms of GHO.
@@ -106,7 +106,7 @@ interface IsGHO {
    * @dev The rate is expressed in basis points (1% = 100).
    * @return The target rate in basis points.
    */
-  function targetRate() external view returns (uint256);
+  function targetRate() external view returns (uint16);
 
   /**
    * @notice Returns the timestamp of the last time the yield index was updated.
@@ -145,7 +145,6 @@ interface IsGHO {
   function initialize(
     address gho_,
     address aclManager_,
-    uint256 maxTargetRate_,
     uint256 supplyCap_
   ) external payable;
 
@@ -177,7 +176,7 @@ interface IsGHO {
    * The new rate must be less than 50% (5000 basis points).
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
    */
-  function setTargetRate(uint256 newRate) external;
+  function setTargetRate(uint16 newRate) external;
 
   /**
    * @notice Sets the supply cap for the vault.

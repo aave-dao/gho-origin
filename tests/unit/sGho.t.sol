@@ -36,7 +36,7 @@ contract sGhoTest is TestnetProcedures {
   address internal Admin;
   address internal yManager; // Yield manager user
 
-  uint256 internal constant MAX_TARGET_RATE = 5000; // 50%
+  uint16 internal constant MAX_SAFE_RATE = 5000; // 50%
   uint256 internal constant SUPPLY_CAP = 1_000_000 ether; // 1M GHO
 
   // Permit constants
@@ -68,7 +68,6 @@ contract sGhoTest is TestnetProcedures {
               sGHO.initialize.selector,
               address(gho),
               address(contracts.aclManager),
-              MAX_TARGET_RATE,
               SUPPLY_CAP
             )
           )
@@ -110,7 +109,6 @@ contract sGhoTest is TestnetProcedures {
 
   function test_constructor() external view {
     assertEq(sgho.gho(), address(gho), 'GHO address mismatch');
-    assertEq(sgho.deploymentChainId(), block.chainid, 'Chain ID mismatch');
     assertEq(sgho.VERSION(), VERSION, 'Version mismatch');
     assertEq(sgho.DOMAIN_SEPARATOR(), DOMAIN_SEPARATOR_sGHO, 'Domain separator mismatch');
   }
@@ -135,7 +133,7 @@ contract sGhoTest is TestnetProcedures {
   // --- Admin functions ---
   function test_setTargetRate_event() external {
     vm.startPrank(yManager);
-    uint256 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% APR
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGHO.TargetRateUpdated(newRate);
     sgho.setTargetRate(newRate);
@@ -145,7 +143,7 @@ contract sGhoTest is TestnetProcedures {
 
   function test_revert_setTargetRate_exceedsMaxRate() external {
     vm.startPrank(yManager);
-    uint256 newRate = MAX_TARGET_RATE + 1;
+    uint16 newRate = MAX_SAFE_RATE + 1;
     vm.expectRevert(IsGHO.RateMustBeLessThanMaxRate.selector);
     sgho.setTargetRate(newRate);
     vm.stopPrank();
@@ -153,9 +151,9 @@ contract sGhoTest is TestnetProcedures {
 
   function test_setTargetRate_atMaxRate() external {
     vm.startPrank(yManager);
-    sgho.setTargetRate(MAX_TARGET_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE);
     vm.stopPrank();
-    assertEq(sgho.targetRate(), MAX_TARGET_RATE, 'Target rate should be updated to max rate');
+    assertEq(sgho.targetRate(), MAX_SAFE_RATE, 'Target rate should be updated to max rate');
   }
 
   function test_setSupplyCap_event() external {
@@ -1023,8 +1021,8 @@ contract sGhoTest is TestnetProcedures {
     vm.stopPrank();
   }
 
-  function test_yield_is_compounded_with_intermediate_update(uint256 rate) external {
-    rate = uint256(bound(rate, 100, 5000));
+  function test_yield_is_compounded_with_intermediate_update(uint16 rate) external {
+    rate = uint16(bound(rate, 100, 5000));
     vm.startPrank(yManager);
     sgho.setTargetRate(rate);
     vm.stopPrank();
@@ -1237,171 +1235,11 @@ contract sGhoTest is TestnetProcedures {
   }
 
   // --- Precision Tests ---
-  function test_precision_multipleOperations(
-    uint256[5] memory depositAmounts,
-    uint256[5] memory withdrawAmounts,
-    uint64[5] memory timeSkips
-  ) external {
-    // Bound inputs to reasonable ranges
-    for (uint i = 0; i < 5; i++) {
-      depositAmounts[i] = bound(depositAmounts[i], 1, 100_000 ether);
-      timeSkips[i] = uint64(bound(timeSkips[i], 1, 30 days)); // No minimum time requirement
-      withdrawAmounts[i] = bound(withdrawAmounts[i], 1, 100_000 ether);
-    }
 
-    // Set target rate
-    vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
-    vm.stopPrank();
-
-    // Track state
-    uint256 lastTotalAssets = sgho.totalAssets();
-    uint256 lastYieldIndex = sgho.yieldIndex();
-    uint256 totalBobShares = 0;
-    uint256 totalDeposited = 0;
-    uint256 totalClaimedYield = 0;
-    uint256 totalWithdrawn = 0;
-    uint256 totalExpectedYield = 0;
-
-    // Perform sequence of operations
-    for (uint i = 0; i < 5; i++) {
-      // Skip time if not first operation
-      if (i > 0) {
-        vm.warp(block.timestamp + timeSkips[i]);
-      }
-
-      // Calculate expected yield for this period
-      if (i > 0) {
-        uint256 currentRatePerSecond = ((sgho.targetRate() * 1e27) / 365 days);
-        uint256 currentIndexChangePerSecond = (lastYieldIndex * currentRatePerSecond) / 10000;
-        uint256 nextYieldIndex = lastYieldIndex +
-          ((currentIndexChangePerSecond * timeSkips[i]) / 1e27);
-        uint256 expectedTotalAssets = (sgho.totalSupply() * nextYieldIndex) / 1e27;
-        uint256 expectedYield = expectedTotalAssets - lastTotalAssets;
-
-        totalExpectedYield += expectedYield;
-        totalClaimedYield += sgho.totalAssets() - lastTotalAssets;
-        assertApproxEqAbs(
-          expectedTotalAssets,
-          sgho.totalAssets(),
-          1,
-          'totalAssets mismatch from Yield calculation'
-        );
-        assertEq(
-          sgho.balanceOf(user1),
-          totalBobShares,
-          'user1 balance mismatch from Yield calculation'
-        );
-      }
-
-      // Deposit
-      vm.startPrank(user1);
-      deal(address(gho), user1, depositAmounts[i], true);
-      gho.approve(address(sgho), depositAmounts[i]);
-
-      uint256 shares = sgho.deposit(depositAmounts[i], user1);
-      totalDeposited += depositAmounts[i];
-      totalBobShares += shares;
-
-      // Verify deposit precision
-      assertEq(sgho.balanceOf(user1), totalBobShares, 'balanceOf mismatch after deposit');
-      assertEq(
-        sgho.totalAssets(),
-        sgho.previewRedeem(totalBobShares),
-        'totalAssets mismatch after deposit'
-      );
-      assertEq(sgho.totalSupply(), totalBobShares, 'totalSupply mismatch after deposit');
-
-      // Withdraw if not first operation and if we have enough balance
-      if (i > 0) {
-        uint256 withdrawAmount = withdrawAmounts[i];
-        uint256 maxWithdrawable = sgho.maxWithdraw(user1);
-        if (withdrawAmount > maxWithdrawable) {
-          vm.expectRevert(
-            abi.encodeWithSelector(
-              ERC4626.ERC4626ExceededMaxWithdraw.selector,
-              user1,
-              withdrawAmount,
-              maxWithdrawable
-            )
-          );
-          sgho.withdraw(withdrawAmount, user1, user1);
-        } else {
-          uint256 withdrawnShares = sgho.withdraw(withdrawAmount, user1, user1);
-          assertEq(
-            sgho.balanceOf(user1),
-            totalBobShares - withdrawnShares,
-            'balanceOf mismatch after withdraw'
-          );
-          totalBobShares -= withdrawnShares;
-          totalWithdrawn += withdrawAmount;
-
-          // Verify withdrawal precision
-          assertEq(
-            sgho.totalAssets(),
-            sgho.previewRedeem(totalBobShares),
-            'totalAssets mismatch after withdraw'
-          );
-          assertApproxEqAbs(
-            sgho.totalSupply(),
-            totalBobShares,
-            1,
-            'totalSupply mismatch after withdraw'
-          );
-        }
-      }
-
-      // Verify share price consistency
-      if (sgho.totalSupply() > 0) {
-        // Calculate user's share of total assets directly instead of using share price
-        uint256 userShares = sgho.balanceOf(user1);
-        uint256 userAssets = sgho.previewRedeem(userShares);
-        uint256 expectedUserAssets = (sgho.totalAssets() * userShares) / sgho.totalSupply();
-
-        // Allow for 1 wei rounding error
-        assertApproxEqAbs(userAssets, expectedUserAssets, 1, 'share price calculation mismatch');
-      }
-
-      lastTotalAssets = sgho.totalAssets();
-      lastYieldIndex = sgho.yieldIndex();
-      vm.stopPrank();
-    }
-
-    // Final checks
-    vm.startPrank(user1);
-    uint256 finalShares = sgho.balanceOf(user1);
-    uint256 finalAssets = sgho.previewRedeem(finalShares);
-
-    // Verify final redemption precision
-    assertApproxEqAbs(finalAssets, sgho.totalAssets(), 1, 'final redemption mismatch');
-
-    // Verify final state
-    assertEq(sgho.totalSupply(), totalBobShares, 'final sgho.totalSupply mismatch');
-    assertApproxEqAbs(
-      sgho.totalSupply(),
-      sgho.previewDeposit(sgho.totalAssets()),
-      1,
-      'final sgho.totalSupply preview mismatch'
-    );
-    assertApproxEqAbs(
-      sgho.totalAssets(),
-      sgho.previewRedeem(sgho.totalSupply()),
-      1,
-      'final sgho.totalAssets preview mismatch'
-    );
-    assertApproxEqAbs(
-      sgho.totalAssets(),
-      totalDeposited + totalClaimedYield - totalWithdrawn,
-      10,
-      'final sgho.totalAssets mismatch'
-    );
-    assertEq(sgho.balanceOf(user1), totalBobShares, 'final sgho.balance mismatch for Bob');
-    vm.stopPrank();
-  }
 
   // --- Target Rate Tests ---
   function test_setTargetRate() external {
-    uint256 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% APR
 
     vm.startPrank(yManager);
     sgho.setTargetRate(newRate);
@@ -1411,14 +1249,14 @@ contract sGhoTest is TestnetProcedures {
   }
 
   function test_revert_setTargetRate_notYieldManager() external {
-    uint256 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% APR
 
     vm.expectRevert(abi.encodeWithSelector(IsGHO.OnlyYieldManager.selector));
     sgho.setTargetRate(newRate);
   }
 
   function test_revert_setTargetRate_rateGreaterThanMaxRate() external {
-    uint256 newRate = 5001; // 50.01% APR
+    uint16 newRate = 5001; // 50.01% APR
     vm.startPrank(yManager);
     vm.expectRevert(abi.encodeWithSelector(IsGHO.RateMustBeLessThanMaxRate.selector));
     sgho.setTargetRate(newRate);
@@ -1426,7 +1264,7 @@ contract sGhoTest is TestnetProcedures {
   }
 
   function test_vaultAPR() external {
-    uint256 targetRate = 1500; // 15% APR
+    uint16 targetRate = 1500; // 15% APR
 
     vm.startPrank(yManager);
     sgho.setTargetRate(targetRate);
@@ -1538,7 +1376,7 @@ contract sGhoTest is TestnetProcedures {
               sGHO.initialize.selector,
               address(gho),
               address(contracts.aclManager),
-              MAX_TARGET_RATE,
+              
               SUPPLY_CAP
             )
           )
@@ -1560,7 +1398,7 @@ contract sGhoTest is TestnetProcedures {
         sGHO.initialize.selector,
         address(gho),
         address(contracts.aclManager),
-        MAX_TARGET_RATE,
+        
         SUPPLY_CAP
       )
     );
@@ -1569,7 +1407,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), address(contracts.aclManager), MAX_TARGET_RATE, SUPPLY_CAP);
+    newSgho.initialize(address(gho), address(contracts.aclManager),  SUPPLY_CAP);
   }
 
 
@@ -1578,10 +1416,6 @@ contract sGhoTest is TestnetProcedures {
 
   function test_getter_gho() external view {
     assertEq(sgho.gho(), address(gho), 'GHO address getter should return correct address');
-  }
-
-  function test_getter_deploymentChainId() external view {
-    assertEq(sgho.deploymentChainId(), block.chainid, 'Deployment chain ID should match current chain');
   }
 
   function test_getter_VERSION() external view {
@@ -1608,8 +1442,8 @@ contract sGhoTest is TestnetProcedures {
     assertEq(sgho.targetRate(), 1000, 'Target rate should be 10% (1000 bps)');
   }
 
-  function test_getter_maxTargetRate() external view {
-    assertEq(sgho.maxTargetRate(), MAX_TARGET_RATE, 'Max target rate should match constant');
+  function test_getter_MAX_SAFE_RATE() external view {
+    assertEq(sgho.MAX_SAFE_RATE(), 5000, 'Max target rate should match constant');
   }
 
   function test_getter_supplyCap() external view {

@@ -23,15 +23,15 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
   using Math for uint256;
 
   // Storage variables - Optimally packed for gas efficiency
-  address public gho;                    // 20 bytes
-  address public aclManager;             // 20 bytes (packed with gho)
-  uint16 public targetRate;              // 2 bytes (rates in basis points, max 5000)
-  uint256 public lastUpdate;              // 8 bytes (timestamps fit in uint64 until 2554)
-  uint256 public supplyCap;              // 32 bytes
-  uint256 public yieldIndex;             // 32 bytes
-  
+  uint64 public lastUpdate; // 8 bytes
+  uint16 public targetRate; // 2 bytes
+  address public gho; // 20 bytes
+  address public aclManager; // 20 bytes
+  uint256 public supplyCap; // 32 bytes
+  uint256 public yieldIndex; // 32 bytes
+
   // Constants (stored in bytecode, not storage)
-  uint16 public constant MAX_SAFE_RATE = 5000;         // 5000 fits in uint16
+  uint16 public constant MAX_SAFE_RATE = 5000;
   bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN';
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
   string public constant VERSION = '1';
@@ -62,7 +62,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     __ERC20Permit_init('sGHO');
 
     gho = _gho;
-    aclManager =_aclmanager;
+    aclManager = _aclmanager;
     supplyCap = _supplyCap;
     yieldIndex = WadRayMath.RAY;
     lastUpdate = block.timestamp;
@@ -125,11 +125,19 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
   /**
    * @dev See {IERC20Permit-nonces}.
    */
-  function nonces(address owner) public view virtual override(ERC20PermitUpgradeable) returns (uint256) {
+  function nonces(
+    address owner
+  ) public view virtual override(ERC20PermitUpgradeable) returns (uint256) {
     return super.nonces(owner);
   }
 
-  function decimals() public view virtual override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
+  function decimals()
+    public
+    view
+    virtual
+    override(ERC20Upgradeable, ERC4626Upgradeable)
+    returns (uint8)
+  {
     return super.decimals();
   }
 
@@ -177,7 +185,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @param receiver The address that will receive the sGHO shares.
    * @return The amount of sGHO shares minted.
    */
-  function deposit(uint256 assets, address receiver) public override(ERC4626Upgradeable) returns (uint256) {
+  function deposit(
+    uint256 assets,
+    address receiver
+  ) public override(ERC4626Upgradeable) returns (uint256) {
     uint256 maxAssets = maxDeposit(receiver);
     if (assets > maxAssets) {
       revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
@@ -197,7 +208,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @param receiver The address that will receive the sGHO shares.
    * @return The amount of GHO deposited.
    */
-  function mint(uint256 shares, address receiver) public override(ERC4626Upgradeable) returns (uint256) {
+  function mint(
+    uint256 shares,
+    address receiver
+  ) public override(ERC4626Upgradeable) returns (uint256) {
     uint256 maxShares = maxMint(receiver);
     if (shares > maxShares) {
       revert ERC4626ExceededMaxMint(receiver, shares, maxShares);
@@ -270,10 +284,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     return _convertToAssets(totalSupply(), Math.Rounding.Floor);
   }
 
-   /**
+  /**
    * @inheritdoc IsGHO
    */
-   function vaultAPR() external view returns (uint256) {
+  function vaultAPR() external view returns (uint256) {
     return targetRate;
   }
 
@@ -282,7 +296,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    */
   function setTargetRate(uint16 newRate) public onlyYieldManager {
     // Update the yield index before changing the rate to ensure proper accrual
-        if (newRate > MAX_SAFE_RATE) {
+    if (newRate > MAX_SAFE_RATE) {
       revert RateMustBeLessThanMaxRate();
     }
     _updateYieldIndex();
@@ -290,10 +304,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     emit TargetRateUpdated(newRate);
   }
 
-    /**
+  /**
    * @inheritdoc IsGHO
    */
-   function setSupplyCap(uint256 newSupplyCap) public onlyYieldManager {
+  function setSupplyCap(uint256 newSupplyCap) public onlyYieldManager {
     if (newSupplyCap < totalAssets()) {
       revert SupplyCapMustBeGreaterThanTotalAssets();
     }
@@ -318,7 +332,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     }
     emit ERC20Rescued(_msgSender(), erc20Token, to, amount);
   }
-
 
   /**
    * @notice Converts a GHO asset amount to a sGHO share amount based on the current yield index.
@@ -366,15 +379,15 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     // Convert targetRate from basis points to ray (1e27 scale)
     // targetRate is in basis points (e.g., 1000 = 10%)
     uint256 annualRateRay = uint256(targetRate).rayDiv(10000);
-    
+
     // Calculate the rate per second
     uint256 ratePerSecond = annualRateRay.rayDiv(365 days);
-    
+
     // Linear interest calculation for this update period: newIndex = oldIndex * (1 + rate * time)
     // True compounding occurs through multiple updates as each update builds on the previous index
     uint256 accumulatedRate = ratePerSecond.rayMul(timeSinceLastUpdate);
     uint256 growthFactor = WadRayMath.RAY + accumulatedRate;
-    
+
     return yieldIndex.rayMul(growthFactor);
   }
 
@@ -386,7 +399,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     uint256 newYieldIndex = _getCurrentYieldIndex();
     if (newYieldIndex != yieldIndex) {
       yieldIndex = newYieldIndex;
-              lastUpdate = block.timestamp;
+      lastUpdate = block.timestamp;
     }
   }
 

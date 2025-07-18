@@ -122,7 +122,7 @@ interface IsGHO {
    * @notice Returns the timestamp of the last time the yield index was updated.
    * @return The Unix timestamp of the last update.
    */
-  function lastUpdate() external view returns (uint256);
+  function lastUpdate() external view returns (uint64);
 
   /**
    * @notice Returns the role identifier for the Funds Admin.

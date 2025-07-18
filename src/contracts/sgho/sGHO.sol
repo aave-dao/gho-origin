@@ -65,7 +65,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     aclManager = _aclmanager;
     supplyCap = _supplyCap;
     yieldIndex = WadRayMath.RAY;
-    lastUpdate = block.timestamp;
+    lastUpdate = uint64(block.timestamp)  ;
   }
 
   /**
@@ -399,7 +399,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     uint256 newYieldIndex = _getCurrentYieldIndex();
     if (newYieldIndex != yieldIndex) {
       yieldIndex = newYieldIndex;
-      lastUpdate = block.timestamp;
+      lastUpdate = uint64(block.timestamp);
     }
   }
 

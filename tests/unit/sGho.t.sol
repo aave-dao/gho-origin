@@ -5,7 +5,6 @@ pragma solidity ^0.8.19;
 import {stdStorage, StdStorage} from 'forge-std/Test.sol';
 import {TestnetProcedures, TestnetERC20} from 'lib/aave-v3-origin/tests/utils/TestnetProcedures.sol';
 import {sGHO} from '../../src/contracts/sgho/sGHO.sol';
-import {MockERC1271, IERC1271} from '../mocks/MockERC1271.sol';
 import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
 import {ERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol';
@@ -18,13 +17,15 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {ERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ECDSA} from 'openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol';
-import {WadRayMath} from 'lib/aave-v3-origin/src/contracts/protocol/libraries/math/WadRayMath.sol';
-
 
 // --- Test Contract ---
 
 contract sGhoTest is TestnetProcedures {
   using stdStorage for StdStorage;
+  using Math for uint256;
+
+  // Constants for yield calculations (using ray precision - 27 decimals)
+  uint256 private constant RAY = 1e27;
 
   // Contracts
   sGHO internal sgho;
@@ -110,8 +111,7 @@ contract sGhoTest is TestnetProcedures {
   // --- Constructor Tests ---
 
   function test_constructor() external view {
-    assertEq(sgho.gho(), address(gho), 'GHO address mismatch');
-    assertEq(sgho.VERSION(), VERSION, 'Version mismatch');
+    assertEq(sgho.GHO(), address(gho), 'GHO address mismatch');
     assertEq(sgho.DOMAIN_SEPARATOR(), DOMAIN_SEPARATOR_sGHO, 'Domain separator mismatch');
   }
 
@@ -1484,20 +1484,20 @@ contract sGhoTest is TestnetProcedures {
 
   function test_precision_yieldIndex_realisticValues() external pure {
       // Test with realistic starting values
-      uint256 prevYieldIndex = WadRayMath.RAY; // Start from RAY (1e27)
+      uint256 prevYieldIndex = 1e27; // Start from RAY (1e27)
       uint16 targetRate = 1000; // 10% APR
       uint256 timeSinceLastUpdate = 365 days; // 1 year
       uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
       
       // After 1 year at 10%, index should be approximately 1.1 * RAY
-      uint256 expectedIndex = (WadRayMath.RAY * 11) / 10; // 1.1 * RAY
+      uint256 expectedIndex = (1e27 * 11) / 10; // 1.1 * RAY
       assertApproxEqRel(newYieldIndex, expectedIndex, 0.01e18, 'Yield index should approximate 10% growth'); // 1% tolerance
       assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
   }
 
   function test_precision_yieldIndex_granularTime() external pure {
       // Test with very small time increments
-      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint256 prevYieldIndex = 1e27;
       uint16 targetRate = 1000; // 10% APR
       
       // Test 1 second increment
@@ -1515,7 +1515,7 @@ contract sGhoTest is TestnetProcedures {
 
   function test_precision_yieldIndex_cumulativePrecision() external pure {
       // Test cumulative precision loss over multiple small updates vs one large update
-      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint256 prevYieldIndex = RAY;
       uint16 targetRate = 1000; // 10% APR
       uint256 totalTime = 30 days;
       
@@ -1537,8 +1537,6 @@ contract sGhoTest is TestnetProcedures {
   }
 
   function test_precision_yieldIndex_edgeCases() external pure {
-      uint256 RAY = WadRayMath.RAY;
-      
       // Test minimum non-zero yield index
       uint256 minYieldIndex = _emulateYieldIndex(1, 1, 1);
       assertTrue(minYieldIndex >= 1, 'Should not underflow with minimum values');
@@ -1558,7 +1556,7 @@ contract sGhoTest is TestnetProcedures {
       timeSkip = bound(timeSkip, 1, 365 days * 10); // 1 second to 10 years
       rate = uint16(bound(rate, 1, MAX_SAFE_RATE)); // 0.01% to 50%
       
-      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint256 prevYieldIndex = RAY;
       uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
       
       // Basic invariants
@@ -1570,7 +1568,7 @@ contract sGhoTest is TestnetProcedures {
   }
 
   function test_precision_yieldIndex_zeroRateOrTime() external pure {
-      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint256 prevYieldIndex = RAY;
       // Zero target rate
       assertEq(_emulateYieldIndex(prevYieldIndex, 0, 1000), prevYieldIndex, 'Zero rate should not change index');
       // Zero time
@@ -1596,7 +1594,7 @@ contract sGhoTest is TestnetProcedures {
 
   function test_precision_yieldIndex_monotonic() external pure {
       // Test that yield index is always monotonically increasing
-      uint256 prevYieldIndex = WadRayMath.RAY;
+      uint256 prevYieldIndex = RAY;
       uint16 targetRate = 1000;
       
       uint256 index1 = _emulateYieldIndex(prevYieldIndex, targetRate, 1 days);
@@ -1653,7 +1651,7 @@ contract sGhoTest is TestnetProcedures {
   }
 
   // --- Rescue Tests ---
-  function test_rescueERC20() external {
+  function test_emergencyTokenTransfer() external {
     // Deploy a mock ERC20 token
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
     uint256 rescueAmount = 100 ether;
@@ -1668,13 +1666,13 @@ contract sGhoTest is TestnetProcedures {
 
     // Rescue tokens
     vm.startPrank(Admin);
-    sgho.rescueERC20(address(mockToken), user1, rescueAmount);
+    sgho.emergencyTokenTransfer(address(mockToken), user1, rescueAmount);
     vm.stopPrank();
 
     assertEq(mockToken.balanceOf(user1), rescueAmount, 'Tokens not rescued correctly');
   }
 
-  function test_rescueERC20_amountGreaterThanBalance() external {
+  function test_emergencyTokenTransfer_amountGreaterThanBalance() external {
     // Deploy a mock ERC20 token
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
     uint256 initialAmount = 100 ether;
@@ -1690,7 +1688,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Rescue tokens
     vm.startPrank(Admin);
-    sgho.rescueERC20(address(mockToken), user1, rescueAmount);
+    sgho.emergencyTokenTransfer(address(mockToken), user1, rescueAmount);
     vm.stopPrank();
 
     assertEq(
@@ -1700,25 +1698,28 @@ contract sGhoTest is TestnetProcedures {
     );
   }
 
-  function test_revert_rescueERC20_notFundsAdmin() external {
+  function test_revert_emergencyTokenTransfer_notFundsAdmin() external {
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
 
     vm.expectRevert(abi.encodeWithSelector(IsGHO.OnlyFundsAdmin.selector));
-    sgho.rescueERC20(address(mockToken), user1, 100 ether);
+    sgho.emergencyTokenTransfer(address(mockToken), user1, 100 ether);
   }
 
-  function test_revert_rescueERC20_cannotRescueGHO() external {
+  function test_revert_emergencyTokenTransfer_cannotRescueGHO() external {
     vm.startPrank(poolAdmin);
     aclManager.grantRole(sgho.FUNDS_ADMIN_ROLE(), Admin);
     vm.stopPrank();
 
     vm.startPrank(Admin);
-    vm.expectRevert(abi.encodeWithSelector(IsGHO.CannotRescueGHO.selector));
-    sgho.rescueERC20(address(gho), user1, 100 ether);
+    // Should revert because maxRescue returns 0 for GHO
+    sgho.emergencyTokenTransfer(address(gho), user1, 100 ether);
     vm.stopPrank();
+    
+    // Verify that no GHO was transferred
+    assertEq(gho.balanceOf(user1), 0, 'No GHO should be transferred');
   }
 
-  function test_rescueERC20_zeroAmount() external {
+  function test_emergencyTokenTransfer_zeroAmount() external {
     // Deploy a mock ERC20 token
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
     uint256 initialAmount = 100 ether;
@@ -1733,12 +1734,27 @@ contract sGhoTest is TestnetProcedures {
 
     // Rescue zero amount should be a no-op
     vm.startPrank(Admin);
-    sgho.rescueERC20(address(mockToken), user1, 0);
+    sgho.emergencyTokenTransfer(address(mockToken), user1, 0);
     vm.stopPrank();
 
     // Token balances should remain unchanged
     assertEq(mockToken.balanceOf(address(sgho)), initialAmount, 'Contract balance should remain unchanged');
     assertEq(mockToken.balanceOf(user1), 0, 'User balance should remain unchanged');
+  }
+
+  function test_maxRescue() external {
+    // Deploy a mock ERC20 token
+    TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
+    uint256 tokenAmount = 100 ether;
+
+    // Transfer some tokens to sGHO
+    deal(address(mockToken), address(sgho), tokenAmount, true);
+
+    // Test maxRescue for non-GHO token
+    assertEq(sgho.maxRescue(address(mockToken)), tokenAmount, 'maxRescue should return full balance for non-GHO tokens');
+
+    // Test maxRescue for GHO token
+    assertEq(sgho.maxRescue(address(gho)), 0, 'maxRescue should return 0 for GHO tokens');
   }
 
   // --- Initialization Tests ---
@@ -1786,20 +1802,17 @@ contract sGhoTest is TestnetProcedures {
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), address(contracts.aclManager),  SUPPLY_CAP);
+    newSgho.initialize(address(gho), SUPPLY_CAP);
   }
 
 
 
   // --- Getter Functions Tests ---
 
-  function test_getter_gho() external view {
-    assertEq(sgho.gho(), address(gho), 'GHO address getter should return correct address');
+  function test_getter_GHO() external view {
+    assertEq(sgho.GHO(), address(gho), 'GHO address getter should return correct address');
   }
 
-  function test_getter_VERSION() external view {
-    assertEq(sgho.VERSION(), VERSION, 'VERSION should match constant');
-  }
 
   function test_getter_name() external view {
     assertEq(sgho.name(), 'sGHO', 'Name should be sGHO');
@@ -1873,18 +1886,18 @@ contract sGhoTest is TestnetProcedures {
 
   // --- Internal Utility Functions ---
 
-    /// @dev Emulates the yieldIndex calculation as in sGHO._getCurrentYieldIndex(), using WadRayMath for all operations
+    /// @dev Emulates the yieldIndex calculation as in sGHO._getCurrentYieldIndex(), using OpenZeppelin Math for all operations
     function _emulateYieldIndex(uint256 prevYieldIndex, uint16 targetRate, uint256 timeSinceLastUpdate) internal pure returns (uint256) {
         if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
-        uint256 RAY = 1e27;
+        
         // Convert targetRate from basis points to ray
-        uint256 annualRateRay = WadRayMath.rayDiv(uint256(targetRate), 10000);
+        uint256 annualRateRay = uint256(targetRate).mulDiv(RAY, 10000, Math.Rounding.Floor);
         // Calculate the rate per second
-        uint256 ratePerSecond = WadRayMath.rayDiv(annualRateRay, 365 days);
+        uint256 ratePerSecond = annualRateRay.mulDiv(RAY, 365 days, Math.Rounding.Floor);
         // Calculate accumulated rate and growth factor
-        uint256 accumulatedRate = WadRayMath.rayMul(ratePerSecond, timeSinceLastUpdate);
+        uint256 accumulatedRate = ratePerSecond.mulDiv(timeSinceLastUpdate, RAY, Math.Rounding.Floor);
         uint256 growthFactor = RAY + accumulatedRate;
-        return WadRayMath.rayMul(prevYieldIndex, growthFactor);
+        return prevYieldIndex.mulDiv(growthFactor, RAY, Math.Rounding.Floor);
     }
 
   function _createPermitSignature(

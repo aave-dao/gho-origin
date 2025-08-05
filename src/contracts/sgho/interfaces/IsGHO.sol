@@ -26,11 +26,6 @@ interface IsGHO {
   error OnlyYieldManager();
 
   /**
-   * @notice Thrown when an attempt is made to rescue the underlying GHO token.
-   */
-  error CannotRescueGHO();
-
-  /**
    * @notice Thrown if the target rate is set to a value greater than the max rate.
    */
   error RateMustBeLessThanMaxRate();
@@ -50,11 +45,6 @@ interface IsGHO {
    */
   error ZeroAddressNotAllowed();
 
-  /**
-   * @notice Thrown when an ERC20 transfer fails during rescue operation.
-   */
-  error TransferFailed();
-
   // --- Events ---
 
   /**
@@ -69,19 +59,7 @@ interface IsGHO {
    */
   event SupplyCapUpdated(uint256 newSupplyCap);
 
-  /**
-   * @notice Emitted when ERC20 tokens are rescued from the contract.
-   * @param caller The address that initiated the rescue operation.
-   * @param token The address of the rescued ERC20 token.
-   * @param to The recipient address of the rescued tokens.
-   * @param amount The amount of tokens rescued.
-   */
-  event ERC20Rescued(
-    address indexed caller,
-    address indexed token,
-    address indexed to,
-    uint256 amount
-  );
+
 
   // --- State Variables (as view functions) ---
 
@@ -89,7 +67,7 @@ interface IsGHO {
    * @notice Returns the address of the GHO token used as the underlying asset in the vault.
    * @return The address of the GHO token.
    */
-  function gho() external view returns (address);
+  function GHO() external view returns (address);
 
   /**
    * @notice Returns the total supply cap of the vault.
@@ -147,16 +125,6 @@ interface IsGHO {
 
   // Note: Standard ERC20Permit functions (permit, nonces, DOMAIN_SEPARATOR) are inherited via IERC20Permit.
 
-  /**
-   * @notice Initializes the sGHO contract.
-   * @dev This function can only be called once. It sets up initial roles and configurations.
-   * While the function is marked as `payable`, it is designed to reject any attached Ether value.
-   */
-  function initialize(
-    address gho_,
-    address aclManager_,
-    uint256 supplyCap_
-  ) external payable;
 
   /**
    * @notice Overload of the standard ERC20Permit `permit` function.
@@ -200,16 +168,6 @@ interface IsGHO {
    * @return The current vault APR, in basis points (1% = 100).
    */
   function vaultAPR() external view returns (uint256);
-
-  /**
-   * @notice Rescues ERC20 tokens that have been accidentally sent to this contract.
-   * @dev This function can only be called by an address with the FUNDS_ADMIN role.
-   * It prevents the rescue of the underlying GHO token to protect the vault's assets.
-   * @param erc20Token The address of the ERC20 token to rescue.
-   * @param to The address where the rescued tokens will be sent.
-   * @param amount The amount of tokens to rescue.
-   */
-  function rescueERC20(address erc20Token, address to, uint256 amount) external;
 
   // --- Events ---
 

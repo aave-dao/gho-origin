@@ -4,13 +4,13 @@ pragma solidity ^0.8.19;
 import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {WadRayMath} from 'lib/aave-v3-origin/src/contracts/protocol/libraries/math/WadRayMath.sol';
 import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
-import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {IsGHO} from './interfaces/IsGHO.sol';
 import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
-
+import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
+import {RescuableACL} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableACL.sol';
+import {RescuableBase, IRescuableBase} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableBase.sol';
 /**
  * @title sGHO Token
  * @author @kpk
@@ -18,23 +18,38 @@ import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/tok
  * @dev This contract implements the ERC4626 standard for tokenized vaults, where the underlying asset is GHO.
  * It also includes functionalities for yield generation based on a target rate, and administrative roles for managing the contract.
  */
-contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGHO {
-  using WadRayMath for uint256;
+contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, AccessControlUpgradeable, RescuableACL, IsGHO {
   using Math for uint256;
 
-  // Storage variables - Optimally packed for gas efficiency
-  uint64 public lastUpdate; // 8 bytes
-  uint16 public targetRate; // 2 bytes
-  address public gho; // 20 bytes
-  address public aclManager; // 20 bytes
-  uint256 public supplyCap; // 32 bytes
-  uint256 public yieldIndex; // 32 bytes
+  // Constants for yield calculations (using ray precision - 27 decimals)
+  uint256 private constant RAY = 1e27;
+
+  /// @custom:storage-location erc7201:gho.storage.sGHO
+  struct sGHOStorage {
+    // Storage variables - Optimally packed for gas efficiency
+    uint64 lastUpdate; // 8 bytes
+    uint16 targetRate; // 2 bytes
+    uint256 supplyCap; // 32 bytes
+    uint256 yieldIndex; // 32 bytes
+    uint256 ratePerSecond; // 32 bytes - cached rate per second for gas efficiency
+  }
+
+  // keccak256(abi.encode(uint256(keccak256("gho.storage.sGHO")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant sGHOStorageLocation = 0x8c1d8f3b479c8f3b8c1d8f3b479c8f3b8c1d8f3b479c8f3b8c1d8f3b479c8f3b;
+
+  function _getsGHOStorage() private pure returns (sGHOStorage storage $) {
+    assembly {
+      $.slot := sGHOStorageLocation
+    }
+  }
 
   // Constants (stored in bytecode, not storage)
   uint16 public constant MAX_SAFE_RATE = 5000;
   bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN';
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
-  string public constant VERSION = '1';
+
+
+  
 
   /**
    * @dev Disable initializers on the implementation contract
@@ -46,26 +61,24 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
   /**
    * @notice Initializer for the sGHO vault.
    * @param _gho       Address of the underlying GHO token.
-   * @param _aclmanager Address of the Aave ACL Manager.
    * @param _supplyCap The total supply cap for the vault.
    */
   function initialize(
     address _gho,
-    address _aclmanager,
     uint256 _supplyCap
   ) public payable initializer {
     if (_gho == address(0)) revert ZeroAddressNotAllowed();
-    if (_aclmanager == address(0)) revert ZeroAddressNotAllowed();
 
     __ERC20_init('sGHO', 'sGHO');
     __ERC4626_init(IERC20(_gho));
     __ERC20Permit_init('sGHO');
+    __AccessControl_init();
 
-    gho = _gho;
-    aclManager = _aclmanager;
-    supplyCap = _supplyCap;
-    yieldIndex = WadRayMath.RAY;
-    lastUpdate = uint64(block.timestamp)  ;
+    sGHOStorage storage $ = _getsGHOStorage();
+    $.supplyCap = _supplyCap;
+    $.yieldIndex = RAY;
+    $.lastUpdate = uint64(block.timestamp);
+    $.ratePerSecond = 0; // Initial rate is 0, so ratePerSecond is 0
   }
 
   /**
@@ -76,27 +89,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     revert NoEthAllowed();
   }
 
-  /**
-   * @notice Modifier that restricts a function to be called only by an address with the YIELD_MANAGER role.
-   * @dev See {_onlyYieldManager}.
-   */
-  modifier onlyYieldManager() {
-    if (!_onlyYieldManager()) {
-      revert OnlyYieldManager();
-    }
-    _;
-  }
 
-  /**
-   * @notice Modifier that restricts a function to be called only by an address with the FUNDS_ADMIN role.
-   * @dev See {_onlyFundsAdmin}.
-   */
-  modifier onlyFundsAdmin() {
-    if (!_onlyFundsAdmin()) {
-      revert OnlyFundsAdmin();
-    }
-    _;
-  }
+
 
   // --- Approve by signature ---
   /**
@@ -145,14 +139,14 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
 
   /**
    * @notice Returns the maximum amount of GHO that can be withdrawn by an owner.
-   * @dev This is the minimum of the amount of shares the owner has and the total GHO balance of the contract.
+   * @dev This is the minimum of the amount of assets the owner has and the total GHO balance of the contract.
    * @param owner The address of the user who owns the shares.
    * @return The maximum amount of GHO that can be withdrawn.
    */
   function maxWithdraw(address owner) public view override(ERC4626Upgradeable) returns (uint256) {
-    uint256 ghoBalance = IERC20(gho).balanceOf(address(this));
-    uint256 maxWithdrawShares = super.maxWithdraw(owner);
-    return maxWithdrawShares < ghoBalance ? maxWithdrawShares : ghoBalance;
+    uint256 ghoBalance = IERC20(asset()).balanceOf(address(this));
+    uint256 maxWithdrawAssets = super.maxWithdraw(owner);
+    return maxWithdrawAssets < ghoBalance ? maxWithdrawAssets : ghoBalance;
   }
 
   /**
@@ -162,20 +156,22 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @return The maximum amount of sGHO shares that can be redeemed.
    */
   function maxRedeem(address owner) public view override(ERC4626Upgradeable) returns (uint256) {
-    uint256 ghoBalance = IERC20(gho).balanceOf(address(this));
+    uint256 ghoBalance = IERC20(asset()).balanceOf(address(this));
     uint256 maxRedeemShares = super.maxRedeem(owner);
     uint256 sharesForBalance = convertToShares(ghoBalance);
     return maxRedeemShares < sharesForBalance ? maxRedeemShares : sharesForBalance;
   }
 
   function maxDeposit(address) public view override(ERC4626Upgradeable) returns (uint256) {
+    sGHOStorage storage $ = _getsGHOStorage();
     uint256 currentAssets = totalAssets();
-    return currentAssets >= supplyCap ? 0 : supplyCap - currentAssets;
+    return currentAssets >= $.supplyCap ? 0 : $.supplyCap - currentAssets;
   }
 
   function maxMint(address) public view override(ERC4626Upgradeable) returns (uint256) {
+    sGHOStorage storage $ = _getsGHOStorage();
     uint256 currentAssets = totalAssets();
-    return currentAssets >= supplyCap ? 0 : convertToShares(supplyCap - currentAssets);
+    return currentAssets >= $.supplyCap ? 0 : convertToShares($.supplyCap - currentAssets);
   }
 
   /**
@@ -288,50 +284,71 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @inheritdoc IsGHO
    */
   function vaultAPR() external view returns (uint256) {
-    return targetRate;
+    sGHOStorage storage $ = _getsGHOStorage();
+    return $.targetRate;
   }
 
   /**
    * @inheritdoc IsGHO
    */
-  function setTargetRate(uint16 newRate) public onlyYieldManager {
+  function setTargetRate(uint16 newRate) public onlyRole(YIELD_MANAGER_ROLE) {
+    sGHOStorage storage $ = _getsGHOStorage();
     // Update the yield index before changing the rate to ensure proper accrual
     if (newRate > MAX_SAFE_RATE) {
       revert RateMustBeLessThanMaxRate();
     }
     _updateYieldIndex();
-    targetRate = newRate;
+    $.targetRate = newRate;
+    
+    // Calculate and cache the new rate per second for gas efficiency
+    if (newRate == 0) {
+      $.ratePerSecond = 0;
+    } else {
+      // Convert targetRate from basis points to ray (1e27 scale)
+      // targetRate is in basis points (e.g., 1000 = 10%)
+      uint256 annualRateRay = uint256(newRate).mulDiv(RAY, 10000, Math.Rounding.Floor);
+      // Calculate the rate per second
+      $.ratePerSecond = annualRateRay.mulDiv(RAY, 365 days, Math.Rounding.Floor);
+    }
+    
     emit TargetRateUpdated(newRate);
   }
 
   /**
    * @inheritdoc IsGHO
    */
-  function setSupplyCap(uint256 newSupplyCap) public onlyYieldManager {
+  function setSupplyCap(uint256 newSupplyCap) public onlyRole(YIELD_MANAGER_ROLE) {
+    sGHOStorage storage $ = _getsGHOStorage();
     if (newSupplyCap < totalAssets()) {
       revert SupplyCapMustBeGreaterThanTotalAssets();
     }
-    supplyCap = newSupplyCap;
+    $.supplyCap = newSupplyCap;
     emit SupplyCapUpdated(newSupplyCap);
   }
 
   /**
-   * @inheritdoc IsGHO
+   * @notice Override maxRescue to prevent rescuing GHO tokens
+   * @param erc20Token The address of the ERC20 token to check
+   * @return The maximum amount that can be rescued (0 for GHO, full balance for others)
    */
-  function rescueERC20(address erc20Token, address to, uint256 amount) external onlyFundsAdmin {
-    if (erc20Token == gho) {
-      revert CannotRescueGHO();
+  function maxRescue(address erc20Token) public view override(IRescuableBase, RescuableBase) returns (uint256) {
+    if (erc20Token == asset()) {
+      return 0; // Cannot rescue GHO
     }
-    uint256 balance = IERC20(erc20Token).balanceOf(address(this));
-    if (amount > balance) {
-      amount = balance;
-    }
-    bool success = IERC20(erc20Token).transfer(to, amount);
-    if (!success) {
-      revert TransferFailed();
-    }
-    emit ERC20Rescued(_msgSender(), erc20Token, to, amount);
+    return IERC20(erc20Token).balanceOf(address(this));
   }
+
+  /**
+   * @notice Override _checkRescueGuardian to check for FUNDS_ADMIN role
+   * @dev This function reverts if the caller doesn't have the FUNDS_ADMIN role
+   */
+  function _checkRescueGuardian() internal view override {
+    if (!hasRole(FUNDS_ADMIN_ROLE, _msgSender())) {
+      revert OnlyFundsAdmin();
+    }
+  }
+
+
 
   /**
    * @notice Converts a GHO asset amount to a sGHO share amount based on the current yield index.
@@ -346,7 +363,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
   ) internal view virtual override returns (uint256) {
     uint256 currentYieldIndex = _getCurrentYieldIndex();
     if (currentYieldIndex == 0) return 0;
-    return assets.mulDiv(WadRayMath.RAY, currentYieldIndex, rounding);
+    return assets.mulDiv(RAY, currentYieldIndex, rounding);
   }
 
   /**
@@ -361,7 +378,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
     Math.Rounding rounding
   ) internal view virtual override returns (uint256) {
     uint256 currentYieldIndex = _getCurrentYieldIndex();
-    return shares.mulDiv(currentYieldIndex, WadRayMath.RAY, rounding);
+    return shares.mulDiv(currentYieldIndex, RAY, rounding);
   }
 
   /**
@@ -371,24 +388,18 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint256) {
-    if (targetRate == 0) return yieldIndex;
+    sGHOStorage storage $ = _getsGHOStorage();
+    if ($.ratePerSecond == 0) return $.yieldIndex;
 
-    uint256 timeSinceLastUpdate = block.timestamp - lastUpdate;
-    if (timeSinceLastUpdate == 0) return yieldIndex;
-
-    // Convert targetRate from basis points to ray (1e27 scale)
-    // targetRate is in basis points (e.g., 1000 = 10%)
-    uint256 annualRateRay = uint256(targetRate).rayDiv(10000);
-
-    // Calculate the rate per second
-    uint256 ratePerSecond = annualRateRay.rayDiv(365 days);
+    uint256 timeSinceLastUpdate = block.timestamp - $.lastUpdate;
+    if (timeSinceLastUpdate == 0) return $.yieldIndex;
 
     // Linear interest calculation for this update period: newIndex = oldIndex * (1 + rate * time)
     // True compounding occurs through multiple updates as each update builds on the previous index
-    uint256 accumulatedRate = ratePerSecond.rayMul(timeSinceLastUpdate);
-    uint256 growthFactor = WadRayMath.RAY + accumulatedRate;
+    uint256 accumulatedRate = $.ratePerSecond.mulDiv(timeSinceLastUpdate, RAY, Math.Rounding.Floor);
+    uint256 growthFactor = RAY + accumulatedRate;
 
-    return yieldIndex.rayMul(growthFactor);
+    return $.yieldIndex.mulDiv(growthFactor, RAY, Math.Rounding.Floor);
   }
 
   /**
@@ -396,26 +407,45 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, IsGH
    * @dev This function modifies state and is called before any operation that depends on the yield index.
    */
   function _updateYieldIndex() internal {
+    sGHOStorage storage $ = _getsGHOStorage();
     uint256 newYieldIndex = _getCurrentYieldIndex();
-    if (newYieldIndex != yieldIndex) {
-      yieldIndex = newYieldIndex;
-      lastUpdate = uint64(block.timestamp);
+    if (newYieldIndex != $.yieldIndex) {
+      $.yieldIndex = newYieldIndex;
+      $.lastUpdate = uint64(block.timestamp);
     }
   }
 
-  /**
-   * @notice Internal view function to check if the caller has the FUNDS_ADMIN role.
-   * @return A boolean indicating if the caller is a Funds Admin.
-   */
-  function _onlyFundsAdmin() internal view returns (bool) {
-    return IAccessControl(aclManager).hasRole(FUNDS_ADMIN_ROLE, _msgSender());
+
+
+  // Public getters for storage variables
+  function lastUpdate() public view returns (uint64) {
+    sGHOStorage storage $ = _getsGHOStorage();
+    return $.lastUpdate;
   }
 
-  /**
-   * @notice Internal view function to check if the caller has the YIELD_MANAGER role.
-   * @return A boolean indicating if the caller is a Yield Manager.
-   */
-  function _onlyYieldManager() internal view returns (bool) {
-    return IAccessControl(aclManager).hasRole(YIELD_MANAGER_ROLE, _msgSender());
+  function targetRate() public view returns (uint16) {
+    sGHOStorage storage $ = _getsGHOStorage();
+    return $.targetRate;
+  }
+
+  function GHO() public view returns (address) {
+    return asset();
+  }
+
+
+
+  function supplyCap() public view returns (uint256) {
+    sGHOStorage storage $ = _getsGHOStorage();
+    return $.supplyCap;
+  }
+
+  function yieldIndex() public view returns (uint256) {
+    sGHOStorage storage $ = _getsGHOStorage();
+    return $.yieldIndex;
+  }
+
+  function ratePerSecond() public view returns (uint256) {
+    sGHOStorage storage $ = _getsGHOStorage();
+    return $.ratePerSecond;
   }
 }

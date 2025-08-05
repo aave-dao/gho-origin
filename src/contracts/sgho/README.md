@@ -128,7 +128,7 @@ sgho.setSupplyCap(newCap);
 uint256 apr = sgho.vaultAPR();
 
 // Rescue non-GHO tokens in emergency (FUNDS_ADMIN_ROLE only)
-sgho.rescueERC20(tokenAddress, recipient, amount);
+sgho.emergencyTokenTransfer(tokenAddress, recipient, amount);
 ```
 
 ### Permit Usage (Gasless Approvals)

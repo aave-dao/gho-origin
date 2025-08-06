@@ -23,16 +23,16 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   using Math for uint256;
 
   // RAY is used for high-precision mathematical operations to avoid rounding errors
-  uint256 private constant RAY = 1e27;
+  uint168 private constant RAY = 1e27;
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGHOStorage {
     // Storage variables - Optimally packed for gas efficiency
+    uint168 yieldIndex; // 22 bytes - current yield index for share/asset conversion    
     uint64 lastUpdate; // 8 bytes - timestamp of last yield index update
     uint16 targetRate; // 2 bytes - target annual yield rate in basis points (e.g., 1000 = 10%)
-    uint256 supplyCap; // 32 bytes - maximum total assets allowed in the vault
-    uint256 yieldIndex; // 32 bytes - current yield index for share/asset conversion
-    uint256 ratePerSecond; // 32 bytes - cached rate per second for gas efficiency
+    uint160 supplyCap; // 20 bytes - maximum total assets allowed in the vault
+    uint96 ratePerSecond; // 12 bytes - cached rate per second for gas efficiency
   }
 
   // keccak256(abi.encode(uint256(keccak256("gho.storage.sGHO")) - 1)) & ~bytes32(uint256(0xff))
@@ -66,7 +66,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    */
   function initialize(
     address _gho,
-    uint256 _supplyCap
+    uint160 _supplyCap
   ) public payable initializer {
     if (_gho == address(0)) revert ZeroAddressNotAllowed();
 
@@ -275,8 +275,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
       // targetRate is in basis points (e.g., 1000 = 10%)
       uint256 annualRateRay = uint256(newRate) * RAY / 10000;
       // Calculate the rate per second (annual rate / seconds in a year)
-      uint256 ratePerSecond = annualRateRay * RAY / 365 days;
-      $.ratePerSecond = ratePerSecond / RAY;
+      uint256 calculatedRatePerSecond = annualRateRay * RAY / 365 days;
+      $.ratePerSecond = uint96(calculatedRatePerSecond / RAY);
     }
     
     emit TargetRateUpdated(newRate);
@@ -285,7 +285,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @inheritdoc IsGHO
    */
-  function setSupplyCap(uint256 newSupplyCap) public onlyRole(YIELD_MANAGER_ROLE) {
+  function setSupplyCap(uint160 newSupplyCap) public onlyRole(YIELD_MANAGER_ROLE) {
     sGHOStorage storage $ = _getsGHOStorage();
     $.supplyCap = newSupplyCap;
     emit SupplyCapUpdated(newSupplyCap);
@@ -375,7 +375,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     sGHOStorage storage $ = _getsGHOStorage();
     uint256 newYieldIndex = _getCurrentYieldIndex();
     if (newYieldIndex != $.yieldIndex) {
-      $.yieldIndex = newYieldIndex;
+      $.yieldIndex = uint168(newYieldIndex);
       $.lastUpdate = uint64(block.timestamp);
       emit YieldIndexUpdated(newYieldIndex);
     }
@@ -407,7 +407,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     return $.yieldIndex;
   }
 
-  function ratePerSecond() public view returns (uint256) {
+  function ratePerSecond() public view returns (uint96) {
     sGHOStorage storage $ = _getsGHOStorage();
     return $.ratePerSecond;
   }

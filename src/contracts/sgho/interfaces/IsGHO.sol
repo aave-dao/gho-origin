@@ -142,6 +142,6 @@ interface IsGHO {
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * @param newSupplyCap The new supply cap.
    */
-  function setSupplyCap(uint256 newSupplyCap) external;
+  function setSupplyCap(uint160 newSupplyCap) external;
 
 }

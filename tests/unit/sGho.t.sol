@@ -98,7 +98,7 @@ contract sGhoTest is TestnetProcedures {
   address internal fundsAdmin; // Funds admin user
 
   uint16 internal constant MAX_SAFE_RATE = 5000; // 50%
-  uint256 internal constant SUPPLY_CAP = 1_000_000 ether; // 1M GHO
+  uint160 internal constant SUPPLY_CAP = 1_000_000 ether; // 1M GHO
 
   // Permit constants
   string internal constant VERSION = '1'; // Matches sGHO constructor
@@ -223,6 +223,7 @@ contract sGhoTest is TestnetProcedures {
     
     // Note: We can't directly access the private constant sGHOStorageLocation from the contract
     // but we can verify that our calculation matches the expected value
+    // The storage slot calculation remains the same even though the storage layout has changed
   }
 
   // ========================================
@@ -255,7 +256,7 @@ contract sGhoTest is TestnetProcedures {
 
   function test_setSupplyCap_event() external {
     vm.startPrank(yManager);
-    uint256 newSupplyCap = 1000 ether;
+    uint160 newSupplyCap = 1000 ether;
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGHO.SupplyCapUpdated(newSupplyCap);
     sgho.setSupplyCap(newSupplyCap);
@@ -1994,17 +1995,18 @@ contract sGhoTest is TestnetProcedures {
     vm.stopPrank();
     
     // Rate per second should be calculated correctly
-    uint256 expectedRatePerSecond = sgho.ratePerSecond();
+    uint96 expectedRatePerSecond = sgho.ratePerSecond();
     
     uint256 annualRateRay = (MAX_SAFE_RATE * RAY) / 10000; // 0.5e27
-    uint256 expectedRatePerSecondCalc = annualRateRay * RAY / 365 days;
+    uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+    uint256 expectedRatePerSecondCalc = ratePerSecond / RAY;
     
-    assertEq(expectedRatePerSecond, expectedRatePerSecondCalc / RAY, 'ratePerSecond should match calculated value for max rate');
+    assertEq(expectedRatePerSecond, uint96(expectedRatePerSecondCalc), 'ratePerSecond should match calculated value for max rate');
   }
 
   function test_precision_ratePerSecond_rateChange() external {
     // Get initial rate per second
-    uint256 initialRatePerSecond = sgho.ratePerSecond();
+    uint96 initialRatePerSecond = sgho.ratePerSecond();
     
     // Change target rate
     vm.startPrank(yManager);
@@ -2012,16 +2014,17 @@ contract sGhoTest is TestnetProcedures {
     vm.stopPrank();
     
     // Get new rate per second
-    uint256 newRatePerSecond = sgho.ratePerSecond();
+    uint96 newRatePerSecond = sgho.ratePerSecond();
     
     // New rate should be different and higher
     assertTrue(newRatePerSecond > initialRatePerSecond, 'New rate per second should be higher');
     
     // Verify calculation
     uint256 annualRateRay = (2000 * 1e27) / 10000; // 0.2e27
-    uint256 expectedRatePerSecondCalc = annualRateRay / 365 days;
+    uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+    uint256 expectedRatePerSecondCalc = ratePerSecond / RAY;
     
-    assertEq(newRatePerSecond, expectedRatePerSecondCalc, 'New rate per second should match calculated value');
+    assertEq(newRatePerSecond, uint96(expectedRatePerSecondCalc), 'New rate per second should match calculated value');
   }
 
   // ========================================
@@ -2253,7 +2256,8 @@ contract sGhoTest is TestnetProcedures {
   function test_getter_ratePerSecond() external view {
     uint256 targetRate = sgho.targetRate();
     uint256 annualRateRay = (targetRate * RAY) / 10000;
-    uint256 expectedRatePerSecond = annualRateRay / 365 days;
+    uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+    uint256 expectedRatePerSecond = ratePerSecond / RAY;
     assertEq(sgho.ratePerSecond(), expectedRatePerSecond, 'Rate per second should match calculated value');
   }
 
@@ -2268,10 +2272,11 @@ contract sGhoTest is TestnetProcedures {
         
         // Convert targetRate from basis points to ray
         uint256 annualRateRay = uint256(targetRate) * RAY / 10000;
-        // Calculate the rate per second
-        uint256 ratePerSecond = annualRateRay / 365 days;
+        // Calculate the rate per second (new contract logic)
+        uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+        uint256 ratePerSecondNormalized = ratePerSecond / RAY;
         // Calculate accumulated rate and growth factor
-        uint256 accumulatedRate = ratePerSecond * timeSinceLastUpdate;
+        uint256 accumulatedRate = ratePerSecondNormalized * timeSinceLastUpdate;
         uint256 growthFactor = RAY + accumulatedRate;
         return prevYieldIndex * growthFactor / RAY;
     }

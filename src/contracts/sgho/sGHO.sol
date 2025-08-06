@@ -22,21 +22,21 @@ import {RescuableBase, IRescuableBase} from 'lib/aave-v3-origin/lib/solidity-uti
 contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, AccessControlUpgradeable, RescuableACL, IsGHO {
   using Math for uint256;
 
-  // Constants for yield calculations (using ray precision - 27 decimals)
+  // RAY is used for high-precision mathematical operations to avoid rounding errors
   uint256 private constant RAY = 1e27;
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGHOStorage {
     // Storage variables - Optimally packed for gas efficiency
-    uint64 lastUpdate; // 8 bytes
-    uint16 targetRate; // 2 bytes
-    uint256 supplyCap; // 32 bytes
-    uint256 yieldIndex; // 32 bytes
+    uint64 lastUpdate; // 8 bytes - timestamp of last yield index update
+    uint16 targetRate; // 2 bytes - target annual yield rate in basis points (e.g., 1000 = 10%)
+    uint256 supplyCap; // 32 bytes - maximum total assets allowed in the vault
+    uint256 yieldIndex; // 32 bytes - current yield index for share/asset conversion
     uint256 ratePerSecond; // 32 bytes - cached rate per second for gas efficiency
   }
 
   // keccak256(abi.encode(uint256(keccak256("gho.storage.sGHO")) - 1)) & ~bytes32(uint256(0xff))
-  bytes32 private constant sGHOStorageLocation = 0x8c1d8f3b479c8f3b8c1d8f3b479c8f3b8c1d8f3b479c8f3b8c1d8f3b479c8f3b;
+  bytes32 private constant sGHOStorageLocation = 0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
 
   function _getsGHOStorage() private pure returns (sGHOStorage storage $) {
     assembly {
@@ -45,9 +45,9 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   }
 
   // Constants (stored in bytecode, not storage)
-  uint16 public constant MAX_SAFE_RATE = 5000;
-  bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN';
-  bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
+  uint16 public constant MAX_SAFE_RATE = 5000; // Maximum safe annual yield rate in basis points (50%)
+  bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN'; // Role for managing rescued funds
+  bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER'; // Role for managing yield rates and supply caps
 
 
   
@@ -82,7 +82,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     $.supplyCap = _supplyCap;
     $.yieldIndex = RAY;
     $.lastUpdate = uint64(block.timestamp);
-    $.ratePerSecond = 0; // Initial rate is 0, so ratePerSecond is 0
+    $.ratePerSecond = 0; // Initial rate is 0, so ratePerSecond is 0 (no yield initially)
   }
 
   /**
@@ -102,6 +102,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @notice Returns the maximum amount of GHO that can be withdrawn by an owner.
    * @dev This is the minimum of the amount of assets the owner has and the total GHO balance of the contract.
+   * This ensures users cannot withdraw more GHO than actually exists in the vault.
    * @param owner The address of the user who owns the shares.
    * @return The maximum amount of GHO that can be withdrawn.
    */
@@ -114,6 +115,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @notice Returns the maximum amount of sGHO shares that can be redeemed by an owner.
    * @dev This is the minimum of the owner's share balance and the number of shares corresponding to the contract's total GHO balance.
+   * This ensures users cannot redeem shares for more GHO than actually exists in the vault.
    * @param owner The address of the user who owns the shares.
    * @return The maximum amount of sGHO shares that can be redeemed.
    */
@@ -156,6 +158,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
    * The permit is used to approve the vault to spend the user's GHO tokens.
    * The yield index is updated before the deposit to ensure correct share calculation.
+   * If the user's balance is less than the requested amount, the actual balance will be used.
    * @param assets The amount of GHO to deposit.
    * @param receiver The address that will receive the sGHO shares.
    * @param deadline Must be a timestamp in the future.
@@ -183,6 +186,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
 
     // Check actual user balance and adjust assets if necessary
     // This prevents issues with balance changes during transaction mining
+    // and ensures the transaction doesn't revert due to insufficient balance
     uint256 actualUserBalance = IERC20(asset()).balanceOf(_msgSender());
     if (assets > actualUserBalance) {
       assets = actualUserBalance;
@@ -269,9 +273,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     } else {
       // Convert targetRate from basis points to ray (1e27 scale)
       // targetRate is in basis points (e.g., 1000 = 10%)
-      uint256 annualRateRay = uint256(newRate).mulDiv(RAY, 10000, Math.Rounding.Floor);
-      // Calculate the rate per second
-      $.ratePerSecond = annualRateRay.mulDiv(RAY, 365 days, Math.Rounding.Floor);
+      uint256 annualRateRay = uint256(newRate) * RAY / 10000;
+      // Calculate the rate per second (annual rate / seconds in a year)
+      uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+      $.ratePerSecond = ratePerSecond / RAY;
     }
     
     emit TargetRateUpdated(newRate);
@@ -344,6 +349,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    * @notice Calculates the current yield index, including yield accrued since the last update.
    * @dev This is a view function and does not modify state. It's used for previews.
    * The interest calculation is linear within each update period, but compounds across multiple updates.
+   * Formula: newIndex = oldIndex * (1 + rate * time)
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint256) {
@@ -355,10 +361,10 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
 
     // Linear interest calculation for this update period: newIndex = oldIndex * (1 + rate * time)
     // True compounding occurs through multiple updates as each update builds on the previous index
-    uint256 accumulatedRate = $.ratePerSecond.mulDiv(timeSinceLastUpdate, RAY, Math.Rounding.Floor);
+    uint256 accumulatedRate = $.ratePerSecond * timeSinceLastUpdate;
     uint256 growthFactor = RAY + accumulatedRate;
 
-    return $.yieldIndex.mulDiv(growthFactor, RAY, Math.Rounding.Floor);
+    return $.yieldIndex * growthFactor / RAY;
   }
 
   /**
@@ -375,7 +381,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     }
   }
 
-  // Public getters for storage variables
+  // --- Public Getters for Storage Variables ---
 
   function lastUpdate() public view returns (uint64) {
     sGHOStorage storage $ = _getsGHOStorage();

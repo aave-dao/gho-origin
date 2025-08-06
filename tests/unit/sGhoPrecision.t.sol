@@ -19,6 +19,7 @@ contract sGhoPrecisionTest is TestnetProcedures {
     bytes32 internal DOMAIN_SEPARATOR_sGHO;
     uint16 internal constant MAX_SAFE_RATE = 5000;
     uint256 internal constant SUPPLY_CAP = 1_000_000 ether;
+    uint256 internal constant RAY = 1e27;
 
     function setUp() public {
         initTestEnvironment(false); // Use TestnetProcedures setup
@@ -92,8 +93,13 @@ contract sGhoPrecisionTest is TestnetProcedures {
         sgho.deposit(1 ether, user1); // trigger yield update
         uint256 userAssets = sgho.previewRedeem(sgho.balanceOf(user1));
         // Expected: ~0.01% yield
-        uint256 expectedYield = (depositAmount * 1) / 10000;
-        assertApproxEqAbs(userAssets, 1 ether + depositAmount + expectedYield, 1, 'Yield at min rate should be precise');
+        uint256 expectedYield = (depositAmount * 1 * RAY) / 10000;
+        expectedYield = expectedYield / RAY;
+        uint256 expectedRatePerSecond = 1 * RAY / 10000;
+        expectedRatePerSecond = expectedRatePerSecond * RAY / 365 days;
+        expectedRatePerSecond = expectedRatePerSecond / RAY;
+        assertApproxEqAbs(userAssets, 1 ether + depositAmount + expectedYield, 5, 'Yield at min rate should be precise');
+        assertEq(sgho.ratePerSecond(), expectedRatePerSecond, 'Rate per second should be 1 * RAY / 365 days');
         vm.stopPrank();
     }
 

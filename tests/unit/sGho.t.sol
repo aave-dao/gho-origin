@@ -2306,4 +2306,40 @@ contract sGhoTest is TestnetProcedures {
     return res;
   }
 
+
+
+
+  // ========================================
+  // EVENT TESTS
+  // ========================================
+
+  function test_yieldIndexUpdateEvent_basic() external {
+    // Set a target rate to ensure yield accrual
+    vm.startPrank(yManager);
+    sgho.setTargetRate(1000); // 10% APR
+    vm.stopPrank();
+
+    // Initial state
+    uint256 initialYieldIndex = sgho.yieldIndex();
+
+    // Skip time to accrue yield
+    vm.warp(block.timestamp + 30 days);
+
+    uint256 emulatedYieldIndex = _emulateYieldIndex(initialYieldIndex, 1000, 30 days);
+
+    // Trigger yield update by depositing - should emit event
+    vm.startPrank(user1);
+    vm.expectEmit(true, true, true, true, address(sgho));
+    emit IsGHO.YieldIndexUpdated(emulatedYieldIndex, uint64(block.timestamp));
+    sgho.deposit(100 ether, user1);
+    vm.stopPrank();
+
+    // Verify yield index has increased
+    uint256 newYieldIndex = sgho.yieldIndex();
+    assertTrue(newYieldIndex > initialYieldIndex, 'Yield index should increase after time passes');
+    assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
+  }
+
+
+
 }

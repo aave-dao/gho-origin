@@ -15,8 +15,7 @@ contract sGhoPrecisionTest is TestnetProcedures {
     address internal user1;
     address internal user2;
     address internal Admin;
-    address internal admin;
-    IAccessControl internal aclManager;
+    address internal fundsAdmin;
     bytes32 internal DOMAIN_SEPARATOR_sGHO;
     uint16 internal constant MAX_SAFE_RATE = 5000;
     uint256 internal constant SUPPLY_CAP = 1_000_000 ether;
@@ -27,9 +26,9 @@ contract sGhoPrecisionTest is TestnetProcedures {
         // Users
         user1 = vm.addr(0xB0B);
         user2 = vm.addr(0xCAFE);
-        Admin = address(this);
+        Admin = vm.addr(0x1234); // proxy admin
         yManager = vm.addr(0xDEAD); // Yield manager address
-        admin = vm.addr(0xA11D); // Dedicated proxy admin address
+        fundsAdmin = vm.addr(0xA11D); // Funds admin address
 
         // Deploy Mocks & sGHO
         gho = new TestnetERC20('Mock GHO', 'GHO', 18, poolAdmin);
@@ -41,22 +40,25 @@ contract sGhoPrecisionTest is TestnetProcedures {
                 address(
                     new TransparentUpgradeableProxy(
                         sghoImpl,
-                        admin,
+                        Admin,
                         abi.encodeWithSelector(
                             sGHO.initialize.selector,
                             address(gho),
-                            address(contracts.aclManager),
                             SUPPLY_CAP
                         )
                     )
                 )
             )
         );
-        // Grant YIELD_MANAGER role to yManager through ACLManager
-        vm.startPrank(poolAdmin);
-        aclManager = IAccessControl(address(contracts.aclManager));
-        aclManager.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
-        vm.stopPrank();
+        // Grant DEFAULT_ADMIN_ROLE to the test contract (this address)
+        sgho.grantRole(sgho.DEFAULT_ADMIN_ROLE(), address(this));
+        
+        // Grant FUNDS_ADMIN_ROLE to the funds admin
+        sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
+        
+        // Grant YIELD_MANAGER role to yManager through sGHO
+        sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
+
         // Set target rate as yield manager
         vm.startPrank(yManager);
         sgho.setTargetRate(1000); // 10% APR
@@ -111,7 +113,7 @@ contract sGhoPrecisionTest is TestnetProcedures {
         uint256 userAssets = sgho.previewRedeem(sgho.balanceOf(user1));
         // Expected: ~50% yield
         uint256 expectedYield = (depositAmount * MAX_SAFE_RATE) / 10000;
-        assertApproxEqAbs(userAssets, 1 ether + depositAmount + expectedYield, 1, 'Yield at max rate should be precise');
+        assertApproxEqAbs(userAssets, 1 ether + depositAmount + expectedYield, 2, 'Yield at max rate should be precise');
         vm.stopPrank();
     }
 

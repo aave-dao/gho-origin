@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
+import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
@@ -74,6 +75,9 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     __ERC20Permit_init('sGHO');
     __AccessControl_init();
 
+    // Grant DEFAULT_ADMIN_ROLE to the deployer (msg.sender)
+    _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+
     sGHOStorage storage $ = _getsGHOStorage();
     $.supplyCap = _supplyCap;
     $.yieldIndex = RAY;
@@ -89,50 +93,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     revert NoEthAllowed();
   }
 
-
-
-
-  // --- Approve by signature ---
-  /**
-   * @notice Overload of the `permit` function that accepts v, r, and s as separate arguments.
-   * @dev This is a convenience function for platforms that do not handle the single `bytes` signature format.
-   * @param owner The address of the user who owns the tokens.
-   * @param spender The address of the spender to be approved.
-   * @param value The amount of tokens to approve.
-   * @param deadline The deadline after which the signature is no longer valid.
-   * @param v The v component of the signature.
-   * @param r The r component of the signature.
-   * @param s The s component of the signature.
-   */
-  function permit(
-    address owner,
-    address spender,
-    uint256 value,
-    uint256 deadline,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
-  ) public virtual override(IsGHO, ERC20PermitUpgradeable) {
-    super.permit(owner, spender, value, deadline, v, r, s);
-  }
-
-  /**
-   * @dev See {IERC20Permit-nonces}.
-   */
-  function nonces(
-    address owner
-  ) public view virtual override(ERC20PermitUpgradeable) returns (uint256) {
-    return super.nonces(owner);
-  }
-
-  function decimals()
-    public
-    view
-    virtual
-    override(ERC20Upgradeable, ERC4626Upgradeable)
-    returns (uint8)
-  {
-    return super.decimals();
+  function decimals() public pure override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
+    return 18;
   }
 
   // --- ERC4626 Logic ---
@@ -171,7 +133,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   function maxMint(address) public view override(ERC4626Upgradeable) returns (uint256) {
     sGHOStorage storage $ = _getsGHOStorage();
     uint256 currentAssets = totalAssets();
-    return currentAssets >= $.supplyCap ? 0 : convertToShares($.supplyCap - currentAssets);
+    return (currentAssets >= $.supplyCap) ? 0 : convertToShares($.supplyCap - currentAssets);
   }
 
   /**
@@ -185,16 +147,50 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     uint256 assets,
     address receiver
   ) public override(ERC4626Upgradeable) returns (uint256) {
-    uint256 maxAssets = maxDeposit(receiver);
-    if (assets > maxAssets) {
-      revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
+    _updateYieldIndex();
+    return super.deposit(assets, receiver);
+  }
+
+  /**
+   * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
+   * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
+   * The permit is used to approve the vault to spend the user's GHO tokens.
+   * The yield index is updated before the deposit to ensure correct share calculation.
+   * @param assets The amount of GHO to deposit.
+   * @param receiver The address that will receive the sGHO shares.
+   * @param deadline Must be a timestamp in the future.
+   * @param sig A `secp256k1` signature params from `msgSender()`.
+   * @return The amount of sGHO shares minted.
+   */
+  function depositWithPermit(
+    uint256 assets,
+    address receiver,
+    uint256 deadline,
+    SignatureParams memory sig
+  ) external returns (uint256) {
+    // Use permit to approve the vault to spend the user's GHO tokens
+    try
+      IERC20Permit(asset()).permit(
+        _msgSender(),
+        address(this),
+        assets,
+        deadline,
+        sig.v,
+        sig.r,
+        sig.s
+      )
+    {} catch {}
+
+    // Check actual user balance and adjust assets if necessary
+    // This prevents issues with balance changes during transaction mining
+    uint256 actualUserBalance = IERC20(asset()).balanceOf(_msgSender());
+    if (assets > actualUserBalance) {
+      assets = actualUserBalance;
     }
 
+    // Update yield index and perform deposit
     _updateYieldIndex();
-    uint256 shares = previewDeposit(assets);
-    _deposit(_msgSender(), receiver, assets, shares);
-
-    return shares;
+    return super.deposit(assets, receiver);
   }
 
   /**
@@ -208,17 +204,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     uint256 shares,
     address receiver
   ) public override(ERC4626Upgradeable) returns (uint256) {
-    uint256 maxShares = maxMint(receiver);
-    if (shares > maxShares) {
-      revert ERC4626ExceededMaxMint(receiver, shares, maxShares);
-    }
-
-    _updateYieldIndex();
-    uint256 assets = previewMint(shares);
-
-    _deposit(_msgSender(), receiver, assets, shares);
-
-    return assets;
+    _updateYieldIndex();  
+    return super.mint(shares, receiver);
   }
 
   /**
@@ -234,16 +221,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     address receiver,
     address owner
   ) public override(ERC4626Upgradeable) returns (uint256) {
-    uint256 maxAssets = maxWithdraw(owner);
-    if (assets > maxAssets) {
-      revert ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
-    }
-
     _updateYieldIndex();
-    uint256 shares = previewWithdraw(assets);
-    _withdraw(_msgSender(), receiver, owner, assets, shares);
-
-    return shares;
+    return super.withdraw(assets, receiver, owner);
   }
 
   /**
@@ -259,16 +238,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     address receiver,
     address owner
   ) public override(ERC4626Upgradeable) returns (uint256) {
-    uint256 maxShares = maxRedeem(owner);
-    if (shares > maxShares) {
-      revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
-    }
-
     _updateYieldIndex();
-    uint256 assets = previewRedeem(shares);
-    _withdraw(_msgSender(), receiver, owner, assets, shares);
-
-    return assets;
+    return super.redeem(shares, receiver, owner);
   }
 
   /**
@@ -276,16 +247,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    * @dev This is calculated based on the total supply of sGHO and the current yield index.
    * @return The total amount of GHO assets.
    */
-  function totalAssets() public view override(ERC4626Upgradeable) returns (uint256) {
+  function totalAssets() public view override returns (uint256) {
     return _convertToAssets(totalSupply(), Math.Rounding.Floor);
-  }
-
-  /**
-   * @inheritdoc IsGHO
-   */
-  function vaultAPR() external view returns (uint256) {
-    sGHOStorage storage $ = _getsGHOStorage();
-    return $.targetRate;
   }
 
   /**
@@ -319,9 +282,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    */
   function setSupplyCap(uint256 newSupplyCap) public onlyRole(YIELD_MANAGER_ROLE) {
     sGHOStorage storage $ = _getsGHOStorage();
-    if (newSupplyCap < totalAssets()) {
-      revert SupplyCapMustBeGreaterThanTotalAssets();
-    }
     $.supplyCap = newSupplyCap;
     emit SupplyCapUpdated(newSupplyCap);
   }
@@ -344,10 +304,9 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    */
   function _checkRescueGuardian() internal view override {
     if (!hasRole(FUNDS_ADMIN_ROLE, _msgSender())) {
-      revert OnlyFundsAdmin();
+      revert AccessControlUnauthorizedAccount(_msgSender(), FUNDS_ADMIN_ROLE);
     }
   }
-
 
 
   /**
@@ -412,12 +371,12 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     if (newYieldIndex != $.yieldIndex) {
       $.yieldIndex = newYieldIndex;
       $.lastUpdate = uint64(block.timestamp);
+      emit YieldIndexUpdated(newYieldIndex);
     }
   }
 
-
-
   // Public getters for storage variables
+
   function lastUpdate() public view returns (uint64) {
     sGHOStorage storage $ = _getsGHOStorage();
     return $.lastUpdate;
@@ -431,8 +390,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   function GHO() public view returns (address) {
     return asset();
   }
-
-
 
   function supplyCap() public view returns (uint256) {
     sGHOStorage storage $ = _getsGHOStorage();

@@ -16,16 +16,6 @@ interface IsGHO {
   error NoEthAllowed();
 
   /**
-   * @notice Thrown when a function is called by an address that does not have the FUNDS_ADMIN role.
-   */
-  error OnlyFundsAdmin();
-
-  /**
-   * @notice Thrown when a function is called by an address that does not have the YIELD_MANAGER role.
-   */
-  error OnlyYieldManager();
-
-  /**
    * @notice Thrown if the target rate is set to a value greater than the max rate.
    */
   error RateMustBeLessThanMaxRate();
@@ -34,11 +24,6 @@ interface IsGHO {
    * @notice Thrown when a deposit or mint would exceed the total supply cap.
    */
   error SupplyCapExceeded();
-
-  /**
-   * @notice Thrown when the supply cap is set to a value less than the total assets.
-   */
-  error SupplyCapMustBeGreaterThanTotalAssets();
 
   /**
    * @notice Thrown when a zero address is provided for a critical parameter during initialization.
@@ -54,10 +39,28 @@ interface IsGHO {
   event TargetRateUpdated(uint256 newRate);
 
   /**
+   * @notice Emitted when the yield index is updated.
+   * @param newYieldIndex The new yield index.
+   */
+  event YieldIndexUpdated(uint256 newYieldIndex);
+
+  /**
    * @notice Emitted when the supply cap is updated.
    * @param newSupplyCap The new supply cap.
    */
   event SupplyCapUpdated(uint256 newSupplyCap);
+
+  /**
+   * @notice Struct for signature parameters.
+   * @param v The recovery ID of the signature.
+   * @param r The R component of the signature.
+   * @param s The S component of the signature.
+   */
+  struct SignatureParams {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+  }
 
 
 
@@ -127,28 +130,6 @@ interface IsGHO {
 
 
   /**
-   * @notice Overload of the standard ERC20Permit `permit` function.
-   * @dev This version accepts the v, r, and s components of the signature directly,
-   * which can be useful for platforms that do not handle the single `bytes` signature format.
-   * @param owner The owner of the tokens.
-   * @param spender The address to grant allowance to.
-   * @param value The amount of allowance to grant.
-   * @param deadline The timestamp after which the permit is invalid.
-   * @param v The recovery ID of the signature.
-   * @param r The R component of the signature.
-   * @param s The S component of the signature.
-   */
-  function permit(
-    address owner,
-    address spender,
-    uint256 value,
-    uint256 deadline,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
-  ) external;
-
-  /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * The new rate must be less than 50% (5000 basis points).
@@ -163,16 +144,4 @@ interface IsGHO {
    */
   function setSupplyCap(uint256 newSupplyCap) external;
 
-  /**
-   * @notice Calculates and returns the current vault Annual Percentage Rate (APR).
-   * @return The current vault APR, in basis points (1% = 100).
-   */
-  function vaultAPR() external view returns (uint256);
-
-  // --- Events ---
-
-  /**
-   * @notice The receive function is implemented to reject direct Ether transfers to the contract.
-   */
-  receive() external payable;
 }

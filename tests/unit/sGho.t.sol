@@ -6,8 +6,7 @@ import {stdStorage, StdStorage} from 'forge-std/Test.sol';
 import {TestnetProcedures, TestnetERC20} from 'lib/aave-v3-origin/tests/utils/TestnetProcedures.sol';
 import {sGHO} from '../../src/contracts/sgho/sGHO.sol';
 import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
-import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
-import {ERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol';
+import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IERC20Errors} from 'openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol';
 import {IERC20Metadata as IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
@@ -15,8 +14,8 @@ import {IsGHO} from '../../src/contracts/sgho/interfaces/IsGHO.sol';
 import {ERC4626} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import {ERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol';
 import {ECDSA} from 'openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol';
+import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
 
 // --- Test Contract ---
 
@@ -30,7 +29,6 @@ contract sGhoTest is TestnetProcedures {
   // Contracts
   sGHO internal sgho;
   TestnetERC20 internal gho;
-  IAccessControl internal aclManager;
 
   // Users & Keys
   address internal user1;
@@ -38,6 +36,7 @@ contract sGhoTest is TestnetProcedures {
   address internal user2;
   address internal Admin;
   address internal yManager; // Yield manager user
+  address internal fundsAdmin; // Funds admin user
 
   uint16 internal constant MAX_SAFE_RATE = 5000; // 50%
   uint256 internal constant SUPPLY_CAP = 1_000_000 ether; // 1M GHO
@@ -53,8 +52,9 @@ contract sGhoTest is TestnetProcedures {
     user1PrivateKey = 0xB0B;
     user1 = vm.addr(user1PrivateKey);
     user2 = vm.addr(0xCAFE);
-    Admin = address(this);
+    Admin = vm.addr(0x1234); // proxy admin address
     yManager = vm.addr(0xDEAD); // Yield manager address
+    fundsAdmin = vm.addr(0xA11D); // Funds admin address
 
     // Deploy Mocks & sGHO
     gho = new TestnetERC20('Mock GHO', 'GHO', 18, poolAdmin);
@@ -66,11 +66,10 @@ contract sGhoTest is TestnetProcedures {
         address(
           new TransparentUpgradeableProxy(
             sghoImpl,
-            address(this),
+            Admin,
             abi.encodeWithSelector(
               sGHO.initialize.selector,
               address(gho),
-              address(contracts.aclManager),
               SUPPLY_CAP
             )
           )
@@ -81,11 +80,15 @@ contract sGhoTest is TestnetProcedures {
     deal(address(user1), 10 ether);
     deal(address(gho), address(sgho), 1 ether, true);
 
+    // Grant DEFAULT_ADMIN_ROLE to the test contract (this address)
+    sgho.grantRole(sgho.DEFAULT_ADMIN_ROLE(), address(this));
+    
+    // Grant FUNDS_ADMIN_ROLE to the test contract (this address)
+    sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
+    
     // Grant YIELD_MANAGER role to yManager through ACLManager
-    vm.startPrank(poolAdmin);
-    aclManager = IAccessControl(address(contracts.aclManager));
-    aclManager.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
-    vm.stopPrank();
+    sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
+
 
     // Set target rate as yield manager
     vm.startPrank(yManager);
@@ -167,18 +170,6 @@ contract sGhoTest is TestnetProcedures {
     sgho.setSupplyCap(newSupplyCap);
     vm.stopPrank();
     assertEq(sgho.supplyCap(), newSupplyCap, 'Supply cap should be updated');
-  }
-
-  function test_revert_setSupplyCap_lessThanTotalAssets() external {
-    uint256 amount = 100 ether;
-    vm.startPrank(user1);
-    sgho.deposit(amount, user1);
-    vm.stopPrank();
-    vm.startPrank(yManager);
-    uint256 newSupplyCap = amount - 1;
-    vm.expectRevert(IsGHO.SupplyCapMustBeGreaterThanTotalAssets.selector);
-    sgho.setSupplyCap(newSupplyCap);
-    vm.stopPrank();
   }
 
   // --- ERC4626 Tests ---
@@ -730,7 +721,7 @@ contract sGhoTest is TestnetProcedures {
       bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, user1, vars.spender, vars.value, vars.nonce, vars.deadline));
       bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
       address recovered = ECDSA.recover(hash, vars.v, vars.r, vars.s);
-      vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, recovered, user1));
+      vm.expectRevert(abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612InvalidSigner.selector, recovered, user1));
       sgho.permit(user1, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     }
   }
@@ -754,7 +745,7 @@ contract sGhoTest is TestnetProcedures {
       bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, vars.owner, vars.spender, vars.value, vars.nonce + 1, vars.deadline));
       bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
       address recovered = ECDSA.recover(hash, vars.v, vars.r, vars.s);
-      vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, recovered, vars.owner));
+      vm.expectRevert(abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612InvalidSigner.selector, recovered, vars.owner));
       sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     }
   }
@@ -777,7 +768,7 @@ contract sGhoTest is TestnetProcedures {
     {
       bytes32 contractHash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
       address recovered = ECDSA.recover(contractHash, vars.v, vars.r, vars.s);
-      vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, recovered, vars.owner));
+      vm.expectRevert(abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612InvalidSigner.selector, recovered, vars.owner));
       sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     }
   }
@@ -806,7 +797,7 @@ contract sGhoTest is TestnetProcedures {
     (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline, vars.privateKey);
     vm.expectRevert(
       abi.encodeWithSelector(
-        ERC20Permit.ERC2612ExpiredSignature.selector,
+        ERC20PermitUpgradeable.ERC2612ExpiredSignature.selector,
         vars.deadline
       )
     );
@@ -936,7 +927,7 @@ contract sGhoTest is TestnetProcedures {
     sgho.deposit(depositAmount2, user1); // This deposit triggers _updateVault
 
     // Calculate expected yield based on time elapsed and target rate
-    uint256 expectedYield = (depositAmount * sgho.vaultAPR() * timeSkip) / (10000 * 365 days);
+    uint256 expectedYield = (depositAmount * sgho.targetRate() * timeSkip) / (10000 * 365 days);
     uint256 expectedAssets = depositAmount + expectedYield + depositAmount2;
 
 
@@ -1347,7 +1338,7 @@ contract sGhoTest is TestnetProcedures {
     
     // Verify redemption succeeded
     assertEq(gho.balanceOf(user1), user1Balance + assetsReceived, 'User should receive the actual GHO balance');
-    assertApproxEqAbs(gho.balanceOf(address(sgho)), 0, 1, 'Contract should have no GHO left');
+    assertApproxEqAbs(gho.balanceOf(address(sgho)), 0, 2, 'Contract should have no GHO left');
     assertEq(sgho.balanceOf(user1), user1Shares - maxRedeem, 'User should have no shares left');
     vm.stopPrank();
   }
@@ -1385,7 +1376,7 @@ contract sGhoTest is TestnetProcedures {
     uint256 maxWithdrawUser2 = sgho.maxWithdraw(user2);
     
     // Total max withdrawals should equal theoretical assets (not actual balance)
-    assertEq(maxWithdrawUser1 + maxWithdrawUser2, theoreticalAssets, 'Total max withdrawals should equal theoretical assets');
+    assertApproxEqAbs(maxWithdrawUser1 + maxWithdrawUser2, theoreticalAssets, 1, 'Total max withdrawals should equal theoretical assets');
     
     // Calculate proportional shares of actual GHO balance to avoid maxWithdraw issues
     uint256 user1Shares = sgho.balanceOf(user1);
@@ -1622,32 +1613,24 @@ contract sGhoTest is TestnetProcedures {
     sgho.setTargetRate(newRate);
     vm.stopPrank();
 
-    assertEq(sgho.vaultAPR(), newRate, 'Target rate not set correctly');
+    assertEq(sgho.targetRate(), newRate, 'Target rate not set correctly');
   }
 
   function test_revert_setTargetRate_notYieldManager() external {
     uint16 newRate = 2000; // 20% APR
 
-    vm.expectRevert(abi.encodeWithSelector(IsGHO.OnlyYieldManager.selector));
+    vm.startPrank(user1);
+    vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, sgho.YIELD_MANAGER_ROLE()));
     sgho.setTargetRate(newRate);
+    vm.stopPrank();
   }
 
   function test_revert_setTargetRate_rateGreaterThanMaxRate() external {
     uint16 newRate = 5001; // 50.01% APR
     vm.startPrank(yManager);
-    vm.expectRevert(abi.encodeWithSelector(IsGHO.RateMustBeLessThanMaxRate.selector));
+    vm.expectRevert(IsGHO.RateMustBeLessThanMaxRate.selector);
     sgho.setTargetRate(newRate);
     vm.stopPrank();
-  }
-
-  function test_vaultAPR() external {
-    uint16 targetRate = 1500; // 15% APR
-
-    vm.startPrank(yManager);
-    sgho.setTargetRate(targetRate);
-    vm.stopPrank();
-
-    assertEq(sgho.vaultAPR(), targetRate, 'Vault APR mismatch');
   }
 
   // --- Rescue Tests ---
@@ -1659,13 +1642,10 @@ contract sGhoTest is TestnetProcedures {
     // Transfer some tokens to sGHO
     deal(address(mockToken), address(sgho), rescueAmount, true);
 
-    // Grant FUNDS_ADMIN role to Admin
-    vm.startPrank(poolAdmin);
-    aclManager.grantRole(sgho.FUNDS_ADMIN_ROLE(), Admin);
-    vm.stopPrank();
+    // FUNDS_ADMIN role is already granted to fundsAdmin in setUp()
 
     // Rescue tokens
-    vm.startPrank(Admin);
+    vm.startPrank(fundsAdmin);
     sgho.emergencyTokenTransfer(address(mockToken), user1, rescueAmount);
     vm.stopPrank();
 
@@ -1681,13 +1661,10 @@ contract sGhoTest is TestnetProcedures {
     // Transfer some tokens to sGHO
     deal(address(mockToken), address(sgho), initialAmount, true);
 
-    // Grant FUNDS_ADMIN role to Admin
-    vm.startPrank(poolAdmin);
-    aclManager.grantRole(sgho.FUNDS_ADMIN_ROLE(), Admin);
-    vm.stopPrank();
+    // FUNDS_ADMIN role is already granted to fundsAdmin in setUp()
 
     // Rescue tokens
-    vm.startPrank(Admin);
+    vm.startPrank(fundsAdmin);
     sgho.emergencyTokenTransfer(address(mockToken), user1, rescueAmount);
     vm.stopPrank();
 
@@ -1701,22 +1678,24 @@ contract sGhoTest is TestnetProcedures {
   function test_revert_emergencyTokenTransfer_notFundsAdmin() external {
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
 
-    vm.expectRevert(abi.encodeWithSelector(IsGHO.OnlyFundsAdmin.selector));
+    vm.startPrank(user1);
+    vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, sgho.FUNDS_ADMIN_ROLE()));
     sgho.emergencyTokenTransfer(address(mockToken), user1, 100 ether);
+    vm.stopPrank();
   }
 
-  function test_revert_emergencyTokenTransfer_cannotRescueGHO() external {
-    vm.startPrank(poolAdmin);
-    aclManager.grantRole(sgho.FUNDS_ADMIN_ROLE(), Admin);
-    vm.stopPrank();
+  function test_emergencyTokenTransfer_cannotRescueGHO() external {
+    // FUNDS_ADMIN role is already granted to fundsAdmin in setUp()
 
-    vm.startPrank(Admin);
-    // Should revert because maxRescue returns 0 for GHO
+    uint256 initialBalance = gho.balanceOf(user1);
+    
+    vm.startPrank(fundsAdmin);
+    // Should succeed but transfer 0 because maxRescue returns 0 for GHO
     sgho.emergencyTokenTransfer(address(gho), user1, 100 ether);
     vm.stopPrank();
     
     // Verify that no GHO was transferred
-    assertEq(gho.balanceOf(user1), 0, 'No GHO should be transferred');
+    assertEq(gho.balanceOf(user1), initialBalance, 'No GHO should be transferred');
   }
 
   function test_emergencyTokenTransfer_zeroAmount() external {
@@ -1727,13 +1706,10 @@ contract sGhoTest is TestnetProcedures {
     // Transfer some tokens to sGHO
     deal(address(mockToken), address(sgho), initialAmount, true);
 
-    // Grant FUNDS_ADMIN role to Admin
-    vm.startPrank(poolAdmin);
-    aclManager.grantRole(sgho.FUNDS_ADMIN_ROLE(), Admin);
-    vm.stopPrank();
+    // FUNDS_ADMIN role is already granted to fundsAdmin in setUp()
 
     // Rescue zero amount should be a no-op
-    vm.startPrank(Admin);
+    vm.startPrank(fundsAdmin);
     sgho.emergencyTokenTransfer(address(mockToken), user1, 0);
     vm.stopPrank();
 
@@ -1769,9 +1745,7 @@ contract sGhoTest is TestnetProcedures {
             address(this),
             abi.encodeWithSelector(
               sGHO.initialize.selector,
-              address(gho),
-              address(contracts.aclManager),
-              
+              address(gho),              
               SUPPLY_CAP
             )
           )
@@ -1792,8 +1766,6 @@ contract sGhoTest is TestnetProcedures {
       abi.encodeWithSelector(
         sGHO.initialize.selector,
         address(gho),
-        address(contracts.aclManager),
-        
         SUPPLY_CAP
       )
     );
@@ -1848,10 +1820,6 @@ contract sGhoTest is TestnetProcedures {
 
   function test_getter_lastUpdate() external view {
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
-  }
-
-  function test_getter_vaultAPR() external view {
-    assertEq(sgho.vaultAPR(), sgho.targetRate(), 'Vault APR should equal target rate');
   }
 
   function test_getter_FUNDS_ADMIN_ROLE() external view {

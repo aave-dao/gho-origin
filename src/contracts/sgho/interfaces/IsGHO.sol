@@ -21,11 +21,6 @@ interface IsGHO {
   error RateMustBeLessThanMaxRate();
 
   /**
-   * @notice Thrown when a deposit or mint would exceed the total supply cap.
-   */
-  error SupplyCapExceeded();
-
-  /**
    * @notice Thrown when a zero address is provided for a critical parameter during initialization.
    */
   error ZeroAddressNotAllowed();
@@ -41,8 +36,9 @@ interface IsGHO {
   /**
    * @notice Emitted when the yield index is updated.
    * @param newYieldIndex The new yield index.
+   * @param lastUpdate The timestamp of the last update.
    */
-  event YieldIndexUpdated(uint256 newYieldIndex);
+  event YieldIndexUpdated(uint256 newYieldIndex, uint64 lastUpdate);
 
   /**
    * @notice Emitted when the supply cap is updated.
@@ -61,6 +57,8 @@ interface IsGHO {
     bytes32 r;
     bytes32 s;
   }
+
+
 
 
 
@@ -98,6 +96,13 @@ interface IsGHO {
    * @return The target rate in basis points.
    */
   function targetRate() external view returns (uint16);
+
+  /**
+   * @notice Returns the current rate per second for yield generation.
+   * @dev The rate is expressed in basis points (1% = 100).
+   * @return The rate per second in basis points.
+   */
+  function ratePerSecond() external view returns (uint96);
 
   /**
    * @notice Returns the timestamp of the last time the yield index was updated.
@@ -143,5 +148,24 @@ interface IsGHO {
    * @param newSupplyCap The new supply cap.
    */
   function setSupplyCap(uint160 newSupplyCap) external;
+
+    /**
+   * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
+   * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
+   * The permit is used to approve the vault to spend the user's GHO tokens.
+   * The yield index is updated before the deposit to ensure correct share calculation.
+   * If the user's balance is less than the requested amount, the actual balance will be used.
+   * @param assets The amount of GHO to deposit.
+   * @param receiver The address that will receive the sGHO shares.
+   * @param deadline Must be a timestamp in the future.
+   * @param sig A `secp256k1` signature params from `msgSender()`.
+   * @return The amount of sGHO shares minted.
+   */
+  function depositWithPermit(
+    uint256 assets,
+    address receiver,
+    uint256 deadline,
+    SignatureParams memory sig
+  ) external returns (uint256);
 
 }

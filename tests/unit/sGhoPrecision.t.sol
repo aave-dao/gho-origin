@@ -45,20 +45,15 @@ contract sGhoPrecisionTest is TestnetProcedures {
                         abi.encodeWithSelector(
                             sGHO.initialize.selector,
                             address(gho),
-                            SUPPLY_CAP
+                            SUPPLY_CAP,
+                            address(this),
+                            fundsAdmin,
+                            yManager
                         )
                     )
                 )
             )
         );
-        // Grant DEFAULT_ADMIN_ROLE to the test contract (this address)
-        sgho.grantRole(sgho.DEFAULT_ADMIN_ROLE(), address(this));
-        
-        // Grant FUNDS_ADMIN_ROLE to the funds admin
-        sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
-        
-        // Grant YIELD_MANAGER role to yManager through sGHO
-        sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
 
         // Set target rate as yield manager
         vm.startPrank(yManager);

@@ -129,7 +129,10 @@ contract sGhoTest is TestnetProcedures {
             abi.encodeWithSelector(
               sGHO.initialize.selector,
               address(gho),
-              SUPPLY_CAP
+              SUPPLY_CAP,
+              address(this), // executor
+              fundsAdmin,    // fundsAdmin
+              yManager       // yieldManager
             )
           )
         )
@@ -138,16 +141,6 @@ contract sGhoTest is TestnetProcedures {
 
     deal(address(user1), 10 ether);
     deal(address(gho), address(sgho), 1 ether, true);
-
-    // Grant DEFAULT_ADMIN_ROLE to the test contract (this address)
-    sgho.grantRole(sgho.DEFAULT_ADMIN_ROLE(), address(this));
-    
-    // Grant FUNDS_ADMIN_ROLE to the test contract (this address)
-    sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
-    
-    // Grant YIELD_MANAGER role to yManager through ACLManager
-    sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
-
 
     // Set target rate as yield manager
     vm.startPrank(yManager);
@@ -2146,7 +2139,10 @@ contract sGhoTest is TestnetProcedures {
             abi.encodeWithSelector(
               sGHO.initialize.selector,
               address(gho),              
-              SUPPLY_CAP
+              SUPPLY_CAP,
+              address(this), // executor
+              fundsAdmin,    // fundsAdmin
+              yManager       // yieldManager
             )
           )
         )
@@ -2166,7 +2162,10 @@ contract sGhoTest is TestnetProcedures {
       abi.encodeWithSelector(
         sGHO.initialize.selector,
         address(gho),
-        SUPPLY_CAP
+        SUPPLY_CAP,
+        address(this), // executor
+        fundsAdmin,    // fundsAdmin
+        yManager       // yieldManager
       )
     );
 
@@ -2174,7 +2173,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), SUPPLY_CAP);
+    newSgho.initialize(address(gho), SUPPLY_CAP, address(this), fundsAdmin, yManager);
   }
 
 

@@ -119,7 +119,6 @@ interface IsGHO {
 
   // --- Functions ---
 
-
   /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.

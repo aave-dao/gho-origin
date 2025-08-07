@@ -103,7 +103,7 @@ uint256 shares = sgho.withdraw(1000e18, receiver, owner);
 uint256 assets = sgho.redeem(1000e18, receiver, owner);
 ```
 
-### Gasless Deposits with Permit
+### Deposits with Permit
 
 ```solidity
 // Deposit with permit (no separate approval needed)

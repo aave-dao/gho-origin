@@ -4,8 +4,6 @@ pragma solidity ^0.8.19;
 /**
  * @title IsGHO Interface
  * @notice Interface for the sGHO contract, which is an ERC4626 vault for GHO tokens.
- * @dev This interface combines functionalities from ERC4626 for a tokenized vault,
- * ERC20Permit for gas-less approvals, and includes custom logic for yield generation and administrative roles.
  */
 interface IsGHO {
   // --- Custom Errors ---
@@ -34,9 +32,9 @@ interface IsGHO {
   event TargetRateUpdated(uint256 newRate);
 
   /**
-   * @notice Emitted when the exchange rate is updated.
+   * @notice Emitted when the timestamp and yield index are updated.
    * @param timestamp The timestamp of the update.
-   * @param currentRate The current exchange rate.
+   * @param currentRate The current yield index.
    */
   event ExchangeRateUpdate(uint256 timestamp, uint256 currentRate);
 
@@ -95,7 +93,7 @@ interface IsGHO {
   /**
    * @notice Returns the current rate per second for yield generation.
    * @dev The rate is expressed in basis points (1% = 100).
-   * @return The rate per second in basis points.
+   * @return The rate per second in basis points multiplied by 10^18.
    */
   function ratePerSecond() external view returns (uint96);
 
@@ -121,12 +119,6 @@ interface IsGHO {
 
   // --- Functions ---
 
-  // Note: Standard ERC4626 functions (asset, totalAssets, convertToShares, convertToAssets,
-  // maxDeposit, previewDeposit, deposit, maxMint, previewMint, mint, maxWithdraw, previewWithdraw,
-  // withdraw, maxRedeem, previewRedeem, redeem) and ERC20 functions (name, symbol, decimals,
-  // totalSupply, balanceOf, transfer, allowance, approve, transferFrom) are inherited via IERC4626.
-
-  // Note: Standard ERC20Permit functions (permit, nonces, DOMAIN_SEPARATOR) are inherited via IERC20Permit.
 
   /**
    * @notice Sets the target rate for yield generation.
@@ -148,7 +140,6 @@ interface IsGHO {
    * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
    * The permit is used to approve the vault to spend the user's GHO tokens.
    * The yield index is updated before the deposit to ensure correct share calculation.
-   * If the user's balance is less than the requested amount, the actual balance will be used.
    * @param assets The amount of GHO to deposit.
    * @param receiver The address that will receive the sGHO shares.
    * @param deadline Must be a timestamp in the future.

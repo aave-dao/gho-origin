@@ -20,7 +20,7 @@ This document details how precision, rounding, and edge cases are handled in the
 ### Math Library Rounding
 
 - All asset/share conversions use OpenZeppelin's `Math.mulDiv` with explicit rounding direction.
-- The contract typically uses `Math.Rounding.Floor` for user-facing operations to prevent over-issuance.
+- The contract typically uses `Math.Rounding.Floor` for index update operations to prevent over-issuance.
 
 ---
 
@@ -31,7 +31,7 @@ This document details how precision, rounding, and edge cases are handled in the
 - The target rate (`targetRate`) is set in **basis points** (1e4 = 100%).
 - The rate per second (`ratePerSecond`) is cached for gas efficiency.
 
-> **Note:** Even if the target rate is set to the maximum (50% APR) and the yield is compounded daily due to user actions for 100 years, the `yieldIndex` will not exceed approximately `5e29`. This demonstrates that the system is robust against overflow and extreme long-term compounding scenarios.
+> **Note:** Even if the target rate is set to the maximum (50% APR) and the yield is compounded daily for 100 years, the `yieldIndex` will not exceed the type(uint176).max (~aprox 1e53). This demonstrates that the system is robust against overflow and extreme long-term compounding scenarios.
 
 ### Yield Index Update Formula
 
@@ -72,7 +72,6 @@ $.ratePerSecond = (annualRateRay / 365 days).toUint96();
 ## Asset/Share Conversion
 
 - All conversions between GHO (assets) and sGHO (shares) use the current yield index and OpenZeppelin's `Math.mulDiv` with explicit rounding direction.
-- The contract uses OpenZeppelin's `Math.mulDiv` for conversions, which allows specifying rounding direction (typically `Math.Rounding.Floor`).
 
 ### Conversion Functions
 
@@ -95,7 +94,7 @@ function _convertToAssets(
 }
 ```
 
-- **Rounding**: The rounding mode is explicitly passed (usually `Floor` for user-facing queries).
+- **Rounding**: The rounding mode is explicitly passed.
 - **Zero Index**: If the yield index is zero (should not occur in practice), conversions return zero.
 
 ---
@@ -104,19 +103,9 @@ function _convertToAssets(
 
 The value of each share (in GHO) increases as the yield index grows. At very high yield index values (e.g., after many years of compounding at high rates), the smallest possible share (1 wei) can be worth a significant amount of GHO, and attempting to deposit or withdraw very small amounts can result in substantial precision loss due to integer division rounding.
 
-**Relationship:**
-
-- The minimum asset amount that can be converted to at least 1 share is:
-
-  `minAssets = yieldIndex / 1e27`
-
-- The minimum share amount that can be converted to at least 1 asset is:
-
-  `minShares = 1e27 / yieldIndex`
-
 **Warning:**
 
-> To avoid significant precision loss, it is recommended to avoid depositing or withdrawing less than **1e4 wei** (0.00001 GHO) at any time. At high yield index values, smaller amounts may be rounded down to zero or may burn more shares than expected, resulting in a loss of value for the user.
+> To avoid significant precision loss, it is recommended to avoid depositing or withdrawing less than **1e4 wei** at any time. At high yield index values, smaller amounts may be rounded down to zero or may burn more shares than expected, resulting in a loss of value for the user.
 
 - **See:** `test_precisionLossExtremeYieldIndex` and `test_precisionLossThreshold_convertToShares` in `sGhoPrecision.t.sol` for demonstrations of this effect at high yield index values and for the smallest possible share.
 
@@ -133,9 +122,10 @@ This is a fundamental limitation of fixed-point math in Solidity and is common t
 
 ### 2. **Rounding Losses**
 
-- Small deposits/withdrawals may be rounded down to zero if below the minimum precision (1e-27 for rays).
-- Over time, repeated rounding may cause very small discrepancies, but these are minimized by high precision.
-- **See:** `test_precisionLossThreshold_convertToShares`, `test_precisionLossThreshold_convertToAssets_largeYieldIndex`, and `test_precisionLossExtremeYieldIndex` in `sGhoPrecision.t.sol`.
+- The contract uses 27-decimal precision (`RAY = 1e27`) for internal yield calculations to minimize rounding errors
+- While GHO has 18 decimals, the higher internal precision ensures accurate yield accrual and share/asset conversions
+- Mathematical operations may experience minimal precision loss due to integer arithmetic, but this is negligible in practice
+- **See:** `test_yieldIndex_update_precision_single_update`, `test_asset_share_conversion_precision`, and `test_yield_accrual_precision` in `sGhoPrecision.t.sol`.
 
 ### 3. **Max Withdraw/Max Redeem**
 

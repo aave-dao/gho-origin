@@ -183,9 +183,8 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 initialBalance = user1.balance;
     vm.expectRevert(abi.encodeWithSelector(IsGHO.NoEthAllowed.selector));
-    (bool success, ) = payable(address(sgho)).call{value: 1 ether}('');
-    // Remove the incorrect assertion - the call will revert, so success won't be set
-    assertEq(user1.balance, initialBalance, 'Transfer should revert');
+    payable(address(sgho)).call{value: 1 ether}('');
+    assertEq(user1.balance, initialBalance, 'ETH balance should not change');
     vm.stopPrank();
   }
 

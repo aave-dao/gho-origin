@@ -317,7 +317,7 @@ contract sGhoPrecisionTest is TestnetProcedures {
     assertGe(oneMinuteIndex, oneSecondIndex, 'Index should not decrease for 1 minute');
   }
 
-  function test_precision_zero_time() public {
+  function test_precision_zero_time() public view {
     uint256 initialIndex = sgho.yieldIndex();
 
     // Call function without time passing
@@ -494,47 +494,5 @@ contract sGhoPrecisionTest is TestnetProcedures {
     // Calculate difference as basis points relative to expected value
     uint256 difference = actual > expected ? actual - expected : expected - actual;
     return (difference * 10000) / expected;
-  }
-
-  // ========================================
-  // BENCHMARK TESTS
-  // ========================================
-
-  function test_precision_benchmark() public {
-    // === sGHO Precision Benchmark ===
-
-    uint16[] memory rates = new uint16[](3);
-    rates[0] = 1000; // 10%
-    rates[1] = 2500; // 25%
-    rates[2] = 5000; // 50%
-
-    uint256[] memory periods = new uint256[](6);
-    periods[0] = 1; // 1 second
-    periods[1] = 60; // 1 minute
-    periods[2] = 3600; // 1 hour
-    periods[3] = 86400; // 1 day
-    periods[4] = 604800; // 1 week
-    periods[5] = 2592000; // 1 month
-
-    for (uint256 r = 0; r < rates.length; r++) {
-      for (uint256 p = 0; p < periods.length; p++) {
-        // Reset state
-        vm.prank(yieldManager);
-        sgho.setTargetRate(rates[r]);
-
-        uint256 initialIndex = sgho.yieldIndex();
-
-        // Fast forward and update
-        vm.warp(block.timestamp + periods[p]);
-        sgho.totalAssets();
-
-        uint256 finalIndex = sgho.yieldIndex();
-        uint256 expectedGrowthFactor = calculateExpectedGrowthFactor(rates[r], periods[p]);
-        uint256 expectedIndex = (initialIndex * expectedGrowthFactor) / RAY;
-        uint256 precisionLoss = calculatePrecisionLoss(finalIndex, expectedIndex);
-
-        // Benchmark analysis: Rate=rates[r], Period=periods[p], Precision Loss=precisionLoss
-      }
-    }
   }
 }

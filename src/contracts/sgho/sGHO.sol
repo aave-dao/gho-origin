@@ -71,29 +71,30 @@ contract sGHO is
 
   /**
    * @notice Initializer for the sGHO vault.
-   * @param _gho       Address of the underlying GHO token.
-   * @param _supplyCap The total supply cap for the vault.
-   * @param _executor  The address that will be granted the DEFAULT_ADMIN_ROLE.
+   * @param gho_       Address of the underlying GHO token.
+   * @param supplyCap_ The total supply cap for the vault.
+   * @param executor_  The address that will be granted the DEFAULT_ADMIN_ROLE.
    */
   function initialize(
-    address _gho,
-    uint160 _supplyCap,
-    address _executor
+    address gho_,
+    uint160 supplyCap_,
+    address executor_
   ) public payable initializer {
-    if (_gho == address(0)) revert ZeroAddressNotAllowed();
+    if (gho_ == address(0) || executor_ == address(0)) revert ZeroAddressNotAllowed();
 
     __ERC20_init('sGHO', 'sGHO');
-    __ERC4626_init(IERC20(_gho));
+    __ERC4626_init(IERC20(gho_));
     __ERC20Permit_init('sGHO');
     __AccessControl_init();
 
-    _grantRole(DEFAULT_ADMIN_ROLE, _executor);
+    _grantRole(DEFAULT_ADMIN_ROLE, executor_);
 
     sGHOStorage storage $ = _getsGHOStorage();
-    $.supplyCap = _supplyCap;
+    $.supplyCap = supplyCap_;
     $.yieldIndex = RAY;
     $.lastUpdate = uint64(block.timestamp);
     $.ratePerSecond = 0; // Initial rate is 0, so ratePerSecond is 0 (no yield initially)
+    $.targetRate = 0;
   }
 
   /**
@@ -128,7 +129,7 @@ contract sGHO is
   /**
    * @inheritdoc IERC4626
    */
-  function maxDeposit(address receiver) public view override returns (uint256) {
+  function maxDeposit(address) public view override returns (uint256) {
     sGHOStorage storage $ = _getsGHOStorage();
     uint256 currentAssets = totalAssets();
     return currentAssets >= $.supplyCap ? 0 : $.supplyCap - currentAssets;
@@ -209,9 +210,7 @@ contract sGHO is
   }
 
   /**
-   * @notice Returns the total amount of GHO managed by the vault.
-   * @dev This is calculated based on the total supply of sGHO and the current yield index.
-   * @return The total amount of GHO assets.
+   * @inheritdoc IERC4626
    */
   function totalAssets() public view override returns (uint256) {
     return _convertToAssets(totalSupply(), Math.Rounding.Floor);
@@ -332,8 +331,8 @@ contract sGHO is
   function _updateYieldIndex() internal {
     sGHOStorage storage $ = _getsGHOStorage();
     if ($.lastUpdate != block.timestamp) {
-      uint256 newYieldIndex = _getCurrentYieldIndex();
-      $.yieldIndex = newYieldIndex.toUint176();
+      uint176 newYieldIndex = _getCurrentYieldIndex();
+      $.yieldIndex = newYieldIndex;
       $.lastUpdate = uint64(block.timestamp);
       emit ExchangeRateUpdate(block.timestamp, newYieldIndex);
     }

@@ -25,7 +25,7 @@ import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contr
 // 1. CONTRACT INITIALIZATION & METADATA TESTS
 //    - Constructor, metadata, basic contract setup, and storage verification tests
 //
-// 2. ADMINISTRATIVE FUNCTIONS TESTS  
+// 2. ADMINISTRATIVE FUNCTIONS TESTS
 //    - Target rate and supply cap management tests
 //
 // 3. ERC4626 VAULT FUNCTIONALITY TESTS
@@ -183,7 +183,7 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 initialBalance = user1.balance;
     vm.expectRevert(abi.encodeWithSelector(IsGHO.NoEthAllowed.selector));
-    (bool success,) = payable(address(sgho)).call{value: 1 ether}('');
+    (bool success, ) = payable(address(sgho)).call{value: 1 ether}('');
     // Remove the incorrect assertion - the call will revert, so success won't be set
     assertEq(user1.balance, initialBalance, 'Transfer should revert');
     vm.stopPrank();
@@ -192,29 +192,29 @@ contract sGhoTest is TestnetProcedures {
   function test_storageSlot_verification() external pure {
     // Calculate the expected storage slot value
     // keccak256(abi.encode(uint256(keccak256("gho.storage.sGHO")) - 1)) & ~bytes32(uint256(0xff))
-    
+
     // Step 1: Calculate keccak256("gho.storage.sGHO")
-    bytes32 firstHash = keccak256(abi.encodePacked("gho.storage.sGHO"));
-    
+    bytes32 firstHash = keccak256(abi.encodePacked('gho.storage.sGHO'));
+
     // Step 2: Convert to uint256 and subtract 1
     uint256 firstHashUint = uint256(firstHash);
     uint256 subtractedValue = firstHashUint - 1;
-    
+
     // Step 3: Encode as uint256
     bytes memory encoded = abi.encode(subtractedValue);
-    
+
     // Step 4: Calculate keccak256 of the encoded value
     bytes32 secondHash = keccak256(encoded);
-    
+
     // Step 5: Apply the mask: & ~bytes32(uint256(0xff))
     bytes32 mask = ~bytes32(uint256(0xff));
     bytes32 expectedStorageSlot = secondHash & mask;
-    
+
     // The expected value should be: 0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800
     bytes32 expectedValue = 0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
-    
-    assertEq(expectedStorageSlot, expectedValue, "Storage slot calculation is incorrect");
-    
+
+    assertEq(expectedStorageSlot, expectedValue, 'Storage slot calculation is incorrect');
+
     // Note: We can't directly access the private constant sGHOStorageLocation from the contract
     // but we can verify that our calculation matches the expected value
     // The storage slot calculation remains the same even though the storage layout has changed
@@ -272,7 +272,13 @@ contract sGhoTest is TestnetProcedures {
     uint16 newRate = 2000; // 20% APR
 
     vm.startPrank(user1);
-    vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, sgho.YIELD_MANAGER_ROLE()));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        user1,
+        sgho.YIELD_MANAGER_ROLE()
+      )
+    );
     sgho.setTargetRate(newRate);
     vm.stopPrank();
   }
@@ -318,7 +324,7 @@ contract sGhoTest is TestnetProcedures {
     assertEq(sgho.totalAssets(), amount, 'totalAssets mismatch after deposit');
     assertEq(sgho.totalSupply(), shares, 'totalSupply mismatch after deposit');
 
-    vm.stopPrank(); 
+    vm.stopPrank();
   }
 
   function test_4626_mint(uint256 shares) external {
@@ -463,10 +469,10 @@ contract sGhoTest is TestnetProcedures {
   function test_4626_convertToShares() external {
     uint256 assets = 100 ether;
     uint256 shares = sgho.convertToShares(assets);
-    
+
     // Initially, 1:1 conversion since yield index starts at RAY
     assertEq(shares, assets, 'Initial convertToShares should be 1:1');
-    
+
     // After some yield accrual, conversion should change
     vm.warp(block.timestamp + 365 days);
     uint256 sharesAfterYield = sgho.convertToShares(assets);
@@ -476,21 +482,24 @@ contract sGhoTest is TestnetProcedures {
   function test_4626_convertToAssets() external {
     uint256 shares = 100 ether;
     uint256 assets = sgho.convertToAssets(shares);
-    
+
     // Initially, 1:1 conversion since yield index starts at RAY
     assertEq(assets, shares, 'Initial convertToAssets should be 1:1');
-    
+
     // After some yield accrual, conversion should change
     vm.warp(block.timestamp + 365 days);
     uint256 assetsAfterYield = sgho.convertToAssets(shares);
-    assertTrue(assetsAfterYield > shares, 'Assets should be greater than shares after yield accrual');
+    assertTrue(
+      assetsAfterYield > shares,
+      'Assets should be greater than shares after yield accrual'
+    );
   }
 
   function test_4626_convertFunctionsConsistency() external view {
     uint256 assets = 100 ether;
     uint256 shares = sgho.convertToShares(assets);
     uint256 convertedBackAssets = sgho.convertToAssets(shares);
-    
+
     // Round-trip conversion should be consistent (allowing for rounding)
     assertApproxEqAbs(assets, convertedBackAssets, 1, 'Round-trip conversion should be consistent');
   }
@@ -541,9 +550,9 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 initialBalance = sgho.balanceOf(user1);
     uint256 initialGhoBalance = gho.balanceOf(user1);
-    
+
     uint256 shares = sgho.deposit(0, user1);
-    
+
     assertEq(shares, 0, 'Zero deposit should return 0 shares');
     assertEq(sgho.balanceOf(user1), initialBalance, 'Balance should remain unchanged');
     assertEq(gho.balanceOf(user1), initialGhoBalance, 'GHO balance should remain unchanged');
@@ -554,9 +563,9 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 initialBalance = sgho.balanceOf(user1);
     uint256 initialGhoBalance = gho.balanceOf(user1);
-    
+
     uint256 assets = sgho.mint(0, user1);
-    
+
     assertEq(assets, 0, 'Zero mint should return 0 assets');
     assertEq(sgho.balanceOf(user1), initialBalance, 'Balance should remain unchanged');
     assertEq(gho.balanceOf(user1), initialGhoBalance, 'GHO balance should remain unchanged');
@@ -569,9 +578,9 @@ contract sGhoTest is TestnetProcedures {
     sgho.deposit(100 ether, user1);
     uint256 initialBalance = sgho.balanceOf(user1);
     uint256 initialGhoBalance = gho.balanceOf(user1);
-    
+
     uint256 shares = sgho.withdraw(0, user1, user1);
-    
+
     assertEq(shares, 0, 'Zero withdraw should return 0 shares');
     assertEq(sgho.balanceOf(user1), initialBalance, 'Balance should remain unchanged');
     assertEq(gho.balanceOf(user1), initialGhoBalance, 'GHO balance should remain unchanged');
@@ -584,9 +593,9 @@ contract sGhoTest is TestnetProcedures {
     sgho.deposit(100 ether, user1);
     uint256 initialBalance = sgho.balanceOf(user1);
     uint256 initialGhoBalance = gho.balanceOf(user1);
-    
+
     uint256 assets = sgho.redeem(0, user1, user1);
-    
+
     assertEq(assets, 0, 'Zero redeem should return 0 assets');
     assertEq(sgho.balanceOf(user1), initialBalance, 'Balance should remain unchanged');
     assertEq(gho.balanceOf(user1), initialGhoBalance, 'GHO balance should remain unchanged');
@@ -604,7 +613,12 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     // Try to deposit max uint256 - should revert due to supply cap
     vm.expectRevert(
-      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxDeposit.selector, user1, type(uint256).max, SUPPLY_CAP)
+      abi.encodeWithSelector(
+        ERC4626.ERC4626ExceededMaxDeposit.selector,
+        user1,
+        type(uint256).max,
+        SUPPLY_CAP
+      )
     );
     sgho.deposit(type(uint256).max, user1);
     vm.stopPrank();
@@ -615,7 +629,12 @@ contract sGhoTest is TestnetProcedures {
     // Try to mint max uint256 shares - should revert due to supply cap
     uint256 maxShares = sgho.convertToShares(SUPPLY_CAP);
     vm.expectRevert(
-      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxMint.selector, user1, type(uint256).max, maxShares)
+      abi.encodeWithSelector(
+        ERC4626.ERC4626ExceededMaxMint.selector,
+        user1,
+        type(uint256).max,
+        maxShares
+      )
     );
     sgho.mint(type(uint256).max, user1);
     vm.stopPrank();
@@ -626,10 +645,15 @@ contract sGhoTest is TestnetProcedures {
     // First deposit some amount
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
-    
+
     // Try to withdraw max uint256 - should revert due to insufficient balance
     vm.expectRevert(
-      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxWithdraw.selector, user1, type(uint256).max, depositAmount)
+      abi.encodeWithSelector(
+        ERC4626.ERC4626ExceededMaxWithdraw.selector,
+        user1,
+        type(uint256).max,
+        depositAmount
+      )
     );
     sgho.withdraw(type(uint256).max, user1, user1);
     vm.stopPrank();
@@ -641,10 +665,15 @@ contract sGhoTest is TestnetProcedures {
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
     uint256 shares = sgho.balanceOf(user1);
-    
+
     // Try to redeem max uint256 shares - should revert due to insufficient shares
     vm.expectRevert(
-      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxRedeem.selector, user1, type(uint256).max, shares)
+      abi.encodeWithSelector(
+        ERC4626.ERC4626ExceededMaxRedeem.selector,
+        user1,
+        type(uint256).max,
+        shares
+      )
     );
     sgho.redeem(type(uint256).max, user1, user1);
     vm.stopPrank();
@@ -654,10 +683,13 @@ contract sGhoTest is TestnetProcedures {
     // Preview functions should handle max uint256 gracefully and never revert
     uint256 maxPreviewDeposit = sgho.previewDeposit(type(uint256).max);
     uint256 maxPreviewMint = sgho.previewMint(type(uint256).max);
-    
+
     // Preview functions should return the theoretical conversion result regardless of supply cap
     // They are pure conversion functions that don't enforce limits
-    assertTrue(maxPreviewDeposit > 0, 'previewDeposit should return positive value for max uint256');
+    assertTrue(
+      maxPreviewDeposit > 0,
+      'previewDeposit should return positive value for max uint256'
+    );
     assertTrue(maxPreviewMint > 0, 'previewMint should return positive value for max uint256');
   }
 
@@ -665,11 +697,14 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
-    
+
     // Preview withdraw with max uint256 should perform conversion calculation
     // It should return the theoretical shares needed for max uint256 assets
     uint256 maxPreviewWithdraw = sgho.previewWithdraw(type(uint256).max);
-    assertTrue(maxPreviewWithdraw > 0, 'previewWithdraw should return positive value for max uint256');
+    assertTrue(
+      maxPreviewWithdraw > 0,
+      'previewWithdraw should return positive value for max uint256'
+    );
     vm.stopPrank();
   }
 
@@ -678,13 +713,16 @@ contract sGhoTest is TestnetProcedures {
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
     uint256 shares = sgho.balanceOf(user1);
-    
+
     // Preview redeem with max uint256 should perform conversion calculation
     // It should return the theoretical assets for max uint256 shares
     uint256 maxPreviewRedeem = sgho.previewRedeem(type(uint256).max);
     assertTrue(maxPreviewRedeem > 0, 'previewRedeem should return positive value for max uint256');
     // Remove the incorrect assertion - previewRedeem with max uint256 should return a very large number, not the user's shares
-    assertTrue(maxPreviewRedeem > shares, 'previewRedeem should return a value greater than user shares for max uint256');
+    assertTrue(
+      maxPreviewRedeem > shares,
+      'previewRedeem should return a value greater than user shares for max uint256'
+    );
     vm.stopPrank();
   }
 
@@ -696,12 +734,16 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
-    
+
     uint256 transferAmount = 50 ether;
     bool success = sgho.transfer(user2, transferAmount);
-    
+
     assertTrue(success, 'Transfer should succeed');
-    assertEq(sgho.balanceOf(user1), depositAmount - transferAmount, 'Sender balance should decrease');
+    assertEq(
+      sgho.balanceOf(user1),
+      depositAmount - transferAmount,
+      'Sender balance should decrease'
+    );
     assertEq(sgho.balanceOf(user2), transferAmount, 'Receiver balance should increase');
     vm.stopPrank();
   }
@@ -718,19 +760,27 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
-    
+
     uint256 approveAmount = 50 ether;
     sgho.approve(user2, approveAmount);
     vm.stopPrank();
-    
+
     vm.startPrank(user2);
     uint256 transferAmount = 30 ether;
     bool success = sgho.transferFrom(user1, user2, transferAmount);
-    
+
     assertTrue(success, 'TransferFrom should succeed');
-    assertEq(sgho.balanceOf(user1), depositAmount - transferAmount, 'Owner balance should decrease');
+    assertEq(
+      sgho.balanceOf(user1),
+      depositAmount - transferAmount,
+      'Owner balance should decrease'
+    );
     assertEq(sgho.balanceOf(user2), transferAmount, 'Receiver balance should increase');
-    assertEq(sgho.allowance(user1, user2), approveAmount - transferAmount, 'Allowance should decrease');
+    assertEq(
+      sgho.allowance(user1, user2),
+      approveAmount - transferAmount,
+      'Allowance should decrease'
+    );
     vm.stopPrank();
   }
 
@@ -749,7 +799,7 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     uint256 approveAmount = 100 ether;
     bool success = sgho.approve(user2, approveAmount);
-    
+
     assertTrue(success, 'Approve should succeed');
     assertEq(sgho.allowance(user1, user2), approveAmount, 'Allowance should be set correctly');
     vm.stopPrank();
@@ -768,7 +818,7 @@ contract sGhoTest is TestnetProcedures {
     // First deposit some amount
     uint256 depositAmount = 100 ether;
     sgho.deposit(depositAmount, user1);
-    
+
     // Try to transfer max uint256 - should revert due to insufficient balance
     vm.expectRevert();
     sgho.transfer(user2, type(uint256).max);
@@ -782,7 +832,7 @@ contract sGhoTest is TestnetProcedures {
     sgho.deposit(depositAmount, user1);
     sgho.approve(user2, type(uint256).max);
     vm.stopPrank();
-    
+
     vm.startPrank(user2);
     // Try to transferFrom max uint256 - should revert due to insufficient balance
     vm.expectRevert();
@@ -804,7 +854,7 @@ contract sGhoTest is TestnetProcedures {
     uint256 approveAmount = 100 ether;
     sgho.approve(user2, approveAmount);
     vm.stopPrank();
-    
+
     assertEq(sgho.allowance(user1, user2), approveAmount, 'Allowance should return correct amount');
     assertEq(sgho.allowance(user1, user1), 0, 'Self allowance should be zero');
   }
@@ -833,14 +883,31 @@ contract sGhoTest is TestnetProcedures {
     vars.value = 100 ether;
     vars.deadline = block.timestamp + 1 hours;
     vars.nonce = sgho.nonces(vars.owner);
-    (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline, vars.privateKey);
+    (vars.v, vars.r, vars.s) = _createPermitSignature(
+      vars.owner,
+      vars.spender,
+      vars.value,
+      vars.nonce,
+      vars.deadline,
+      vars.privateKey
+    );
     // Use wrong owner address - should revert with ERC2612InvalidSigner
     {
-      bytes32 PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
-      bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, user1, vars.spender, vars.value, vars.nonce, vars.deadline));
+      bytes32 PERMIT_TYPEHASH = keccak256(
+        'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+      );
+      bytes32 structHash = keccak256(
+        abi.encode(PERMIT_TYPEHASH, user1, vars.spender, vars.value, vars.nonce, vars.deadline)
+      );
       bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
       address recovered = ECDSA.recover(hash, vars.v, vars.r, vars.s);
-      vm.expectRevert(abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612InvalidSigner.selector, recovered, user1));
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          ERC20PermitUpgradeable.ERC2612InvalidSigner.selector,
+          recovered,
+          user1
+        )
+      );
       sgho.permit(user1, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     }
   }
@@ -853,18 +920,46 @@ contract sGhoTest is TestnetProcedures {
     vars.value = 100 ether;
     vars.deadline = block.timestamp + 1 hours;
     vars.nonce = sgho.nonces(vars.owner);
-    (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline, vars.privateKey);
+    (vars.v, vars.r, vars.s) = _createPermitSignature(
+      vars.owner,
+      vars.spender,
+      vars.value,
+      vars.nonce,
+      vars.deadline,
+      vars.privateKey
+    );
     // First permit should succeed
     sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
-    assertEq(sgho.allowance(vars.owner, vars.spender), vars.value, 'First permit should set allowance');
+    assertEq(
+      sgho.allowance(vars.owner, vars.spender),
+      vars.value,
+      'First permit should set allowance'
+    );
     // Second permit with same signature should revert (nonce already used)
     // The contract expects nonce 1, but our signature is for nonce 0
     {
-      bytes32 PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
-      bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, vars.owner, vars.spender, vars.value, vars.nonce + 1, vars.deadline));
+      bytes32 PERMIT_TYPEHASH = keccak256(
+        'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+      );
+      bytes32 structHash = keccak256(
+        abi.encode(
+          PERMIT_TYPEHASH,
+          vars.owner,
+          vars.spender,
+          vars.value,
+          vars.nonce + 1,
+          vars.deadline
+        )
+      );
       bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
       address recovered = ECDSA.recover(hash, vars.v, vars.r, vars.s);
-      vm.expectRevert(abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612InvalidSigner.selector, recovered, vars.owner));
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          ERC20PermitUpgradeable.ERC2612InvalidSigner.selector,
+          recovered,
+          vars.owner
+        )
+      );
       sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     }
   }
@@ -878,16 +973,28 @@ contract sGhoTest is TestnetProcedures {
     vars.deadline = block.timestamp + 1 hours;
     vars.nonce = sgho.nonces(vars.owner);
     // Use wrong domain separator
-    bytes32 PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
-    bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline));
+    bytes32 PERMIT_TYPEHASH = keccak256(
+      'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+    );
+    bytes32 structHash = keccak256(
+      abi.encode(PERMIT_TYPEHASH, vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline)
+    );
     bytes32 wrongDomainSeparator = keccak256('WRONG_DOMAIN');
     bytes32 hash = keccak256(abi.encodePacked('\x19\x01', wrongDomainSeparator, structHash));
     (vars.v, vars.r, vars.s) = vm.sign(vars.privateKey, hash);
     // The contract will recover a different signer than owner
     {
-      bytes32 contractHash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
+      bytes32 contractHash = keccak256(
+        abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash)
+      );
       address recovered = ECDSA.recover(contractHash, vars.v, vars.r, vars.s);
-      vm.expectRevert(abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612InvalidSigner.selector, recovered, vars.owner));
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          ERC20PermitUpgradeable.ERC2612InvalidSigner.selector,
+          recovered,
+          vars.owner
+        )
+      );
       sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     }
   }
@@ -900,9 +1007,20 @@ contract sGhoTest is TestnetProcedures {
     vars.value = 100 ether;
     vars.deadline = block.timestamp + 1 hours;
     vars.nonce = sgho.nonces(vars.owner);
-    (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline, vars.privateKey);
+    (vars.v, vars.r, vars.s) = _createPermitSignature(
+      vars.owner,
+      vars.spender,
+      vars.value,
+      vars.nonce,
+      vars.deadline,
+      vars.privateKey
+    );
     sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
-    assertEq(sgho.allowance(vars.owner, vars.spender), vars.value, 'Permit should set allowance correctly');
+    assertEq(
+      sgho.allowance(vars.owner, vars.spender),
+      vars.value,
+      'Permit should set allowance correctly'
+    );
   }
 
   function test_permit_expiredDeadline() external {
@@ -913,12 +1031,16 @@ contract sGhoTest is TestnetProcedures {
     vars.value = 100 ether;
     vars.deadline = block.timestamp - 1; // Expired deadline
     vars.nonce = sgho.nonces(vars.owner);
-    (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline, vars.privateKey);
+    (vars.v, vars.r, vars.s) = _createPermitSignature(
+      vars.owner,
+      vars.spender,
+      vars.value,
+      vars.nonce,
+      vars.deadline,
+      vars.privateKey
+    );
     vm.expectRevert(
-      abi.encodeWithSelector(
-        ERC20PermitUpgradeable.ERC2612ExpiredSignature.selector,
-        vars.deadline
-      )
+      abi.encodeWithSelector(ERC20PermitUpgradeable.ERC2612ExpiredSignature.selector, vars.deadline)
     );
     sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
   }
@@ -931,9 +1053,20 @@ contract sGhoTest is TestnetProcedures {
     vars.value = 0;
     vars.deadline = block.timestamp + 1 hours;
     vars.nonce = sgho.nonces(vars.owner);
-    (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.spender, vars.value, vars.nonce, vars.deadline, vars.privateKey);
+    (vars.v, vars.r, vars.s) = _createPermitSignature(
+      vars.owner,
+      vars.spender,
+      vars.value,
+      vars.nonce,
+      vars.deadline,
+      vars.privateKey
+    );
     sgho.permit(vars.owner, vars.spender, vars.value, vars.deadline, vars.v, vars.r, vars.s);
-    assertEq(sgho.allowance(vars.owner, vars.spender), 0, 'permit with value 0 should set allowance to 0');
+    assertEq(
+      sgho.allowance(vars.owner, vars.spender),
+      0,
+      'permit with value 0 should set allowance to 0'
+    );
   }
 
   function test_permit_selfApproval() external {
@@ -943,7 +1076,14 @@ contract sGhoTest is TestnetProcedures {
     vars.value = 100 ether;
     vars.deadline = block.timestamp + 1 hours;
     vars.nonce = sgho.nonces(vars.owner);
-    (vars.v, vars.r, vars.s) = _createPermitSignature(vars.owner, vars.owner, vars.value, vars.nonce, vars.deadline, vars.privateKey);
+    (vars.v, vars.r, vars.s) = _createPermitSignature(
+      vars.owner,
+      vars.owner,
+      vars.value,
+      vars.nonce,
+      vars.deadline,
+      vars.privateKey
+    );
     sgho.permit(vars.owner, vars.owner, vars.value, vars.deadline, vars.v, vars.r, vars.s);
     assertEq(sgho.allowance(vars.owner, vars.owner), vars.value, 'Self approval should work');
   }
@@ -951,7 +1091,7 @@ contract sGhoTest is TestnetProcedures {
   function test_nonces() external {
     address owner = user1;
     uint256 initialNonce = sgho.nonces(owner);
-    
+
     // Nonce should increment after permit
     uint256 privateKey = 0xA11CE;
     address permitOwner = vm.addr(privateKey);
@@ -959,11 +1099,18 @@ contract sGhoTest is TestnetProcedures {
     uint256 value = 100 ether;
     uint256 deadline = block.timestamp + 1 hours;
     uint256 nonce = sgho.nonces(permitOwner);
-    
-    (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(permitOwner, spender, value, nonce, deadline, privateKey);
-    
+
+    (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
+      permitOwner,
+      spender,
+      value,
+      nonce,
+      deadline,
+      privateKey
+    );
+
     sgho.permit(permitOwner, spender, value, deadline, v, r, s);
-    
+
     assertEq(sgho.nonces(permitOwner), nonce + 1, 'Nonce should increment after permit');
     assertEq(sgho.nonces(owner), initialNonce, 'Other user nonce should remain unchanged');
   }
@@ -971,19 +1118,19 @@ contract sGhoTest is TestnetProcedures {
   function test_permit_depositWithPermit_validSignature() external {
     uint256 depositAmount = 100 ether;
     uint256 deadline = block.timestamp + 1 hours;
-    
+
     // Create permit signature
     uint256 privateKey = 0x1234;
     address owner = vm.addr(privateKey);
-    
+
     // Fund the owner with GHO
     deal(address(gho), owner, depositAmount, true);
-    
+
     // Approve sGHO to spend GHO (this is what the permit should do)
     vm.startPrank(owner);
     gho.approve(address(sgho), depositAmount);
     vm.stopPrank();
-    
+
     // Create permit signature
     (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
       owner,
@@ -993,7 +1140,7 @@ contract sGhoTest is TestnetProcedures {
       deadline,
       privateKey
     );
-    
+
     // Execute depositWithPermit
     vm.startPrank(owner);
     uint256 shares = sgho.depositWithPermit(
@@ -1003,7 +1150,7 @@ contract sGhoTest is TestnetProcedures {
       IsGHO.SignatureParams(v, r, s)
     );
     vm.stopPrank();
-    
+
     // Verify deposit was successful
     assertEq(sgho.balanceOf(owner), shares, 'Shares should be minted to owner');
     assertEq(gho.balanceOf(owner), 0, 'GHO should be transferred from owner');
@@ -1014,19 +1161,19 @@ contract sGhoTest is TestnetProcedures {
     uint256 depositAmount = 100 ether;
     uint256 actualBalance = 50 ether; // Less than requested
     uint256 deadline = block.timestamp + 1 hours;
-    
+
     // Create permit signature
     uint256 privateKey = 0x1234;
     address owner = vm.addr(privateKey);
-    
+
     // Fund the owner with less GHO than requested
     deal(address(gho), owner, actualBalance, true);
-    
+
     // Approve sGHO to spend GHO
     vm.startPrank(owner);
     gho.approve(address(sgho), depositAmount);
     vm.stopPrank();
-    
+
     // Create permit signature for full amount
     (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
       owner,
@@ -1036,31 +1183,26 @@ contract sGhoTest is TestnetProcedures {
       deadline,
       privateKey
     );
-    
+
     // Execute depositWithPermit - should revert due to insufficient balance
     vm.startPrank(owner);
-    vm.expectRevert("ERC20: transfer amount exceeds balance");
-    sgho.depositWithPermit(
-      depositAmount,
-      owner,
-      deadline,
-      IsGHO.SignatureParams(v, r, s)
-    );
+    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    sgho.depositWithPermit(depositAmount, owner, deadline, IsGHO.SignatureParams(v, r, s));
     vm.stopPrank();
   }
 
   function test_permit_depositWithPermit_invalidSignature() external {
     uint256 depositAmount = 100 ether;
     uint256 deadline = block.timestamp + 1 hours;
-    
+
     // Create permit signature with wrong private key
     uint256 wrongPrivateKey = 0x5678;
     uint256 correctPrivateKey = 0x1234;
     address owner = vm.addr(correctPrivateKey);
-    
+
     // Fund the owner with GHO
     deal(address(gho), owner, depositAmount, true);
-    
+
     // Create permit signature with wrong private key
     (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
       owner,
@@ -1070,31 +1212,26 @@ contract sGhoTest is TestnetProcedures {
       deadline,
       wrongPrivateKey
     );
-    
+
     // Execute depositWithPermit - should still work but permit will fail silently
     vm.startPrank(owner);
     // Should revert because no approval was given
     vm.expectRevert();
-    sgho.depositWithPermit(
-      depositAmount,
-      owner,
-      deadline,
-      IsGHO.SignatureParams(v, r, s)
-    );
+    sgho.depositWithPermit(depositAmount, owner, deadline, IsGHO.SignatureParams(v, r, s));
     vm.stopPrank();
   }
 
   function test_permit_depositWithPermit_expiredDeadline() external {
     uint256 depositAmount = 100 ether;
     uint256 deadline = block.timestamp - 1; // Expired deadline
-    
+
     // Create permit signature
     uint256 privateKey = 0x1234;
     address owner = vm.addr(privateKey);
-    
+
     // Fund the owner with GHO
     deal(address(gho), owner, depositAmount, true);
-    
+
     // Create permit signature
     (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
       owner,
@@ -1104,30 +1241,25 @@ contract sGhoTest is TestnetProcedures {
       deadline,
       privateKey
     );
-    
+
     // Execute depositWithPermit - should revert due to expired deadline
     vm.startPrank(owner);
     vm.expectRevert();
-    sgho.depositWithPermit(
-      depositAmount,
-      owner,
-      deadline,
-      IsGHO.SignatureParams(v, r, s)
-    );
+    sgho.depositWithPermit(depositAmount, owner, deadline, IsGHO.SignatureParams(v, r, s));
     vm.stopPrank();
   }
 
   function test_permit_depositWithPermit_zeroAmount() external {
     uint256 depositAmount = 0;
     uint256 deadline = block.timestamp + 1 hours;
-    
+
     // Create permit signature
     uint256 privateKey = 0x1234;
     address owner = vm.addr(privateKey);
-    
+
     // Fund the owner with GHO
     deal(address(gho), owner, 100 ether, true);
-    
+
     // Create permit signature
     (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
       owner,
@@ -1137,7 +1269,7 @@ contract sGhoTest is TestnetProcedures {
       deadline,
       privateKey
     );
-    
+
     // Execute depositWithPermit - should work with zero amount
     vm.startPrank(owner);
     uint256 shares = sgho.depositWithPermit(
@@ -1147,7 +1279,7 @@ contract sGhoTest is TestnetProcedures {
       IsGHO.SignatureParams(v, r, s)
     );
     vm.stopPrank();
-    
+
     // Verify zero deposit
     assertEq(shares, 0, 'Zero deposit should return 0 shares');
     assertEq(sgho.balanceOf(owner), 0, 'Owner should have no shares');
@@ -1157,19 +1289,19 @@ contract sGhoTest is TestnetProcedures {
   function test_permit_depositWithPermit_withYieldAccrual() external {
     uint256 depositAmount = 100 ether;
     uint256 deadline = block.timestamp + 1 hours;
-    
+
     // Create permit signature
     uint256 privateKey = 0x1234;
     address owner = vm.addr(privateKey);
-    
+
     // Fund the owner with GHO
     deal(address(gho), owner, depositAmount, true);
-    
+
     // Approve sGHO to spend GHO
     vm.startPrank(owner);
     gho.approve(address(sgho), depositAmount);
     vm.stopPrank();
-    
+
     // Create permit signature
     (uint8 v, bytes32 r, bytes32 s) = _createPermitSignature(
       owner,
@@ -1179,10 +1311,10 @@ contract sGhoTest is TestnetProcedures {
       deadline,
       privateKey
     );
-    
+
     // Skip time to accrue yield
     vm.warp(block.timestamp + 30 days);
-    
+
     // Execute depositWithPermit
     vm.startPrank(owner);
     uint256 shares = sgho.depositWithPermit(
@@ -1192,11 +1324,11 @@ contract sGhoTest is TestnetProcedures {
       IsGHO.SignatureParams(v, r, s)
     );
     vm.stopPrank();
-    
+
     // Verify deposit was successful and yield was considered
     assertEq(sgho.balanceOf(owner), shares, 'Shares should be minted to owner');
     assertEq(gho.balanceOf(owner), 0, 'GHO should be transferred from owner');
-    
+
     // Shares should be less than deposit amount due to yield accrual
     assertTrue(shares < depositAmount, 'Shares should be less than deposit due to yield accrual');
   }
@@ -1243,7 +1375,7 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     sgho.deposit(SUPPLY_CAP, user1);
     vm.stopPrank();
-    
+
     // Max deposit should be 0 when at cap
     assertEq(sgho.maxDeposit(user2), 0, 'maxDeposit should be 0 when at supply cap');
     assertEq(sgho.maxMint(user2), 0, 'maxMint should be 0 when at supply cap');
@@ -1254,11 +1386,19 @@ contract sGhoTest is TestnetProcedures {
     uint256 depositAmount = SUPPLY_CAP / 2;
     sgho.deposit(depositAmount, user1);
     vm.stopPrank();
-    
+
     // Max deposit should be remaining capacity
-    assertEq(sgho.maxDeposit(user2), SUPPLY_CAP - depositAmount, 'maxDeposit should be remaining capacity');
+    assertEq(
+      sgho.maxDeposit(user2),
+      SUPPLY_CAP - depositAmount,
+      'maxDeposit should be remaining capacity'
+    );
     uint256 expectedMaxMint = sgho.convertToShares(SUPPLY_CAP - depositAmount);
-    assertEq(sgho.maxMint(user2), expectedMaxMint, 'maxMint should be remaining capacity in shares');
+    assertEq(
+      sgho.maxMint(user2),
+      expectedMaxMint,
+      'maxMint should be remaining capacity in shares'
+    );
   }
 
   // ========================================
@@ -1272,7 +1412,6 @@ contract sGhoTest is TestnetProcedures {
     // Initial deposit
     vm.startPrank(user1);
     sgho.deposit(depositAmount, user1);
-
 
     assertEq(sgho.totalAssets(), depositAmount, 'Initial totalAssets');
 
@@ -1401,7 +1540,7 @@ contract sGhoTest is TestnetProcedures {
     uint256 dailyCompoundingTerm = WAD + (aprWad / 365);
 
     // Calculate (1 + apr/365)^365 using a helper for WAD math to prevent overflow
-    uint256 compoundedMultiplier =  _wadPow(dailyCompoundingTerm, 365);
+    uint256 compoundedMultiplier = _wadPow(dailyCompoundingTerm, 365);
     uint256 expectedAssets = (depositAmount * compoundedMultiplier) / WAD;
 
     assertApproxEqAbs(
@@ -1437,7 +1576,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Skip time - no yield should accrue
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update
     vm.startPrank(user2);
     sgho.deposit(1 ether, user2);
@@ -1467,7 +1606,11 @@ contract sGhoTest is TestnetProcedures {
     // User1 should have the same assets value (no time passed)
     vm.startPrank(user1);
     uint256 finalAssets = sgho.previewRedeem(initialShares);
-    assertEq(finalAssets, depositAmount, 'Assets should remain unchanged with zero time since last update');
+    assertEq(
+      finalAssets,
+      depositAmount,
+      'Assets should remain unchanged with zero time since last update'
+    );
     vm.stopPrank();
   }
 
@@ -1475,21 +1618,21 @@ contract sGhoTest is TestnetProcedures {
     // Test with very small amounts and very large amounts
     uint256 smallAmount = 1; // 1 wei
     uint256 largeAmount = SUPPLY_CAP - 1 ether;
-    
+
     vm.startPrank(user1);
-    
+
     // Test small amount
     sgho.deposit(smallAmount, user1);
     uint256 smallShares = sgho.balanceOf(user1);
     assertEq(smallShares, smallAmount, 'Small amount should convert 1:1 initially');
-    
+
     // Test large amount
     deal(address(gho), user1, largeAmount, true);
     gho.approve(address(sgho), largeAmount);
     sgho.deposit(largeAmount, user1);
     uint256 largeShares = sgho.balanceOf(user1);
     assertEq(largeShares, smallShares + largeAmount, 'Large amount should convert 1:1 initially');
-    
+
     vm.stopPrank();
   }
 
@@ -1498,7 +1641,7 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(yManager);
     sgho.setTargetRate(5000); // 50% APR to ensure significant yield
     vm.stopPrank();
-    
+
     // Fill the vault to supply cap
     vm.startPrank(user1);
     sgho.deposit(SUPPLY_CAP, user1);
@@ -1508,28 +1651,34 @@ contract sGhoTest is TestnetProcedures {
     // Check that yield accrual still works even at supply cap
     uint256 totalAssetsBefore = sgho.totalAssets();
     uint256 yieldIndexBefore = sgho.yieldIndex();
-    
+
     // Skip time to accrue yield (use a longer period to ensure significant yield)
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update by withdrawing 1 wei (any state-changing operation would work)
     vm.startPrank(user1);
     sgho.withdraw(1, user1, user1);
     vm.stopPrank();
-    
+
     uint256 totalAssetsAfter = sgho.totalAssets();
     uint256 yieldIndexAfter = sgho.yieldIndex();
-    
+
     // Yield should have accrued even at supply cap
     // The total assets after should be greater than before minus the withdrawal amount
     // because yield accrual should offset the withdrawal
     assertTrue(totalAssetsAfter > totalAssetsBefore - 1, 'Yield should accrue even at supply cap');
-    assertTrue(yieldIndexAfter > yieldIndexBefore, 'Yield index should increase even at supply cap');
-    
+    assertTrue(
+      yieldIndexAfter > yieldIndexBefore,
+      'Yield index should increase even at supply cap'
+    );
+
     // User's share value should have increased (accounting for the 1 wei withdrawal)
     vm.startPrank(user1);
     uint256 userAssetsAfter = sgho.previewRedeem(initialShares - sgho.convertToShares(1));
-    assertTrue(userAssetsAfter > SUPPLY_CAP - 1, 'User assets should increase with yield even at supply cap');
+    assertTrue(
+      userAssetsAfter > SUPPLY_CAP - 1,
+      'User assets should increase with yield even at supply cap'
+    );
     vm.stopPrank();
   }
 
@@ -1539,44 +1688,58 @@ contract sGhoTest is TestnetProcedures {
     uint256 initialDeposit = SUPPLY_CAP / 2;
     sgho.deposit(initialDeposit, user1);
     vm.stopPrank();
-    
+
     // Check maxDeposit before any yield update
     uint256 maxDepositBefore = sgho.maxDeposit(user2);
     uint256 totalAssetsBefore = sgho.totalAssets();
-    
+
     // Skip time to accrue yield
     vm.warp(block.timestamp + 30 days);
-    
-    // The maxDeposit should account for the fact that the deposit itself will trigger yield update
-    // and potentially increase totalAssets beyond the current calculation  
-    
+
     // The maxDeposit should account for the fact that the deposit itself will trigger yield update
     // and potentially increase totalAssets beyond the current calculation
-    assertTrue(maxDepositBefore <= SUPPLY_CAP - totalAssetsBefore, 'maxDeposit should not exceed remaining capacity');
-    
+
+    // The maxDeposit should account for the fact that the deposit itself will trigger yield update
+    // and potentially increase totalAssets beyond the current calculation
+    assertTrue(
+      maxDepositBefore <= SUPPLY_CAP - totalAssetsBefore,
+      'maxDeposit should not exceed remaining capacity'
+    );
+
     // Now trigger a yield update by withdrawing 1 wei from user1
     vm.startPrank(user1);
     sgho.withdraw(1, user1, user1);
     vm.stopPrank();
-    
+
     uint256 totalAssetsAfter = sgho.totalAssets();
     uint256 maxDepositAfter = sgho.maxDeposit(user2);
-    
+
     // The total assets should have increased due to yield accrual (minus the 1 wei withdrawal)
-    assertTrue(totalAssetsAfter > totalAssetsBefore - 1, 'Total assets should increase due to yield despite withdrawal');
-    
+    assertTrue(
+      totalAssetsAfter > totalAssetsBefore - 1,
+      'Total assets should increase due to yield despite withdrawal'
+    );
+
     // The new maxDeposit should be accurate after the yield update
-    assertEq(maxDepositAfter, SUPPLY_CAP - totalAssetsAfter, 'maxDeposit should be accurate after yield update');
-    
+    assertEq(
+      maxDepositAfter,
+      SUPPLY_CAP - totalAssetsAfter,
+      'maxDeposit should be accurate after yield update'
+    );
+
     // Verify that the maxDeposit calculation is correct by attempting to deposit exactly that amount
     vm.startPrank(user2);
     deal(address(gho), user2, maxDepositAfter, true);
     gho.approve(address(sgho), maxDepositAfter);
     sgho.deposit(maxDepositAfter, user2);
     vm.stopPrank();
-    
+
     // Should now be at supply cap
-    assertEq(sgho.totalAssets(), SUPPLY_CAP, 'Should be at supply cap after depositing maxDeposit amount');
+    assertEq(
+      sgho.totalAssets(),
+      SUPPLY_CAP,
+      'Should be at supply cap after depositing maxDeposit amount'
+    );
   }
 
   // ========================================
@@ -1592,7 +1755,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Skip time to accrue yield
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update
     vm.startPrank(user2);
     sgho.deposit(1 ether, user2);
@@ -1601,21 +1764,25 @@ contract sGhoTest is TestnetProcedures {
     // Check theoretical vs actual GHO balance
     uint256 theoreticalAssets = sgho.totalAssets();
     uint256 actualGhoBalance = gho.balanceOf(address(sgho));
-    
+
     // Should have accrued yield (theoretical > actual)
     assertTrue(theoreticalAssets > actualGhoBalance, 'Should have accrued yield');
-    
+
     // Calculate shortfall
     uint256 shortfall = theoreticalAssets - actualGhoBalance;
     assertTrue(shortfall > 0, 'Should have a shortfall');
-    
+
     // Verify maxWithdraw and maxRedeem are limited by actual GHO balance
     uint256 maxWithdrawUser1 = sgho.maxWithdraw(user1);
     uint256 maxRedeemUser1 = sgho.maxRedeem(user1);
-    
-    assertEq(maxWithdrawUser1, actualGhoBalance, 'maxWithdraw should be limited by actual GHO balance');
+
+    assertEq(
+      maxWithdrawUser1,
+      actualGhoBalance,
+      'maxWithdraw should be limited by actual GHO balance'
+    );
     assertTrue(maxRedeemUser1 <= sgho.balanceOf(user1), 'maxRedeem should not exceed user shares');
-    
+
     // User should not be able to withdraw more than actual GHO balance
     vm.startPrank(user1);
     vm.expectRevert(
@@ -1639,7 +1806,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Skip time to accrue significant yield
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update
     vm.startPrank(user2);
     sgho.deposit(1 ether, user2);
@@ -1650,18 +1817,22 @@ contract sGhoTest is TestnetProcedures {
     uint256 shortfall = theoreticalAssets - actualGhoBalance;
     uint256 user1Balance = gho.balanceOf(user1);
     uint256 user1Shares = sgho.balanceOf(user1);
-    
+
     // Verify shortfall exists
     assertTrue(shortfall > 0, 'Should have a shortfall');
-    
+
     // User should be able to withdraw up to actual GHO balance
     vm.startPrank(user1);
     uint256 maxWithdraw = sgho.maxWithdraw(user1);
     uint256 sharesBurned = sgho.withdraw(maxWithdraw, user1, user1);
-    
+
     // Verify withdrawal succeeded
     assertEq(gho.balanceOf(user1), user1Balance + maxWithdraw, 'User should have the new balance');
-    assertEq(sgho.balanceOf(user1), user1Shares - sharesBurned , 'User should have the remaining shares');
+    assertEq(
+      sgho.balanceOf(user1),
+      user1Shares - sharesBurned,
+      'User should have the remaining shares'
+    );
     assertEq(gho.balanceOf(address(sgho)), 0, 'Contract should have no GHO left');
     vm.stopPrank();
   }
@@ -1675,7 +1846,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Skip time to accrue significant yield
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update
     vm.startPrank(user2);
     sgho.deposit(1 ether, user2);
@@ -1686,17 +1857,21 @@ contract sGhoTest is TestnetProcedures {
     uint256 shortfall = theoreticalAssets - actualGhoBalance;
     uint256 user1Balance = gho.balanceOf(user1);
     uint256 user1Shares = sgho.balanceOf(user1);
-    
+
     // Verify shortfall exists
     assertTrue(shortfall > 0, 'Should have a shortfall');
-    
+
     // User should be able to redeem up to maxRedeem
     vm.startPrank(user1);
     uint256 maxRedeem = sgho.maxRedeem(user1);
     uint256 assetsReceived = sgho.redeem(maxRedeem, user1, user1);
-    
+
     // Verify redemption succeeded
-    assertEq(gho.balanceOf(user1), user1Balance + assetsReceived, 'User should receive the actual GHO balance');
+    assertEq(
+      gho.balanceOf(user1),
+      user1Balance + assetsReceived,
+      'User should receive the actual GHO balance'
+    );
     assertApproxEqAbs(gho.balanceOf(address(sgho)), 0, 2, 'Contract should have no GHO left');
     assertEq(sgho.balanceOf(user1), user1Shares - maxRedeem, 'User should have no shares left');
     vm.stopPrank();
@@ -1716,7 +1891,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Skip time to accrue yield
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update with a deposit instead of withdrawal to avoid affecting state
     vm.startPrank(user2);
     sgho.deposit(1 ether, user2);
@@ -1725,41 +1900,62 @@ contract sGhoTest is TestnetProcedures {
     uint256 theoreticalAssets = sgho.totalAssets();
     uint256 actualGhoBalance = gho.balanceOf(address(sgho));
     uint256 shortfall = theoreticalAssets - actualGhoBalance;
-    
+
     // Verify shortfall exists
     assertTrue(shortfall > 0, 'Should have a shortfall');
-    
+
     // Both users should be limited by actual GHO balance
     // Recalculate maxWithdraw after yield update to ensure consistency
     uint256 maxWithdrawUser1 = sgho.maxWithdraw(user1);
     uint256 maxWithdrawUser2 = sgho.maxWithdraw(user2);
-    
+
     // Total max withdrawals should equal theoretical assets (not actual balance)
-    assertApproxEqAbs(maxWithdrawUser1 + maxWithdrawUser2, theoreticalAssets, 1, 'Total max withdrawals should equal theoretical assets');
-    
+    assertApproxEqAbs(
+      maxWithdrawUser1 + maxWithdrawUser2,
+      theoreticalAssets,
+      1,
+      'Total max withdrawals should equal theoretical assets'
+    );
+
     // Calculate proportional shares of actual GHO balance to avoid maxWithdraw issues
     uint256 user1Shares = sgho.balanceOf(user1);
     uint256 user2Shares = sgho.balanceOf(user2);
     uint256 totalShares = user1Shares + user2Shares;
-    
+
     uint256 user1ProportionalWithdraw = (actualGhoBalance * user1Shares) / totalShares;
     uint256 user2ProportionalWithdraw = actualGhoBalance - user1ProportionalWithdraw; // Ensure exact split
-    
+
     // Users should be able to withdraw their proportional share of actual GHO
     vm.startPrank(user1);
     uint256 user1Balance = gho.balanceOf(user1);
     uint256 sharesBurned1 = sgho.withdraw(user1ProportionalWithdraw, user1, user1);
-    assertEq(gho.balanceOf(user1), user1Balance + user1ProportionalWithdraw, 'User1 should have the new balance');
-    assertEq(sgho.balanceOf(user1), user1Shares - sharesBurned1, 'User1 should have the remaining shares');
+    assertEq(
+      gho.balanceOf(user1),
+      user1Balance + user1ProportionalWithdraw,
+      'User1 should have the new balance'
+    );
+    assertEq(
+      sgho.balanceOf(user1),
+      user1Shares - sharesBurned1,
+      'User1 should have the remaining shares'
+    );
     vm.stopPrank();
-    
+
     vm.startPrank(user2);
     uint256 user2Balance = gho.balanceOf(user2);
     uint256 sharesBurned2 = sgho.withdraw(user2ProportionalWithdraw, user2, user2);
-    assertEq(gho.balanceOf(user2), user2Balance + user2ProportionalWithdraw, 'User2 should have the new balance');
-    assertEq(sgho.balanceOf(user2), user2Shares - sharesBurned2, 'User2 should have the remaining shares');
+    assertEq(
+      gho.balanceOf(user2),
+      user2Balance + user2ProportionalWithdraw,
+      'User2 should have the new balance'
+    );
+    assertEq(
+      sgho.balanceOf(user2),
+      user2Shares - sharesBurned2,
+      'User2 should have the remaining shares'
+    );
     vm.stopPrank();
-    
+
     // Contract should have no GHO left
     assertEq(gho.balanceOf(address(sgho)), 0, 'Contract should have no GHO left');
   }
@@ -1773,7 +1969,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Skip time to accrue yield
     vm.warp(block.timestamp + 365 days);
-    
+
     // Trigger yield update
     vm.startPrank(user2);
     sgho.deposit(1 ether, user2);
@@ -1781,33 +1977,37 @@ contract sGhoTest is TestnetProcedures {
 
     uint256 theoreticalAssets = sgho.totalAssets();
     uint256 actualGhoBalance = gho.balanceOf(address(sgho));
-    
+
     // Verify we have a shortfall
     assertTrue(theoreticalAssets > actualGhoBalance, 'Should have a shortfall');
-    
+
     // Artificially reduce GHO balance to create a larger shortfall
     // This simulates a scenario where GHO is lost/stolen from the contract
     vm.startPrank(address(sgho));
     gho.transfer(user2, actualGhoBalance / 2); // Transfer half the GHO out
     vm.stopPrank();
-    
+
     uint256 newActualBalance = gho.balanceOf(address(sgho));
     uint256 newShortfall = theoreticalAssets - newActualBalance;
-    
+
     // Shortfall should be larger now
     assertTrue(newShortfall > theoreticalAssets - actualGhoBalance, 'Shortfall should be larger');
-    
+
     // User should still be able to withdraw up to the new actual balance
     vm.startPrank(user1);
     uint256 user1Balance = gho.balanceOf(user1);
     uint256 user1Shares = sgho.balanceOf(user1);
     uint256 maxWithdraw = sgho.maxWithdraw(user1);
     assertEq(maxWithdraw, newActualBalance, 'maxWithdraw should equal new actual balance');
-    
+
     // Should be able to withdraw the maximum
     uint256 sharesBurned = sgho.withdraw(maxWithdraw, user1, user1);
     assertEq(gho.balanceOf(user1), user1Balance + maxWithdraw, 'User should have the new balance');
-    assertEq(sgho.balanceOf(user1), user1Shares - sharesBurned, 'User should have the remaining shares');
+    assertEq(
+      sgho.balanceOf(user1),
+      user1Shares - sharesBurned,
+      'User should have the remaining shares'
+    );
     assertEq(gho.balanceOf(address(sgho)), 0, 'Contract should have no GHO left');
     vm.stopPrank();
   }
@@ -1817,154 +2017,175 @@ contract sGhoTest is TestnetProcedures {
   // ========================================
 
   function test_precision_yieldIndex_smallValues() external pure {
-      // Small values for prevYieldIndex, targetRate, and time
-      uint256 prevYieldIndex = 1; // 1 wei
-      uint16 targetRate = 1; // 0.01%
-      uint256 timeSinceLastUpdate = 1; // 1 second
-      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
-      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
+    // Small values for prevYieldIndex, targetRate, and time
+    uint256 prevYieldIndex = 1; // 1 wei
+    uint16 targetRate = 1; // 0.01%
+    uint256 timeSinceLastUpdate = 1; // 1 second
+    uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
+    assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
   }
 
   function test_precision_yieldIndex_largeValues() external pure {
-      // Large values for prevYieldIndex, targetRate, and time
-      uint256 prevYieldIndex = 1e30; // Large but safe value
-      uint16 targetRate = 5000; // Max safe rate
-      uint256 timeSinceLastUpdate = 365 days; // 1 year
-      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
-      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
-      assertTrue(newYieldIndex <= type(uint256).max, 'Yield index should not overflow');
+    // Large values for prevYieldIndex, targetRate, and time
+    uint256 prevYieldIndex = 1e30; // Large but safe value
+    uint16 targetRate = 5000; // Max safe rate
+    uint256 timeSinceLastUpdate = 365 days; // 1 year
+    uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
+    assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
+    assertTrue(newYieldIndex <= type(uint256).max, 'Yield index should not overflow');
   }
 
   function test_precision_yieldIndex_realisticValues() external pure {
-      // Test with realistic starting values
-      uint256 prevYieldIndex = 1e27; // Start from RAY (1e27)
-      uint16 targetRate = 1000; // 10% APR
-      uint256 timeSinceLastUpdate = 365 days; // 1 year
-      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
-      
-      // After 1 year at 10%, index should be approximately 1.1 * RAY
-      uint256 expectedIndex = (1e27 * 11) / 10; // 1.1 * RAY
-      assertApproxEqRel(newYieldIndex, expectedIndex, 0.01e18, 'Yield index should approximate 10% growth'); // 1% tolerance
-      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
+    // Test with realistic starting values
+    uint256 prevYieldIndex = 1e27; // Start from RAY (1e27)
+    uint16 targetRate = 1000; // 10% APR
+    uint256 timeSinceLastUpdate = 365 days; // 1 year
+    uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
+
+    // After 1 year at 10%, index should be approximately 1.1 * RAY
+    uint256 expectedIndex = (1e27 * 11) / 10; // 1.1 * RAY
+    assertApproxEqRel(
+      newYieldIndex,
+      expectedIndex,
+      0.01e18,
+      'Yield index should approximate 10% growth'
+    ); // 1% tolerance
+    assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should not underflow');
   }
 
   function test_precision_yieldIndex_granularTime() external pure {
-      // Test with very small time increments
-      uint256 prevYieldIndex = 1e27;
-      uint16 targetRate = 1000; // 10% APR
-      
-      // Test 1 second increment
-      uint256 newYieldIndex1s = _emulateYieldIndex(prevYieldIndex, targetRate, 1);
-      assertTrue(newYieldIndex1s > prevYieldIndex, 'Should accrue yield even for 1 second');
-      
-      // Test 1 minute increment  
-      uint256 newYieldIndex1m = _emulateYieldIndex(prevYieldIndex, targetRate, 60);
-      assertTrue(newYieldIndex1m > newYieldIndex1s, 'More time should yield more index growth');
-      
-      // Test 1 hour increment
-      uint256 newYieldIndex1h = _emulateYieldIndex(prevYieldIndex, targetRate, 3600);
-      assertTrue(newYieldIndex1h > newYieldIndex1m, 'More time should yield more index growth');
+    // Test with very small time increments
+    uint256 prevYieldIndex = 1e27;
+    uint16 targetRate = 1000; // 10% APR
+
+    // Test 1 second increment
+    uint256 newYieldIndex1s = _emulateYieldIndex(prevYieldIndex, targetRate, 1);
+    assertTrue(newYieldIndex1s > prevYieldIndex, 'Should accrue yield even for 1 second');
+
+    // Test 1 minute increment
+    uint256 newYieldIndex1m = _emulateYieldIndex(prevYieldIndex, targetRate, 60);
+    assertTrue(newYieldIndex1m > newYieldIndex1s, 'More time should yield more index growth');
+
+    // Test 1 hour increment
+    uint256 newYieldIndex1h = _emulateYieldIndex(prevYieldIndex, targetRate, 3600);
+    assertTrue(newYieldIndex1h > newYieldIndex1m, 'More time should yield more index growth');
   }
 
   function test_precision_yieldIndex_cumulativePrecision() external pure {
-      // Test cumulative precision loss over multiple small updates vs one large update
-      uint256 prevYieldIndex = RAY;
-      uint16 targetRate = 1000; // 10% APR
-      uint256 totalTime = 30 days;
-      
-      // Single large update
-      uint256 singleUpdate = _emulateYieldIndex(prevYieldIndex, targetRate, totalTime);
-      
-      // Multiple small updates (simulate daily updates)
-      uint256 cumulativeIndex = prevYieldIndex;
-      uint256 dailyTime = 1 days;
-      for (uint256 i = 0; i < 30; i++) {
-          cumulativeIndex = _emulateYieldIndex(cumulativeIndex, targetRate, dailyTime);
-      }
-      
-      // Cumulative should be slightly higher due to compounding
-      assertTrue(cumulativeIndex >= singleUpdate, 'Cumulative updates should compound yield');
-      
-      // But the difference should be small (within 0.1% for reasonable rates)
-      assertApproxEqRel(cumulativeIndex, singleUpdate, 0.001e18, 'Precision loss should be minimal');
+    // Test cumulative precision loss over multiple small updates vs one large update
+    uint256 prevYieldIndex = RAY;
+    uint16 targetRate = 1000; // 10% APR
+    uint256 totalTime = 30 days;
+
+    // Single large update
+    uint256 singleUpdate = _emulateYieldIndex(prevYieldIndex, targetRate, totalTime);
+
+    // Multiple small updates (simulate daily updates)
+    uint256 cumulativeIndex = prevYieldIndex;
+    uint256 dailyTime = 1 days;
+    for (uint256 i = 0; i < 30; i++) {
+      cumulativeIndex = _emulateYieldIndex(cumulativeIndex, targetRate, dailyTime);
+    }
+
+    // Cumulative should be slightly higher due to compounding
+    assertTrue(cumulativeIndex >= singleUpdate, 'Cumulative updates should compound yield');
+
+    // But the difference should be small (within 0.1% for reasonable rates)
+    assertApproxEqRel(cumulativeIndex, singleUpdate, 0.001e18, 'Precision loss should be minimal');
   }
 
   function test_precision_yieldIndex_edgeCases() external pure {
-      // Test minimum non-zero yield index
-      uint256 minYieldIndex = _emulateYieldIndex(1, 1, 1);
-      assertTrue(minYieldIndex >= 1, 'Should not underflow with minimum values');
-      
-      // Test with yield index exactly at RAY
-      uint256 rayYieldIndex = _emulateYieldIndex(RAY, 1000, 1 days);
-      assertTrue(rayYieldIndex > RAY, 'Should grow from RAY baseline');
-      
-      // Test maximum safe rate for extended period
-      uint256 maxRateIndex = _emulateYieldIndex(RAY, MAX_SAFE_RATE, 365 days);
-      assertTrue(maxRateIndex > RAY, 'Should handle max rate without overflow');
-      assertTrue(maxRateIndex < RAY * 2, 'Max rate for 1 year should not double the index');
+    // Test minimum non-zero yield index
+    uint256 minYieldIndex = _emulateYieldIndex(1, 1, 1);
+    assertTrue(minYieldIndex >= 1, 'Should not underflow with minimum values');
+
+    // Test with yield index exactly at RAY
+    uint256 rayYieldIndex = _emulateYieldIndex(RAY, 1000, 1 days);
+    assertTrue(rayYieldIndex > RAY, 'Should grow from RAY baseline');
+
+    // Test maximum safe rate for extended period
+    uint256 maxRateIndex = _emulateYieldIndex(RAY, MAX_SAFE_RATE, 365 days);
+    assertTrue(maxRateIndex > RAY, 'Should handle max rate without overflow');
+    assertTrue(maxRateIndex < RAY * 2, 'Max rate for 1 year should not double the index');
   }
 
   function test_precision_yieldIndex_fuzz(uint256 timeSkip, uint16 rate) external pure {
-      // Bound inputs to reasonable ranges
-      timeSkip = bound(timeSkip, 1, 365 days * 10); // 1 second to 10 years
-      rate = uint16(bound(rate, 1, MAX_SAFE_RATE)); // 0.01% to 50%
-      
-      uint256 prevYieldIndex = RAY;
-      uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
-      
-      // Basic invariants
-      assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should never decrease');
-      assertTrue(newYieldIndex <= type(uint256).max, 'Should not overflow');
-      
-      // Reasonable growth bounds (max 50% per year * 10 years = 500% max theoretical)
-      assertTrue(newYieldIndex <= prevYieldIndex * 6, 'Growth should be bounded by reasonable limits');
+    // Bound inputs to reasonable ranges
+    timeSkip = bound(timeSkip, 1, 365 days * 10); // 1 second to 10 years
+    rate = uint16(bound(rate, 1, MAX_SAFE_RATE)); // 0.01% to 50%
+
+    uint256 prevYieldIndex = RAY;
+    uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
+
+    // Basic invariants
+    assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should never decrease');
+    assertTrue(newYieldIndex <= type(uint256).max, 'Should not overflow');
+
+    // Reasonable growth bounds (max 50% per year * 10 years = 500% max theoretical)
+    assertTrue(
+      newYieldIndex <= prevYieldIndex * 6,
+      'Growth should be bounded by reasonable limits'
+    );
   }
 
   function test_precision_yieldIndex_zeroRateOrTime() external pure {
-      uint256 prevYieldIndex = RAY;
-      // Zero target rate
-      assertEq(_emulateYieldIndex(prevYieldIndex, 0, 1000), prevYieldIndex, 'Zero rate should not change index');
-      // Zero time
-      assertEq(_emulateYieldIndex(prevYieldIndex, 1000, 0), prevYieldIndex, 'Zero time should not change index');
+    uint256 prevYieldIndex = RAY;
+    // Zero target rate
+    assertEq(
+      _emulateYieldIndex(prevYieldIndex, 0, 1000),
+      prevYieldIndex,
+      'Zero rate should not change index'
+    );
+    // Zero time
+    assertEq(
+      _emulateYieldIndex(prevYieldIndex, 1000, 0),
+      prevYieldIndex,
+      'Zero time should not change index'
+    );
   }
 
   function test_precision_yieldIndex_consistency() external {
-      // Compare contract's yieldIndex calculation to _emulateYieldIndex for a real scenario
-      uint256 prevYieldIndex = sgho.yieldIndex();
-      uint16 rate = sgho.targetRate();
-      uint256 timeSkip = 1 days;
-      // Warp time and trigger yield update
-      vm.warp(block.timestamp + timeSkip);
-      // Call a state-changing function to update yieldIndex
-      vm.startPrank(user1);
-      sgho.deposit(1 ether, user1);
-      vm.stopPrank();
-      uint256 contractYieldIndex = sgho.yieldIndex();
-      uint256 emulatedYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
-      // Allow for 1 wei rounding error
-      assertApproxEqAbs(contractYieldIndex, emulatedYieldIndex, 1, 'Yield index calculation mismatch');
+    // Compare contract's yieldIndex calculation to _emulateYieldIndex for a real scenario
+    uint256 prevYieldIndex = sgho.yieldIndex();
+    uint16 rate = sgho.targetRate();
+    uint256 timeSkip = 1 days;
+    // Warp time and trigger yield update
+    vm.warp(block.timestamp + timeSkip);
+    // Call a state-changing function to update yieldIndex
+    vm.startPrank(user1);
+    sgho.deposit(1 ether, user1);
+    vm.stopPrank();
+    uint256 contractYieldIndex = sgho.yieldIndex();
+    uint256 emulatedYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
+    // Allow for 1 wei rounding error
+    assertApproxEqAbs(
+      contractYieldIndex,
+      emulatedYieldIndex,
+      1,
+      'Yield index calculation mismatch'
+    );
   }
 
   function test_precision_yieldIndex_monotonic() external pure {
-      // Test that yield index is always monotonically increasing
-      uint256 prevYieldIndex = RAY;
-      uint16 targetRate = 1000;
-      
-      uint256 index1 = _emulateYieldIndex(prevYieldIndex, targetRate, 1 days);
-      uint256 index2 = _emulateYieldIndex(index1, targetRate, 1 days);
-      uint256 index3 = _emulateYieldIndex(index2, targetRate, 1 days);
-      
-      assertTrue(index1 > prevYieldIndex, 'First update should increase index');
-      assertTrue(index2 > index1, 'Second update should increase index');
-      assertTrue(index3 > index2, 'Third update should increase index');
-      
-      // Growth should be roughly equal for equal time periods (compound growth)
-      uint256 growth1 = index1 - prevYieldIndex;
-      uint256 growth2 = index2 - index1;
-      uint256 growth3 = index3 - index2;
-      
-      assertTrue(growth2 > growth1, 'Compound growth should accelerate');
-      assertTrue(growth3 > growth2, 'Compound growth should continue accelerating');
+    // Test that yield index is always monotonically increasing
+    uint256 prevYieldIndex = RAY;
+    uint16 targetRate = 1000;
+
+    uint256 index1 = _emulateYieldIndex(prevYieldIndex, targetRate, 1 days);
+    uint256 index2 = _emulateYieldIndex(index1, targetRate, 1 days);
+    uint256 index3 = _emulateYieldIndex(index2, targetRate, 1 days);
+
+    assertTrue(index1 > prevYieldIndex, 'First update should increase index');
+    assertTrue(index2 > index1, 'Second update should increase index');
+    assertTrue(index3 > index2, 'Third update should increase index');
+
+    // Growth should be roughly equal for equal time periods (compound growth)
+    uint256 growth1 = index1 - prevYieldIndex;
+    uint256 growth2 = index2 - index1;
+    uint256 growth3 = index3 - index2;
+
+    assertTrue(growth2 > growth1, 'Compound growth should accelerate');
+    assertTrue(growth3 > growth2, 'Compound growth should continue accelerating');
   }
 
   function test_precision_ratePerSecond_zeroRate() external {
@@ -1972,7 +2193,7 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(yManager);
     sgho.setTargetRate(0);
     vm.stopPrank();
-    
+
     // Rate per second should be 0
     assertEq(sgho.ratePerSecond(), 0, 'ratePerSecond should be 0 when target rate is 0');
   }
@@ -1982,38 +2203,46 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(yManager);
     sgho.setTargetRate(MAX_SAFE_RATE);
     vm.stopPrank();
-    
+
     // Rate per second should be calculated correctly
     uint96 expectedRatePerSecond = sgho.ratePerSecond();
-    
+
     uint256 annualRateRay = (MAX_SAFE_RATE * RAY) / 10000; // 0.5e27
-    uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
     uint256 expectedRatePerSecondCalc = ratePerSecond / RAY;
-    
-    assertEq(expectedRatePerSecond, uint96(expectedRatePerSecondCalc), 'ratePerSecond should match calculated value for max rate');
+
+    assertEq(
+      expectedRatePerSecond,
+      uint96(expectedRatePerSecondCalc),
+      'ratePerSecond should match calculated value for max rate'
+    );
   }
 
   function test_precision_ratePerSecond_rateChange() external {
     // Get initial rate per second
     uint96 initialRatePerSecond = sgho.ratePerSecond();
-    
+
     // Change target rate
     vm.startPrank(yManager);
     sgho.setTargetRate(2000); // 20% APR
     vm.stopPrank();
-    
+
     // Get new rate per second
     uint96 newRatePerSecond = sgho.ratePerSecond();
-    
+
     // New rate should be different and higher
     assertTrue(newRatePerSecond > initialRatePerSecond, 'New rate per second should be higher');
-    
+
     // Verify calculation
     uint256 annualRateRay = (2000 * 1e27) / 10000; // 0.2e27
-    uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
     uint256 expectedRatePerSecondCalc = ratePerSecond / RAY;
-    
-    assertEq(newRatePerSecond, uint96(expectedRatePerSecondCalc), 'New rate per second should match calculated value');
+
+    assertEq(
+      newRatePerSecond,
+      uint96(expectedRatePerSecondCalc),
+      'New rate per second should match calculated value'
+    );
   }
 
   // ========================================
@@ -2065,7 +2294,13 @@ contract sGhoTest is TestnetProcedures {
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
 
     vm.startPrank(user1);
-    vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, sgho.FUNDS_ADMIN_ROLE()));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        user1,
+        sgho.FUNDS_ADMIN_ROLE()
+      )
+    );
     sgho.emergencyTokenTransfer(address(mockToken), user1, 100 ether);
     vm.stopPrank();
   }
@@ -2074,12 +2309,12 @@ contract sGhoTest is TestnetProcedures {
     // FUNDS_ADMIN role is already granted to fundsAdmin in setUp()
 
     uint256 initialBalance = gho.balanceOf(user1);
-    
+
     vm.startPrank(fundsAdmin);
     // Should succeed but transfer 0 because maxRescue returns 0 for GHO
     sgho.emergencyTokenTransfer(address(gho), user1, 100 ether);
     vm.stopPrank();
-    
+
     // Verify that no GHO was transferred
     assertEq(gho.balanceOf(user1), initialBalance, 'No GHO should be transferred');
   }
@@ -2100,7 +2335,11 @@ contract sGhoTest is TestnetProcedures {
     vm.stopPrank();
 
     // Token balances should remain unchanged
-    assertEq(mockToken.balanceOf(address(sgho)), initialAmount, 'Contract balance should remain unchanged');
+    assertEq(
+      mockToken.balanceOf(address(sgho)),
+      initialAmount,
+      'Contract balance should remain unchanged'
+    );
     assertEq(mockToken.balanceOf(user1), 0, 'User balance should remain unchanged');
   }
 
@@ -2113,7 +2352,11 @@ contract sGhoTest is TestnetProcedures {
     deal(address(mockToken), address(sgho), tokenAmount, true);
 
     // Test maxRescue for non-GHO token
-    assertEq(sgho.maxRescue(address(mockToken)), tokenAmount, 'maxRescue should return full balance for non-GHO tokens');
+    assertEq(
+      sgho.maxRescue(address(mockToken)),
+      tokenAmount,
+      'maxRescue should return full balance for non-GHO tokens'
+    );
 
     // Test maxRescue for GHO token
     assertEq(sgho.maxRescue(address(gho)), 0, 'maxRescue should return 0 for GHO tokens');
@@ -2134,7 +2377,7 @@ contract sGhoTest is TestnetProcedures {
             address(this),
             abi.encodeWithSelector(
               sGHO.initialize.selector,
-              address(gho),              
+              address(gho),
               SUPPLY_CAP,
               address(this) // executor
             )
@@ -2168,8 +2411,6 @@ contract sGhoTest is TestnetProcedures {
     newSgho.initialize(address(gho), SUPPLY_CAP, address(this));
   }
 
-
-
   // ========================================
   // GETTER FUNCTIONS & STATE ACCESS TESTS
   // ========================================
@@ -2177,7 +2418,6 @@ contract sGhoTest is TestnetProcedures {
   function test_getter_GHO() external view {
     assertEq(sgho.GHO(), address(gho), 'GHO address getter should return correct address');
   }
-
 
   function test_getter_name() external view {
     assertEq(sgho.name(), 'sGHO', 'Name should be sGHO');
@@ -2220,11 +2460,19 @@ contract sGhoTest is TestnetProcedures {
   }
 
   function test_getter_YIELD_MANAGER_ROLE() external view {
-    assertEq(sgho.YIELD_MANAGER_ROLE(), bytes32('YIELD_MANAGER'), 'YIELD_MANAGER_ROLE should match hash');
+    assertEq(
+      sgho.YIELD_MANAGER_ROLE(),
+      bytes32('YIELD_MANAGER'),
+      'YIELD_MANAGER_ROLE should match hash'
+    );
   }
 
   function test_getter_DOMAIN_SEPARATOR() external view {
-    assertEq(sgho.DOMAIN_SEPARATOR(), DOMAIN_SEPARATOR_sGHO, 'Domain separator should match calculated value');
+    assertEq(
+      sgho.DOMAIN_SEPARATOR(),
+      DOMAIN_SEPARATOR_sGHO,
+      'Domain separator should match calculated value'
+    );
   }
 
   function test_getter_totalSupply() external view {
@@ -2247,30 +2495,37 @@ contract sGhoTest is TestnetProcedures {
   function test_getter_ratePerSecond() external view {
     uint256 targetRate = sgho.targetRate();
     uint256 annualRateRay = (targetRate * RAY) / 10000;
-    uint256 ratePerSecond = annualRateRay * RAY / 365 days;
+    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
     uint256 expectedRatePerSecond = ratePerSecond / RAY;
-    assertEq(sgho.ratePerSecond(), expectedRatePerSecond, 'Rate per second should match calculated value');
+    assertEq(
+      sgho.ratePerSecond(),
+      expectedRatePerSecond,
+      'Rate per second should match calculated value'
+    );
   }
-
 
   // ========================================
   // INTERNAL UTILITY FUNCTIONS
   // ========================================
 
-    /// @dev Emulates the yieldIndex calculation as in sGHO._getCurrentYieldIndex(), using OpenZeppelin Math for all operations
-    function _emulateYieldIndex(uint256 prevYieldIndex, uint16 targetRate, uint256 timeSinceLastUpdate) internal pure returns (uint256) {
-        if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
-        
-        // Convert targetRate from basis points to ray
-        uint256 annualRateRay = uint256(targetRate) * RAY / 10000;
-        // Calculate the rate per second (new contract logic)
-        uint256 ratePerSecond = annualRateRay * RAY / 365 days;
-        uint256 ratePerSecondNormalized = ratePerSecond / RAY;
-        // Calculate accumulated rate and growth factor
-        uint256 accumulatedRate = ratePerSecondNormalized * timeSinceLastUpdate;
-        uint256 growthFactor = RAY + accumulatedRate;
-        return prevYieldIndex * growthFactor / RAY;
-    }
+  /// @dev Emulates the yieldIndex calculation as in sGHO._getCurrentYieldIndex(), using OpenZeppelin Math for all operations
+  function _emulateYieldIndex(
+    uint256 prevYieldIndex,
+    uint16 targetRate,
+    uint256 timeSinceLastUpdate
+  ) internal pure returns (uint256) {
+    if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
+
+    // Convert targetRate from basis points to ray
+    uint256 annualRateRay = (uint256(targetRate) * RAY) / 10000;
+    // Calculate the rate per second (new contract logic)
+    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
+    uint256 ratePerSecondNormalized = ratePerSecond / RAY;
+    // Calculate accumulated rate and growth factor
+    uint256 accumulatedRate = ratePerSecondNormalized * timeSinceLastUpdate;
+    uint256 growthFactor = RAY + accumulatedRate;
+    return (prevYieldIndex * growthFactor) / RAY;
+  }
 
   function _createPermitSignature(
     address owner,
@@ -2280,8 +2535,12 @@ contract sGhoTest is TestnetProcedures {
     uint256 deadline,
     uint256 privateKey
   ) internal view returns (uint8 v, bytes32 r, bytes32 s) {
-    bytes32 PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
-    bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
+    bytes32 PERMIT_TYPEHASH = keccak256(
+      'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+    );
+    bytes32 structHash = keccak256(
+      abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline)
+    );
     bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
     return vm.sign(privateKey, hash);
   }
@@ -2297,9 +2556,6 @@ contract sGhoTest is TestnetProcedures {
     }
     return res;
   }
-
-
-
 
   // ========================================
   // EVENT TESTS
@@ -2331,7 +2587,4 @@ contract sGhoTest is TestnetProcedures {
     assertTrue(newYieldIndex > initialYieldIndex, 'Yield index should increase after time passes');
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
   }
-
-
-
 }

@@ -3,6 +3,7 @@
 ## Overview
 
 This document details how precision, rounding, and edge cases are handled in the `sGHO` contract, with a focus on:
+
 - Mathematical operations (deposits, withdrawals, yield accrual)
 - The use of OpenZeppelin's Math library for conversions
 - Rounding modes and their implications
@@ -17,6 +18,7 @@ This document details how precision, rounding, and edge cases are handled in the
 - **OpenZeppelin Math**: Used for safe multiplication and division with explicit rounding control.
 
 ### Math Library Rounding
+
 - All asset/share conversions use OpenZeppelin's `Math.mulDiv` with explicit rounding direction.
 - The contract typically uses `Math.Rounding.Floor` for user-facing operations to prevent over-issuance.
 
@@ -46,7 +48,7 @@ function _getCurrentYieldIndex() internal view returns (uint176) {
   uint256 accumulatedRate = $.ratePerSecond * timeSinceLastUpdate;
   uint256 growthFactor = RAY + accumulatedRate;
 
-  return ($.yieldIndex * growthFactor / RAY).toUint176();
+  return (($.yieldIndex * growthFactor) / RAY).toUint176();
 }
 ```
 
@@ -75,13 +77,19 @@ $.ratePerSecond = (annualRateRay / 365 days).toUint96();
 ### Conversion Functions
 
 ```solidity
-function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual override returns (uint256) {
+function _convertToShares(
+  uint256 assets,
+  Math.Rounding rounding
+) internal view virtual override returns (uint256) {
   uint256 currentYieldIndex = _getCurrentYieldIndex();
   if (currentYieldIndex == 0) return 0;
   return assets.mulDiv(RAY, currentYieldIndex, rounding);
 }
 
-function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
+function _convertToAssets(
+  uint256 shares,
+  Math.Rounding rounding
+) internal view virtual override returns (uint256) {
   uint256 currentYieldIndex = _getCurrentYieldIndex();
   return shares.mulDiv(currentYieldIndex, RAY, rounding);
 }
@@ -97,15 +105,17 @@ function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view 
 The value of each share (in GHO) increases as the yield index grows. At very high yield index values (e.g., after many years of compounding at high rates), the smallest possible share (1 wei) can be worth a significant amount of GHO, and attempting to deposit or withdraw very small amounts can result in substantial precision loss due to integer division rounding.
 
 **Relationship:**
+
 - The minimum asset amount that can be converted to at least 1 share is:
-  
+
   `minAssets = yieldIndex / 1e27`
 
 - The minimum share amount that can be converted to at least 1 asset is:
-  
+
   `minShares = 1e27 / yieldIndex`
 
 **Warning:**
+
 > To avoid significant precision loss, it is recommended to avoid depositing or withdrawing less than **1e4 wei** (0.00001 GHO) at any time. At high yield index values, smaller amounts may be rounded down to zero or may burn more shares than expected, resulting in a loss of value for the user.
 
 - **See:** `test_precisionLossExtremeYieldIndex` and `test_precisionLossThreshold_convertToShares` in `sGhoPrecision.t.sol` for demonstrations of this effect at high yield index values and for the smallest possible share.
@@ -117,33 +127,40 @@ This is a fundamental limitation of fixed-point math in Solidity and is common t
 ## Edge Cases and Limitations
 
 ### 1. **Zero Rate or Zero Time**
+
 - If `ratePerSecond == 0` or `block.timestamp == lastUpdate`, no yield accrues; the index remains unchanged.
 - **See:** `test_yield_zeroTargetRate` and `test_yield_zeroTimeSinceLastUpdate` in `sGhoPrecision.t.sol`.
 
 ### 2. **Rounding Losses**
+
 - Small deposits/withdrawals may be rounded down to zero if below the minimum precision (1e-27 for rays).
 - Over time, repeated rounding may cause very small discrepancies, but these are minimized by high precision.
 - **See:** `test_precisionLossThreshold_convertToShares`, `test_precisionLossThreshold_convertToAssets_largeYieldIndex`, and `test_precisionLossExtremeYieldIndex` in `sGhoPrecision.t.sol`.
 
 ### 3. **Max Withdraw/Max Redeem**
+
 - Withdrawals and redemptions are limited by both the user's share balance and the contract's actual GHO balance.
 - If the contract is under-collateralized, users may not be able to withdraw their full share value.
 - **See:** `test_gho_shortfall_detection` and related shortfall tests in `sGhoPrecision.t.sol`.
 
 ### 4. **Overflow Protection**
+
 - The contract uses SafeCast for explicit overflow checks; operations revert on overflow or division by zero.
 - **See:** `test_edgecase_overflowProtection` in `sGhoPrecision.t.sol`.
 
 ### 5. **Supply Cap**
+
 - Deposits/mints are capped by the `supplyCap` (in GHO units). If the cap is reached, further deposits/mints revert.
 - **See:** `test_edgecase_supplyCap` and related supply cap tests in `sGhoPrecision.t.sol`.
 
 ### 6. **Extreme Rates or Long Time Gaps**
+
 - Very high rates or long periods between updates can cause the yield index to grow rapidly. However, the contract enforces a `MAX_SAFE_RATE` (50% APR) to prevent extreme compounding.
 - If the time gap is extremely large, the linear approximation may diverge from true compounding, but this is mitigated by the compounding-on-update design.
 - **See:** `test_overflow_timeGapIsAstronomical` and `test_yieldIndex_10YearsDailyCompounding_MaxRate` in `sGhoPrecision.t.sol`.
 
 ### 7. **Storage Packing and Gas Optimization**
+
 - The contract uses a custom storage struct with packed variables to optimize gas usage.
 - `yieldIndex` is stored as `uint176` (22 bytes)
 - `lastUpdate` is stored as `uint64` (8 bytes)
@@ -159,14 +176,17 @@ The sGHO contract's mathematical operations have been extensively analyzed and v
 #### Contract vs Python Mathematical Accuracy
 
 **Rate Per Second Calculations:**
+
 - **Perfect precision**: 0.00000000000000000000 bps loss across all rates (1% to 50% APR)
 - **Mathematical exactness**: Contract calculations are identical to Python's high-precision decimal arithmetic
 
 **Yield Index Updates:**
+
 - **Perfect precision**: 0.00000000000000000000 bps loss for single update operations
 - **Cumulative operations**: Perfect precision maintained across all update frequencies (every second, minute, hour, day)
 
 **Linear Growth Factors:**
+
 - **Maximum difference**: 0.00000000000000001118 bps between contract and Python calculations
 - **Average difference**: 0.00000000000000000122 bps (essentially zero)
 - **Conclusion**: Contract's integer arithmetic provides virtually identical results to Python's floating-point calculations
@@ -179,27 +199,27 @@ The contract uses linear approximation for yield accrual within each update peri
 
 **10% APR Precision Loss Analysis:**
 
-| Time Period | Linear Growth Factor | Continuous Growth Factor | Precision Loss (bps) | Precision Loss (%) |
-|-------------|---------------------|-------------------------|---------------------|-------------------|
-| 1 second    | 1.000000003170979198376458650 | 1.000000003170979300000000000 | 0.0000000001 | 1.0e-13% |
-| 1 minute    | 1.000000190258751902587519026 | 1.000000190258770000000000000 | 0.0000000181 | 1.8e-12% |
-| 1 hour      | 1.000011415525114155251141553 | 1.000011415590271500000000000 | 0.0000652 | 6.5e-7% |
-| 1 day       | 1.000273972602739726027397260 | 1.000274010136661000000000000 | 0.0375 | 0.000375% |
-| 1 week      | 1.001917808219178082191780822 | 1.001919648389537400000000000 | 1.84 | 0.0184% |
-| 1 month     | 1.008219178082191780821917808 | 1.008253048257773800000000000 | 33.9 | 0.339% |
+| Time Period | Linear Growth Factor          | Continuous Growth Factor      | Precision Loss (bps) | Precision Loss (%) |
+| ----------- | ----------------------------- | ----------------------------- | -------------------- | ------------------ |
+| 1 second    | 1.000000003170979198376458650 | 1.000000003170979300000000000 | 0.0000000001         | 1.0e-13%           |
+| 1 minute    | 1.000000190258751902587519026 | 1.000000190258770000000000000 | 0.0000000181         | 1.8e-12%           |
+| 1 hour      | 1.000011415525114155251141553 | 1.000011415590271500000000000 | 0.0000652            | 6.5e-7%            |
+| 1 day       | 1.000273972602739726027397260 | 1.000274010136661000000000000 | 0.0375               | 0.000375%          |
+| 1 week      | 1.001917808219178082191780822 | 1.001919648389537400000000000 | 1.84                 | 0.0184%            |
+| 1 month     | 1.008219178082191780821917808 | 1.008253048257773800000000000 | 33.9                 | 0.339%             |
 
 **High-Rate Scenario Analysis (50% APR)**
 
 **Maximum Rate (50% APR) with Different Time Periods:**
 
-| Time Period | Linear Growth Factor | Continuous Growth Factor | Precision Loss (bps) | Precision Loss (%) |
-|-------------|---------------------|-------------------------|---------------------|-------------------|
-| 1 second    | 1.000000015854895991882293252 | 1.000000015854896000000000000 | 0.0000000008 | 8.1e-14% |
-| 1 minute    | 1.000000951293759512937595129 | 1.000000951294212000000000000 | 0.000000452 | 4.5e-11% |
-| 1 hour      | 1.000057077625570776255707763 | 1.000057079254529400000000000 | 0.00163 | 1.6e-6% |
-| 1 day       | 1.001369863013698630136986301 | 1.001370801704614000000000000 | 0.939 | 0.00939% |
-| 1 week      | 1.009589041095890410958904110 | 1.009635163255007600000000000 | 46.1 | 0.461% |
-| 1 month     | 1.041095890410958904109589041 | 1.041952013962091700000000000 | 856 | 8.56% |
+| Time Period | Linear Growth Factor          | Continuous Growth Factor      | Precision Loss (bps) | Precision Loss (%) |
+| ----------- | ----------------------------- | ----------------------------- | -------------------- | ------------------ |
+| 1 second    | 1.000000015854895991882293252 | 1.000000015854896000000000000 | 0.0000000008         | 8.1e-14%           |
+| 1 minute    | 1.000000951293759512937595129 | 1.000000951294212000000000000 | 0.000000452          | 4.5e-11%           |
+| 1 hour      | 1.000057077625570776255707763 | 1.000057079254529400000000000 | 0.00163              | 1.6e-6%            |
+| 1 day       | 1.001369863013698630136986301 | 1.001370801704614000000000000 | 0.939                | 0.00939%           |
+| 1 week      | 1.009589041095890410958904110 | 1.009635163255007600000000000 | 46.1                 | 0.461%             |
+| 1 month     | 1.041095890410958904109589041 | 1.041952013962091700000000000 | 856                  | 8.56%              |
 
 **WARNING FOR HIGH RATES AND LONG PERIODS:**
 
@@ -214,6 +234,7 @@ This represents the maximum theoretical precision loss that could occur if the s
 The theoretical precision loss is calculated as: `(e^(rate * time) - (1 + rate * time)) / e^(rate * time)`
 
 This represents the maximum theoretical precision loss that could occur if the system only updates at the specified intervals. For typical rates (≤50% APR) and time periods (≤1 month), this maximum theoretical loss varies significantly:
+
 - **< 0.001 basis points** for time periods up to 1 day (negligible)
 - **< 1 basis point** for time periods up to 1 week (very small)
 - **~34 basis points** for 1 month at 10% APR (small but noticeable)
@@ -226,10 +247,12 @@ This represents the maximum theoretical precision loss that could occur if the s
 1. **Short-term Usage (Days/Weeks)**: No special considerations needed - theoretical precision loss is negligible (< 1 basis point) even with infrequent updates. The contract provides mathematically exact calculations.
 
 2. **Medium-term Usage (Months)**: Theoretical precision loss is small but noticeable with infrequent updates at high rates:
+
    - **10% APR for 1 month**: ~34 basis points (0.34% theoretical loss) if updates occur only monthly
    - **50% APR for 1 month**: ~856 basis points (8.56% theoretical loss) if updates occur only monthly
 
 3. **High-Rate Scenarios**: Be aware of significant theoretical precision loss with infrequent updates at maximum rates:
+
    - **50% APR for 1 week**: ~46 basis points (0.461% theoretical loss) if updates occur only weekly
    - **50% APR for 1 month**: ~856 basis points (8.56% theoretical loss) if updates occur only monthly
 
@@ -245,22 +268,23 @@ This represents the maximum theoretical precision loss that could occur if the s
 
 ## Summary Table
 
-| Operation                | Precision | Rounding      | Edge Case Handling                |
-|--------------------------|-----------|---------------|-----------------------------------|
-| Yield accrual            | Ray (1e27)| Integer       | Zero rate/time, SafeCast checks   |
-| Asset/share conversion   | Ray (1e27)| Floor/half-up | Zero index returns zero           |
-| Deposit/mint/withdraw    | Wad/Ray   | Floor/half-up | Capped by supplyCap, GHO balance  |
-| Permit/approval          | Wad       | N/A           | Standard ERC20/EIP-2612           |
-| Rate per second          | Ray (1e27)| Integer       | Cached for gas efficiency         |
-| Linear compounding       | Ray (1e27)| Integer       | Negligible precision loss (<1e-27)|
+| Operation              | Precision  | Rounding      | Edge Case Handling                 |
+| ---------------------- | ---------- | ------------- | ---------------------------------- |
+| Yield accrual          | Ray (1e27) | Integer       | Zero rate/time, SafeCast checks    |
+| Asset/share conversion | Ray (1e27) | Floor/half-up | Zero index returns zero            |
+| Deposit/mint/withdraw  | Wad/Ray    | Floor/half-up | Capped by supplyCap, GHO balance   |
+| Permit/approval        | Wad        | N/A           | Standard ERC20/EIP-2612            |
+| Rate per second        | Ray (1e27) | Integer       | Cached for gas efficiency          |
+| Linear compounding     | Ray (1e27) | Integer       | Negligible precision loss (<1e-27) |
 
 ---
 
 ## References
+
 - [OpenZeppelin Math.sol](https://docs.openzeppelin.com/contracts/4.x/api/utils#Math)
 - [OpenZeppelin SafeCast.sol](https://docs.openzeppelin.com/contracts/4.x/api/utils#SafeCast)
 - [sGHO.sol](./sGHO.sol)
 
 ---
 
-*This document is intended for developers, auditors, and integrators seeking to understand the precision and edge case handling in sGHO.* 
+_This document is intended for developers, auditors, and integrators seeking to understand the precision and edge case handling in sGHO._

@@ -58,10 +58,6 @@ interface IsGHO {
     bytes32 s;
   }
 
-
-
-
-
   // --- State Variables (as view functions) ---
 
   /**
@@ -82,7 +78,6 @@ interface IsGHO {
    */
   function MAX_SAFE_RATE() external view returns (uint16);
 
- 
   /**
    * @notice Returns the current yield index, representing the accumulated yield.
    * @dev This index is used to calculate the value of sGHO in terms of GHO.
@@ -133,7 +128,6 @@ interface IsGHO {
 
   // Note: Standard ERC20Permit functions (permit, nonces, DOMAIN_SEPARATOR) are inherited via IERC20Permit.
 
-
   /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
@@ -149,7 +143,7 @@ interface IsGHO {
    */
   function setSupplyCap(uint160 newSupplyCap) external;
 
-    /**
+  /**
    * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
    * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
    * The permit is used to approve the vault to spend the user's GHO tokens.
@@ -167,5 +161,4 @@ interface IsGHO {
     uint256 deadline,
     SignatureParams memory sig
   ) external returns (uint256);
-
 }

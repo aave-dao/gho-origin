@@ -23,7 +23,14 @@ import {IsGHO} from './interfaces/IsGHO.sol';
  * @dev This contract implements the ERC4626 standard for tokenized vaults, where the underlying asset is GHO.
  * It also includes functionalities for yield generation based on a target rate, and administrative roles for managing the contract.
  */
-contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, AccessControlUpgradeable, RescuableACL, IsGHO {
+contract sGHO is
+  Initializable,
+  ERC4626Upgradeable,
+  ERC20PermitUpgradeable,
+  AccessControlUpgradeable,
+  RescuableACL,
+  IsGHO
+{
   using Math for uint256;
   using SafeCast for uint256;
 
@@ -33,7 +40,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGHOStorage {
     // Storage variables - Optimally packed for gas efficiency
-    uint176 yieldIndex; // 22 bytes - current yield index for share/asset conversion    
+    uint176 yieldIndex; // 22 bytes - current yield index for share/asset conversion
     uint64 lastUpdate; // 8 bytes - timestamp of last yield index update
     uint16 targetRate; // 2 bytes - target annual yield rate in basis points (e.g., 1000 = 10%)
     uint160 supplyCap; // 20 bytes - maximum total assets allowed in the vault
@@ -41,7 +48,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   }
 
   // keccak256(abi.encode(uint256(keccak256("gho.storage.sGHO")) - 1)) & ~bytes32(uint256(0xff))
-  bytes32 private constant sGHOStorageLocation = 0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
+  bytes32 private constant sGHOStorageLocation =
+    0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
 
   function _getsGHOStorage() private pure returns (sGHOStorage storage $) {
     assembly {
@@ -53,9 +61,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   uint16 public constant MAX_SAFE_RATE = 5000; // Maximum safe annual yield rate in basis points (50%)
   bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN'; // Role for managing rescued funds
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER'; // Role for managing yield rates and supply caps
-
-
-  
 
   /**
    * @dev Disable initializers on the implementation contract
@@ -139,16 +144,12 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @inheritdoc IERC4626
    */
-  function deposit(
-    uint256 assets,
-    address receiver
-  ) public override returns (uint256) {
+  function deposit(uint256 assets, address receiver) public override returns (uint256) {
     _updateYieldIndex();
     return super.deposit(assets, receiver);
   }
 
-
-     /**
+  /**
    * @inheritdoc IsGHO
    */
   function depositWithPermit(
@@ -170,20 +171,16 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
       )
     {} catch {}
 
-
     // Update yield index and perform deposit
     _updateYieldIndex();
     return super.deposit(assets, receiver);
   }
 
-    /**
+  /**
    * @inheritdoc IERC4626
    */
-  function mint(
-    uint256 shares,
-    address receiver
-  ) public override returns (uint256) {
-    _updateYieldIndex();  
+  function mint(uint256 shares, address receiver) public override returns (uint256) {
+    _updateYieldIndex();
     return super.mint(shares, receiver);
   }
 
@@ -231,15 +228,13 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     }
     _updateYieldIndex();
     $.targetRate = newRate;
-    
 
-      // Convert targetRate from basis points to ray (1e27 scale)
-      // targetRate is in basis points (e.g., 1000 = 10%)
-      uint256 annualRateRay = uint256(newRate) * RAY / 10000;
-      // Calculate the rate per second (annual rate / seconds in a year)
-      $.ratePerSecond = (annualRateRay / 365 days).toUint96();
- 
-    
+    // Convert targetRate from basis points to ray (1e27 scale)
+    // targetRate is in basis points (e.g., 1000 = 10%)
+    uint256 annualRateRay = (uint256(newRate) * RAY) / 10000;
+    // Calculate the rate per second (annual rate / seconds in a year)
+    $.ratePerSecond = (annualRateRay / 365 days).toUint96();
+
     emit TargetRateUpdated(newRate);
   }
 
@@ -254,7 +249,9 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @inheritdoc IRescuableBase
    */
-  function maxRescue(address erc20Token) public view override(IRescuableBase, RescuableBase) returns (uint256) {
+  function maxRescue(
+    address erc20Token
+  ) public view override(IRescuableBase, RescuableBase) returns (uint256) {
     if (erc20Token == asset()) {
       return 0; // Cannot rescue GHO
     }
@@ -270,7 +267,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
       revert AccessControlUnauthorizedAccount(_msgSender(), FUNDS_ADMIN_ROLE);
     }
   }
-
 
   /**
    * @notice Converts a GHO asset amount to a sGHO share amount based on the current yield index.
@@ -324,7 +320,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     uint256 accumulatedRate = $.ratePerSecond * timeSinceLastUpdate;
     uint256 growthFactor = RAY + accumulatedRate;
 
-    return ($.yieldIndex * growthFactor / RAY).toUint176();
+    return (($.yieldIndex * growthFactor) / RAY).toUint176();
   }
 
   /**
@@ -335,7 +331,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    */
   function _updateYieldIndex() internal {
     sGHOStorage storage $ = _getsGHOStorage();
-    if ($.lastUpdate != block.timestamp) { 
+    if ($.lastUpdate != block.timestamp) {
       uint256 newYieldIndex = _getCurrentYieldIndex();
       $.yieldIndex = newYieldIndex.toUint176();
       $.lastUpdate = uint64(block.timestamp);
@@ -345,14 +341,14 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
 
   // --- Public Getters for Storage Variables ---
 
-      /**
-    * @inheritdoc IERC20Metadata
-    */ 
-    function decimals() public pure override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
-      return 18;
-    }
+  /**
+   * @inheritdoc IERC20Metadata
+   */
+  function decimals() public pure override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8) {
+    return 18;
+  }
 
-    /**
+  /**
    * @inheritdoc IsGHO
    */
   function lastUpdate() public view returns (uint64) {

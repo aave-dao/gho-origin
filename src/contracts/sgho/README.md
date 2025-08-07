@@ -19,6 +19,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### Core Components
 
 **sGHO.sol**: The main vault contract implementing:
+
 - ERC-4626 vault functionality (deposit, withdraw, mint, redeem)
 - ERC-20 token standard with permit support
 - Automatic yield accrual via yield index mechanism
@@ -31,11 +32,11 @@ The contract uses a custom storage layout for gas optimization:
 
 ```solidity
 struct sGHOStorage {
-    uint176 yieldIndex;    // Current yield index for share/asset conversion
-    uint64 lastUpdate;     // Timestamp of last yield index update
-    uint16 targetRate;     // Target annual yield rate in basis points
-    uint160 supplyCap;     // Maximum total assets allowed in vault
-    uint96 ratePerSecond;  // Cached rate per second for gas efficiency
+  uint176 yieldIndex; // Current yield index for share/asset conversion
+  uint64 lastUpdate; // Timestamp of last yield index update
+  uint16 targetRate; // Target annual yield rate in basis points
+  uint160 supplyCap; // Maximum total assets allowed in vault
+  uint96 ratePerSecond; // Cached rate per second for gas efficiency
 }
 ```
 
@@ -151,9 +152,10 @@ The vault operates on a first-come, first-served basis. If the contract's GHO ba
 ### For DeFi Protocols
 
 sGHO implements the ERC-4626 standard, making it compatible with:
-- Lending protocols 
-- Yield aggregators 
-- Decentralized Exchanges 
+
+- Lending protocols
+- Yield aggregators
+- Decentralized Exchanges
 - Portfolio management tools
 
 ### For Developers
@@ -187,6 +189,7 @@ sgho.initialize(
 ### Upgradeable Design
 
 The contract uses OpenZeppelin's upgradeable pattern with:
+
 - Transparent proxy deployment
 - Storage collision protection via ERC-7201
 - Initialization pattern to prevent re-initialization
@@ -194,6 +197,7 @@ The contract uses OpenZeppelin's upgradeable pattern with:
 ## Testing
 
 The contract includes comprehensive test coverage for:
+
 - ERC-4626 compliance
 - Yield accrual mechanisms
 - Access control
@@ -201,6 +205,7 @@ The contract includes comprehensive test coverage for:
 - Emergency functions
 
 Run tests with:
+
 ```bash
 forge test --match-contract sGhoTest
 ```
@@ -216,10 +221,11 @@ forge test --match-contract sGhoTest
 ## Support
 
 For technical questions or issues:
+
 - Check the test files for usage examples
 - Review the contract comments for implementation details
 - Refer to the EIP-4626 specification for vault standards
 
 ---
 
-*This README reflects the current implementation as of the latest version. For the most precise technical details, refer to the contract source code and tests.*
+_This README reflects the current implementation as of the latest version. For the most precise technical details, refer to the contract source code and tests._

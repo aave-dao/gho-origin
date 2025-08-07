@@ -34,11 +34,11 @@ interface IsGHO {
   event TargetRateUpdated(uint256 newRate);
 
   /**
-   * @notice Emitted when the yield index is updated.
-   * @param newYieldIndex The new yield index.
-   * @param lastUpdate The timestamp of the last update.
+   * @notice Emitted when the exchange rate is updated.
+   * @param timestamp The timestamp of the update.
+   * @param currentRate The current exchange rate.
    */
-  event YieldIndexUpdated(uint256 newYieldIndex, uint64 lastUpdate);
+  event ExchangeRateUpdate(uint256 timestamp, uint256 currentRate);
 
   /**
    * @notice Emitted when the supply cap is updated.

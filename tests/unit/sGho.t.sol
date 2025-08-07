@@ -130,14 +130,15 @@ contract sGhoTest is TestnetProcedures {
               sGHO.initialize.selector,
               address(gho),
               SUPPLY_CAP,
-              address(this), // executor
-              fundsAdmin,    // fundsAdmin
-              yManager       // yieldManager
+              address(this) // executor
             )
           )
         )
       )
     );
+
+    sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
+    sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
 
     deal(address(user1), 10 ether);
     deal(address(gho), address(sgho), 1 ether, true);
@@ -1036,21 +1037,16 @@ contract sGhoTest is TestnetProcedures {
       privateKey
     );
     
-    // Execute depositWithPermit - should use actual balance
+    // Execute depositWithPermit - should revert due to insufficient balance
     vm.startPrank(owner);
-    uint256 shares = sgho.depositWithPermit(
+    vm.expectRevert("ERC20: transfer amount exceeds balance");
+    sgho.depositWithPermit(
       depositAmount,
       owner,
       deadline,
       IsGHO.SignatureParams(v, r, s)
     );
     vm.stopPrank();
-    
-    // Verify only actual balance was deposited
-    assertEq(sgho.balanceOf(owner), shares, 'Shares should be minted to owner');
-    assertEq(gho.balanceOf(owner), 0, 'All GHO should be transferred from owner');
-    assertEq(gho.balanceOf(address(sgho)), actualBalance + 1 ether, 'Only actual balance should be in contract');
-    assertEq(shares, actualBalance, 'Shares should equal actual balance (1:1 initially)');
   }
 
   function test_permit_depositWithPermit_invalidSignature() external {
@@ -2140,9 +2136,7 @@ contract sGhoTest is TestnetProcedures {
               sGHO.initialize.selector,
               address(gho),              
               SUPPLY_CAP,
-              address(this), // executor
-              fundsAdmin,    // fundsAdmin
-              yManager       // yieldManager
+              address(this) // executor
             )
           )
         )
@@ -2163,9 +2157,7 @@ contract sGhoTest is TestnetProcedures {
         sGHO.initialize.selector,
         address(gho),
         SUPPLY_CAP,
-        address(this), // executor
-        fundsAdmin,    // fundsAdmin
-        yManager       // yieldManager
+        address(this) // executor
       )
     );
 
@@ -2173,7 +2165,7 @@ contract sGhoTest is TestnetProcedures {
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), SUPPLY_CAP, address(this), fundsAdmin, yManager);
+    newSgho.initialize(address(gho), SUPPLY_CAP, address(this));
   }
 
 
@@ -2313,7 +2305,7 @@ contract sGhoTest is TestnetProcedures {
   // EVENT TESTS
   // ========================================
 
-  function test_yieldIndexUpdateEvent_basic() external {
+  function test_ExchangeRateUpdateEvent_basic() external {
     // Set a target rate to ensure yield accrual
     vm.startPrank(yManager);
     sgho.setTargetRate(1000); // 10% APR
@@ -2330,7 +2322,7 @@ contract sGhoTest is TestnetProcedures {
     // Trigger yield update by depositing - should emit event
     vm.startPrank(user1);
     vm.expectEmit(true, true, true, true, address(sgho));
-    emit IsGHO.YieldIndexUpdated(emulatedYieldIndex, uint64(block.timestamp));
+    emit IsGHO.ExchangeRateUpdate(block.timestamp, emulatedYieldIndex);
     sgho.deposit(100 ether, user1);
     vm.stopPrank();
 

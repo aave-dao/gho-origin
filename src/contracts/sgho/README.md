@@ -180,9 +180,7 @@ uint256 assets = sgho.convertToAssets(shares);
 sgho.initialize(
     ghoAddress,        // GHO token address
     supplyCap,         // Maximum vault capacity
-    executor,          // DEFAULT_ADMIN_ROLE
-    fundsAdmin,        // FUNDS_ADMIN_ROLE
-    yieldManager       // YIELD_MANAGER_ROLE
+    executor          // DEFAULT_ADMIN_ROLE
 );
 ```
 

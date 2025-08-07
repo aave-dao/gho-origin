@@ -71,11 +71,14 @@ contract sGhoPrecisionTest is TestnetProcedures {
         sgho.initialize(
             address(gho),
             SUPPLY_CAP,
-            admin,
-            fundsAdmin,
-            yieldManager
+            admin
         );
 
+        vm.startPrank(admin);
+        sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yieldManager);
+        sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
+        vm.stopPrank();
+        
         // Setup initial balances
         gho.mint(user1, 100000e18);
         gho.mint(user2, 100000e18);

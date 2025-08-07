@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
+import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
+import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
+import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
 import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IERC20Metadata} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
-import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
-import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
-import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
-import {IsGHO} from './interfaces/IsGHO.sol';
-import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
-import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
 import {RescuableACL} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableACL.sol';
 import {RescuableBase, IRescuableBase} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableBase.sol';
+import {IsGHO} from './interfaces/IsGHO.sol';
+
 /**
  * @title sGHO Token
  * @author @kpk
@@ -68,15 +69,11 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    * @param _gho       Address of the underlying GHO token.
    * @param _supplyCap The total supply cap for the vault.
    * @param _executor  The address that will be granted the DEFAULT_ADMIN_ROLE.
-   * @param _fundsAdmin The address that will be granted the FUNDS_ADMIN_ROLE.
-   * @param _yieldManager The address that will be granted the YIELD_MANAGER_ROLE.
    */
   function initialize(
     address _gho,
     uint160 _supplyCap,
-    address _executor,
-    address _fundsAdmin,
-    address _yieldManager
+    address _executor
   ) public payable initializer {
     if (_gho == address(0)) revert ZeroAddressNotAllowed();
 
@@ -86,8 +83,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     __AccessControl_init();
 
     _grantRole(DEFAULT_ADMIN_ROLE, _executor);
-    _grantRole(FUNDS_ADMIN_ROLE, _fundsAdmin);
-    _grantRole(YIELD_MANAGER_ROLE, _yieldManager);
 
     sGHOStorage storage $ = _getsGHOStorage();
     $.supplyCap = _supplyCap;
@@ -128,7 +123,7 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @inheritdoc IERC4626
    */
-  function maxDeposit(address) public view override returns (uint256) {
+  function maxDeposit(address receiver) public view override returns (uint256) {
     sGHOStorage storage $ = _getsGHOStorage();
     uint256 currentAssets = totalAssets();
     return currentAssets >= $.supplyCap ? 0 : $.supplyCap - currentAssets;
@@ -137,10 +132,8 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
   /**
    * @inheritdoc IERC4626
    */
-  function maxMint(address) public view override returns (uint256) {
-    sGHOStorage storage $ = _getsGHOStorage();
-    uint256 currentAssets = totalAssets();
-    return (currentAssets >= $.supplyCap) ? 0 : convertToShares($.supplyCap - currentAssets);
+  function maxMint(address receiver) public view override returns (uint256) {
+    return convertToShares(maxDeposit(receiver));
   }
 
   /**
@@ -177,13 +170,6 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
       )
     {} catch {}
 
-    // Check actual user balance and adjust assets if necessary
-    // This prevents issues with balance changes during transaction mining
-    // and ensures the transaction doesn't revert due to insufficient balance
-    uint256 actualUserBalance = IERC20(asset()).balanceOf(_msgSender());
-    if (assets > actualUserBalance) {
-      assets = actualUserBalance;
-    }
 
     // Update yield index and perform deposit
     _updateYieldIndex();
@@ -246,16 +232,13 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
     _updateYieldIndex();
     $.targetRate = newRate;
     
-    // Calculate and cache the new rate per second for gas efficiency
-    if (newRate == 0) {
-      $.ratePerSecond = 0;
-    } else {
+
       // Convert targetRate from basis points to ray (1e27 scale)
       // targetRate is in basis points (e.g., 1000 = 10%)
       uint256 annualRateRay = uint256(newRate) * RAY / 10000;
       // Calculate the rate per second (annual rate / seconds in a year)
       $.ratePerSecond = (annualRateRay / 365 days).toUint96();
-    }
+ 
     
     emit TargetRateUpdated(newRate);
   }
@@ -352,12 +335,12 @@ contract sGHO is Initializable, ERC4626Upgradeable, ERC20PermitUpgradeable, Acce
    */
   function _updateYieldIndex() internal {
     sGHOStorage storage $ = _getsGHOStorage();
-    uint256 newYieldIndex = _getCurrentYieldIndex();
-    if (newYieldIndex != $.yieldIndex) {
+    if ($.lastUpdate != block.timestamp) { 
+      uint256 newYieldIndex = _getCurrentYieldIndex();
       $.yieldIndex = newYieldIndex.toUint176();
+      $.lastUpdate = uint64(block.timestamp);
+      emit ExchangeRateUpdate(block.timestamp, newYieldIndex);
     }
-    $.lastUpdate = uint64(block.timestamp);
-    emit YieldIndexUpdated(newYieldIndex, $.lastUpdate);
   }
 
   // --- Public Getters for Storage Variables ---

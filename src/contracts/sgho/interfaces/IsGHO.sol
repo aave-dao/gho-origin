@@ -93,7 +93,7 @@ interface IsGHO {
   /**
    * @notice Returns the current rate per second for yield generation.
    * @dev The rate is expressed in basis points (1% = 100).
-   * @return The rate per second in basis points multiplied by 10^18.
+   * @return The rate per second multiplied by 10^27.
    */
   function ratePerSecond() external view returns (uint96);
 

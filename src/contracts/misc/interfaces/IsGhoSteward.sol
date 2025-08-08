@@ -5,9 +5,9 @@ import {IsGHO} from '../../sgho/interfaces/IsGho.sol';
 
 interface IsGhoSteward {
   /**
-   * @note Formula for rate (taking into account integer math) is:
-   *       `targetRate = amplification * floatRate / AMPLIFICATION_FACTOR + fixedRate`,
-   *       where `AMPLIFICATION_FACTOR` is 100_00,
+   * @note Formula for the `targetRate` (taking into account integer math) is:
+   *       `targetRate = amplification * floatRate / AMPLIFICATION_DENOMINATOR + fixedRate`,
+   *       where `AMPLIFICATION_DENOMINATOR` is 100_00,
    *       `amplification`, `floatRate` and `fixedRate` are `uint16`
    */
   struct RateConfig {
@@ -38,7 +38,7 @@ interface IsGhoSteward {
   /**
    * @notice Event is emitted whenever the `supplyCap` is updated.
    * @param caller Message sender, who initiated the update
-   * @param supplyCap Supply Cap installed in `sGho` after update
+   * @param supplyCap Supply Cap installed in `sGHO` after update
    */
   event SupplyCapUpdated(address indexed caller, uint256 supplyCap);
 
@@ -48,7 +48,7 @@ interface IsGhoSteward {
   error ZeroAddress();
 
   /**
-   * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGho`.
+   * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
    */
   error TooBigRate();
 
@@ -56,4 +56,110 @@ interface IsGhoSteward {
    * @dev Attempted to set the same value, which is already installed.
    */
   error SameValue();
+
+  /**
+   * @notice Updates `targetRate` on `sGHO` and `rateConfig` inside the steward using new values.
+   * @dev `rateConfig_` must be different from the current `rateConfig`, otherwise the function will revert.
+   *
+   * If the value specified in the `rateConfig_` is identical to the current one, then the `msg.sender` role check will be skipped.
+   * Otherwise, it will be assumed that `msg.sender` is trying to update the variable and role check will be performed.
+   *
+   * For example, `msg.sender` could have 2 roles out of 3, but this does not prevent it from using
+   * this function and performing updates to the corresponding variables.
+   *
+   * To update all parameters at once the caller must have three roles:
+   *   - `AMPLIFICATION_MANAGER_ROLE`
+   *   - `FLOAT_RATE_MANAGER_ROLE`
+   *   - `FIXED_RATE_MANAGER_ROLE`
+   *
+   * @param rateConfig_ Set of parameters for calculating `targetRate`
+   * @return targetRate `targetRate` set in `sGHO`
+   */
+  function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16);
+
+  /**
+   * @notice Updates `targetRate` on `sGHO` and `rateConfig.amplification` inside the steward using new value.
+   * @dev `amplification_` must be different from the current `rateConfig.amplification`, otherwise the function will revert.
+   * Could be updated to any `uint16` value.
+   * Only callable by `AMPLIFICATION_MANAGER_ROLE`.
+   * @param amplification_ New value for calculationg `targetRate`
+   * @return targetRate `targetRate` set in `sGHO`
+   */
+  function setAmplification(uint256 amplification_) external returns (uint16);
+
+  /**
+   * @notice Updates `targetRate` on `sGHO` and `rateConfig.floatRate` inside the steward using new value.
+   * @dev `floatRate_` must be different from the current `rateConfig.floatRate`, otherwise the function will revert.
+   * Could be updated to any `uint16` value.
+   * Only callable by `FLOAT_RATE_MANAGER_ROLE`.
+   * @param floatRate_ New value for calculationg `targetRate`
+   * @return targetRate `targetRate` set in `sGHO`
+   */
+  function setFloatRate(uint256 floatRate_) external returns (uint16);
+
+  /**
+   * @notice Updates `targetRate` on `sGHO` and `rateConfig.fixedRate` inside the steward using new value.
+   * @dev `fixedRate_` must be different from the current `rateConfig.fixedRate`, otherwise the function will revert.
+   * Could be updated to any `uint16` value.
+   * Only callable by `FLOAT_RATE_MANAGER_ROLE`.
+   * @param fixedRate_ New value for calculationg `targetRate`
+   * @return targetRate `targetRate` set in `sGHO`
+   */
+  function setFixedRate(uint256 fixedRate_) external returns (uint16);
+
+  /**
+   * @notice Updates `supplyCap` on `sGHO`.
+   * @dev Could be updated to any `uint160` value.
+   * Only callable by `SUPPLY_CAP_MANAGER_ROLE`.
+   * @param supplyCap_ New `supplyCap` to set.
+   */
+  function setSupplyCap(uint256 supplyCap_) external;
+
+  /**
+   * @notice Calculates `targetRate` using `rateConfig_` struct.
+   * @dev Reverts if new `targetRate` exceeds `MAX_RATE`.
+   * @param rateConfig_ Set of parameters for calculating `targetRate`
+   * @return targetRate result `targetRate`
+   */
+  function previewTargetRate(RateConfig calldata rateConfig_) external view returns (uint16);
+
+  /**
+   * @notice Returns current `rateConfig`.
+   */
+  function getRateConfig() external view returns (RateConfig memory);
+
+  /**
+   * @notice Returns `sGHO` address.
+   */
+  function sGHO() external view returns (IsGHO);
+
+  /**
+   * @notice Returns max available `targetRate` to install.
+   */
+  function MAX_RATE() external view returns (uint16);
+
+  /**
+   * @notice Returns constant, on which `amplification` is divided by in the formula for calculating `targetRate`.
+   */
+  function AMPLIFICATION_DENOMINATOR() external view returns (uint16);
+
+  /**
+   * @notice Returns role that can update the `amplification` parameter.
+   */
+  function AMPLIFICATION_MANAGER_ROLE() external view returns (bytes32);
+
+  /**
+   * @notice Returns role that can update the `floatRate` parameter.
+   */
+  function FLOAT_RATE_MANAGER_ROLE() external view returns (bytes32);
+
+  /**
+   * @notice Returns role that can update the `fixedRate` parameter.
+   */
+  function FIXED_RATE_MANAGER_ROLE() external view returns (bytes32);
+
+  /**
+   * @notice Returns role that can update the `supplyCap` parameter.
+   */
+  function SUPPLY_CAP_MANAGER_ROLE() external view returns (bytes32);
 }

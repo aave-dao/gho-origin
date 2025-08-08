@@ -45,28 +45,41 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     _grantRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee);
   }
 
-  function setRateConfig(RateConfig calldata rateConfig_) external {
+  function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16) {
     RateConfig memory rateConfigCopy = rateConfig;
+    bool isRateChanged;
 
     if (rateConfigCopy.amplification != rateConfig_.amplification) {
       _checkRole(AMPLIFICATION_MANAGER_ROLE);
+
+      isRateChanged = true;
       rateConfigCopy.amplification = rateConfig_.amplification;
     }
 
     if (rateConfigCopy.floatRate != rateConfig_.floatRate) {
       _checkRole(FLOAT_RATE_MANAGER_ROLE);
+
+      isRateChanged = true;
       rateConfigCopy.floatRate = rateConfig_.floatRate;
     }
 
     if (rateConfigCopy.fixedRate != rateConfig_.fixedRate) {
       _checkRole(FIXED_RATE_MANAGER_ROLE);
+
+      isRateChanged = true;
       rateConfigCopy.fixedRate = rateConfig_.fixedRate;
     }
 
-    _setRateConfig(rateConfigCopy);
+    if (!isRateChanged) {
+      revert SameValue();
+    }
+
+    return _setRateConfig(rateConfigCopy);
   }
 
-  function setAmplification(uint256 amplification_) external onlyRole(AMPLIFICATION_MANAGER_ROLE) {
+  function setAmplification(
+    uint256 amplification_
+  ) external onlyRole(AMPLIFICATION_MANAGER_ROLE) returns (uint16) {
     RateConfig memory rateConfigCopy = rateConfig;
 
     if (rateConfigCopy.amplification == amplification_) {
@@ -74,10 +87,12 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     }
 
     rateConfigCopy.amplification = amplification_.toUint16();
-    _setRateConfig(rateConfigCopy);
+    return _setRateConfig(rateConfigCopy);
   }
 
-  function setFloatRate(uint256 floatRate_) external onlyRole(FLOAT_RATE_MANAGER_ROLE) {
+  function setFloatRate(
+    uint256 floatRate_
+  ) external onlyRole(FLOAT_RATE_MANAGER_ROLE) returns (uint16) {
     RateConfig memory rateConfigCopy = rateConfig;
 
     if (rateConfigCopy.floatRate == floatRate_) {
@@ -85,10 +100,12 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     }
 
     rateConfigCopy.floatRate = floatRate_.toUint16();
-    _setRateConfig(rateConfigCopy);
+    return _setRateConfig(rateConfigCopy);
   }
 
-  function setFixedRate(uint256 fixedRate_) external onlyRole(FIXED_RATE_MANAGER_ROLE) {
+  function setFixedRate(
+    uint256 fixedRate_
+  ) external onlyRole(FIXED_RATE_MANAGER_ROLE) returns (uint16) {
     RateConfig memory rateConfigCopy = rateConfig;
 
     if (rateConfigCopy.fixedRate == fixedRate_) {
@@ -96,7 +113,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     }
 
     rateConfigCopy.fixedRate = fixedRate_.toUint16();
-    _setRateConfig(rateConfigCopy);
+    return _setRateConfig(rateConfigCopy);
   }
 
   function setSupplyCap(uint256 supplyCap_) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
@@ -110,7 +127,15 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     emit SupplyCapUpdated(msg.sender, supplyCap_);
   }
 
-  function _setRateConfig(RateConfig memory rateConfig_) internal {
+  function previewTargetRate(RateConfig calldata rateConfig_) external view returns (uint16) {
+    return _checkRateConfig(rateConfig_);
+  }
+
+  function getRateConfig() external view returns (RateConfig memory) {
+    return rateConfig;
+  }
+
+  function _setRateConfig(RateConfig memory rateConfig_) internal returns (uint16) {
     uint16 targetRate = _checkRateConfig(rateConfig_);
 
     sGHO.setTargetRate(targetRate);
@@ -123,17 +148,20 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       rateConfig_.floatRate,
       rateConfig_.fixedRate
     );
+
+    return targetRate;
   }
 
   function _checkRateConfig(RateConfig memory rateConfig_) internal view returns (uint16) {
-    uint16 targetRate = (rateConfig_.amplification * rateConfig_.floatRate) /
+    // In order to avoid overflow we cast to uint256, and check result later
+    uint256 targetRate = (uint256(rateConfig_.amplification) * rateConfig_.floatRate) /
       AMPLIFICATION_DENOMINATOR +
       rateConfig_.fixedRate;
 
-    if (targetRate < MAX_RATE) {
+    if (targetRate > MAX_RATE) {
       revert TooBigRate();
     }
 
-    return targetRate;
+    return targetRate.toUint16();
   }
 }

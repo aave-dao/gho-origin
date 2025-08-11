@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
-import {Initializable} from 'openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol';
-import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import {Initializable} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/utils/Initializable.sol';
+import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 
-contract MockSGho is Initializable, AccessControlUpgradeable {
+contract MockSGho is Initializable, AccessControl {
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGHOStorage {
     uint176 yieldIndex;

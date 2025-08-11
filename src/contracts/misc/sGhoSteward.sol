@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AccessControl} from 'openzeppelin-contracts/access/AccessControl.sol';
-import {SafeCast} from 'openzeppelin-contracts/utils/math/SafeCast.sol';
+import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
+import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
 import {IsGhoSteward} from './interfaces/IsGhoSteward.sol';
 import {IsGHO} from '../sgho/interfaces/IsGho.sol';

@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import 'forge-std/Test.sol';
 
-import {AccessControl} from 'openzeppelin-contracts/access/AccessControl.sol';
+import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 
 import {IsGHO} from 'src/contracts/sgho/interfaces/IsGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
@@ -279,5 +279,23 @@ contract sGhoStewardTest is Test {
 
     assertEq(sGho.targetRate(), target);
     assertEq(resultTarget, target);
+  }
+
+  function test_setRateMoreThanMax(uint16 ampl, uint16 float, uint16 fix) public {
+    vm.assume((uint256(ampl) * float) / 1e4 + fix > 5e3);
+
+    vm.startPrank(ghoCommittee);
+
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: ampl,
+      floatRate: float,
+      fixedRate: fix
+    });
+
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.TooBigRate.selector));
+    steward.previewTargetRate(newConfig);
+
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.TooBigRate.selector));
+    steward.setRateConfig(newConfig);
   }
 }

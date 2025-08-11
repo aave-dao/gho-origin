@@ -60,7 +60,7 @@ contract MockSGho is Initializable, AccessControlUpgradeable {
     return _getsGHOStorage().targetRate;
   }
 
-  function supplyCap() public view returns (uint256) {
+  function supplyCap() public view returns (uint160) {
     return _getsGHOStorage().supplyCap;
   }
 

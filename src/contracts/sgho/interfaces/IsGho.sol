@@ -4,8 +4,6 @@ pragma solidity ^0.8.19;
 /**
  * @title IsGHO Interface
  * @notice Interface for the sGHO contract, which is an ERC4626 vault for GHO tokens.
- * @dev This interface combines functionalities from ERC4626 for a tokenized vault,
- * ERC20Permit for gas-less approvals, and includes custom logic for yield generation and administrative roles.
  */
 interface IsGHO {
   // --- Custom Errors ---
@@ -34,12 +32,37 @@ interface IsGHO {
   event TargetRateUpdated(uint256 newRate);
 
   /**
+   * @notice Emitted when the timestamp and yield index are updated.
+   * @param timestamp The timestamp of the update.
+   * @param currentRate The current yield index.
+   */
+  event ExchangeRateUpdate(uint256 timestamp, uint256 currentRate);
+
+  /**
    * @notice Emitted when the supply cap is updated.
    * @param newSupplyCap The new supply cap.
    */
   event SupplyCapUpdated(uint256 newSupplyCap);
 
-  // --- Functions ---
+  /**
+   * @notice Struct for signature parameters.
+   * @param v The recovery ID of the signature.
+   * @param r The R component of the signature.
+   * @param s The S component of the signature.
+   */
+  struct SignatureParams {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+  }
+
+  // --- State Variables (as view functions) ---
+
+  /**
+   * @notice Returns the address of the GHO token used as the underlying asset in the vault.
+   * @return The address of the GHO token.
+   */
+  function GHO() external view returns (address);
 
   /**
    * @notice Returns the total supply cap of the vault.
@@ -68,6 +91,13 @@ interface IsGHO {
   function targetRate() external view returns (uint16);
 
   /**
+   * @notice Returns the current rate per second for yield generation.
+   * @dev The rate is expressed in basis points (1% = 100).
+   * @return The rate per second multiplied by 10^27.
+   */
+  function ratePerSecond() external view returns (uint96);
+
+  /**
    * @notice Returns the timestamp of the last time the yield index was updated.
    * @return The Unix timestamp of the last update.
    */
@@ -87,6 +117,8 @@ interface IsGHO {
    */
   function YIELD_MANAGER_ROLE() external view returns (bytes32);
 
+  // --- Functions ---
+
   /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
@@ -100,5 +132,23 @@ interface IsGHO {
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * @param newSupplyCap The new supply cap.
    */
-  function setSupplyCap(uint256 newSupplyCap) external;
+  function setSupplyCap(uint160 newSupplyCap) external;
+
+  /**
+   * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
+   * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
+   * The permit is used to approve the vault to spend the user's GHO tokens.
+   * The yield index is updated before the deposit to ensure correct share calculation.
+   * @param assets The amount of GHO to deposit.
+   * @param receiver The address that will receive the sGHO shares.
+   * @param deadline Must be a timestamp in the future.
+   * @param sig A `secp256k1` signature params from `msgSender()`.
+   * @return The amount of sGHO shares minted.
+   */
+  function depositWithPermit(
+    uint256 assets,
+    address receiver,
+    uint256 deadline,
+    SignatureParams memory sig
+  ) external returns (uint256);
 }

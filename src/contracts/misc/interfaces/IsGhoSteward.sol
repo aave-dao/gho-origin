@@ -78,36 +78,6 @@ interface IsGhoSteward {
   function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16);
 
   /**
-   * @notice Updates `targetRate` on `sGHO` and `rateConfig.amplification` inside the steward using new value.
-   * @dev `amplification_` must be different from the current `rateConfig.amplification`, otherwise the function will revert.
-   * Could be updated to any `uint16` value.
-   * Only callable by `AMPLIFICATION_MANAGER_ROLE`.
-   * @param amplification_ New value for calculationg `targetRate`
-   * @return targetRate `targetRate` set in `sGHO`
-   */
-  function setAmplification(uint256 amplification_) external returns (uint16);
-
-  /**
-   * @notice Updates `targetRate` on `sGHO` and `rateConfig.floatRate` inside the steward using new value.
-   * @dev `floatRate_` must be different from the current `rateConfig.floatRate`, otherwise the function will revert.
-   * Could be updated to any `uint16` value.
-   * Only callable by `FLOAT_RATE_MANAGER_ROLE`.
-   * @param floatRate_ New value for calculationg `targetRate`
-   * @return targetRate `targetRate` set in `sGHO`
-   */
-  function setFloatRate(uint256 floatRate_) external returns (uint16);
-
-  /**
-   * @notice Updates `targetRate` on `sGHO` and `rateConfig.fixedRate` inside the steward using new value.
-   * @dev `fixedRate_` must be different from the current `rateConfig.fixedRate`, otherwise the function will revert.
-   * Could be updated to any `uint16` value.
-   * Only callable by `FLOAT_RATE_MANAGER_ROLE`.
-   * @param fixedRate_ New value for calculationg `targetRate`
-   * @return targetRate `targetRate` set in `sGHO`
-   */
-  function setFixedRate(uint256 fixedRate_) external returns (uint16);
-
-  /**
    * @notice Updates `supplyCap` on `sGHO`.
    * @dev Could be updated to any `uint160` value.
    * Only callable by `SUPPLY_CAP_MANAGER_ROLE`.

@@ -77,45 +77,6 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     return _setRateConfig(rateConfigCopy);
   }
 
-  function setAmplification(
-    uint256 amplification_
-  ) external onlyRole(AMPLIFICATION_MANAGER_ROLE) returns (uint16) {
-    RateConfig memory rateConfigCopy = rateConfig;
-
-    if (rateConfigCopy.amplification == amplification_) {
-      revert SameValue();
-    }
-
-    rateConfigCopy.amplification = amplification_.toUint16();
-    return _setRateConfig(rateConfigCopy);
-  }
-
-  function setFloatRate(
-    uint256 floatRate_
-  ) external onlyRole(FLOAT_RATE_MANAGER_ROLE) returns (uint16) {
-    RateConfig memory rateConfigCopy = rateConfig;
-
-    if (rateConfigCopy.floatRate == floatRate_) {
-      revert SameValue();
-    }
-
-    rateConfigCopy.floatRate = floatRate_.toUint16();
-    return _setRateConfig(rateConfigCopy);
-  }
-
-  function setFixedRate(
-    uint256 fixedRate_
-  ) external onlyRole(FIXED_RATE_MANAGER_ROLE) returns (uint16) {
-    RateConfig memory rateConfigCopy = rateConfig;
-
-    if (rateConfigCopy.fixedRate == fixedRate_) {
-      revert SameValue();
-    }
-
-    rateConfigCopy.fixedRate = fixedRate_.toUint16();
-    return _setRateConfig(rateConfigCopy);
-  }
-
   function setSupplyCap(uint256 supplyCap_) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
     uint256 currentSupplyCap = sGHO.supplyCap();
 

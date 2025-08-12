@@ -143,14 +143,6 @@ contract sGHO is
   }
 
   /**
-   * @inheritdoc IERC4626
-   */
-  function deposit(uint256 assets, address receiver) public override returns (uint256) {
-    _updateYieldIndex();
-    return super.deposit(assets, receiver);
-  }
-
-  /**
    * @inheritdoc IsGHO
    */
   function depositWithPermit(
@@ -172,41 +164,7 @@ contract sGHO is
       )
     {} catch {}
 
-    // Update yield index and perform deposit
-    _updateYieldIndex();
-    return super.deposit(assets, receiver);
-  }
-
-  /**
-   * @inheritdoc IERC4626
-   */
-  function mint(uint256 shares, address receiver) public override returns (uint256) {
-    _updateYieldIndex();
-    return super.mint(shares, receiver);
-  }
-
-  /**
-   * @inheritdoc IERC4626
-   */
-  function withdraw(
-    uint256 assets,
-    address receiver,
-    address owner
-  ) public override returns (uint256) {
-    _updateYieldIndex();
-    return super.withdraw(assets, receiver, owner);
-  }
-
-  /**
-   * @inheritdoc IERC4626
-   */
-  function redeem(
-    uint256 shares,
-    address receiver,
-    address owner
-  ) public override returns (uint256) {
-    _updateYieldIndex();
-    return super.redeem(shares, receiver, owner);
+    return deposit(assets, receiver);
   }
 
   /**
@@ -255,6 +213,14 @@ contract sGHO is
       return 0; // Cannot rescue GHO
     }
     return IERC20(erc20Token).balanceOf(address(this));
+  }
+
+  /**
+   * @inheritdoc ERC20Upgradeable
+   */
+  function _update(address from, address to, uint256 value) internal override {
+    _updateYieldIndex();
+    super._update(from, to, value);
   }
 
   /**
@@ -371,14 +337,14 @@ contract sGHO is
   /**
    * @inheritdoc IsGHO
    */
-  function supplyCap() public view returns (uint256) {
+  function supplyCap() public view returns (uint160) {
     return _getsGHOStorage().supplyCap;
   }
 
   /**
    * @inheritdoc IsGHO
    */
-  function yieldIndex() public view returns (uint256) {
+  function yieldIndex() public view returns (uint176) {
     return _getsGHOStorage().yieldIndex;
   }
 

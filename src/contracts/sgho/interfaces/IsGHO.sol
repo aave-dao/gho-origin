@@ -68,7 +68,7 @@ interface IsGHO {
    * @notice Returns the total supply cap of the vault.
    * @return The total supply cap.
    */
-  function supplyCap() external view returns (uint256);
+  function supplyCap() external view returns (uint160);
 
   /**
    * @notice Returns the maximum safe rate for the vault.
@@ -81,7 +81,7 @@ interface IsGHO {
    * @dev This index is used to calculate the value of sGHO in terms of GHO.
    * @return The current yield index.
    */
-  function yieldIndex() external view returns (uint256);
+  function yieldIndex() external view returns (uint176);
 
   /**
    * @notice Returns the current target annual percentage rate (APR) for yield generation.

@@ -215,9 +215,6 @@ contract sGHO is
     return IERC20(erc20Token).balanceOf(address(this));
   }
 
-  /**
-   * @inheritdoc ERC20Upgradeable
-   */
   function _update(address from, address to, uint256 value) internal override {
     _updateYieldIndex();
     super._update(from, to, value);

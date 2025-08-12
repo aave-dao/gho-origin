@@ -218,6 +218,32 @@ forge test --match-contract sGhoTest
 - **Token Decimals**: 18 (same as GHO)
 - **Storage**: ERC-7201 namespaced storage
 
+## Precision
+
+### Overview
+
+sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions. The contract employs the RAY precision unit (1e27) for internal yield calculations.
+
+### Key Precision Considerations
+
+- **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
+- **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
+- **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
+- **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
+
+### Detailed Analysis
+
+For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the detailed precision analysis document:
+
+**[Precision Analysis](./docs/precision_analysis/PRECISION.md)**
+
+This document covers:
+- Mathematical foundations of the yield mechanism
+- Precision loss scenarios and mitigations
+- Edge case handling for extreme values
+- Gas optimization considerations
+- Testing strategies for precision validation
+
 ## Support
 
 For technical questions or issues:

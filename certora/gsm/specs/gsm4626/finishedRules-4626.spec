@@ -1,7 +1,9 @@
-import "../GsmMethods/methods4626_base.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/erc4626.spec";
+import "methods4626_base.spec";
+
+//import "../GsmMethods/aave_price_fee_limits.spec";
+import "../shared/methods_divint_summary.spec";
+import "../shared/erc20.spec";
+import "erc4626.spec";
 
 
 // @title Rescuing GHO never lefts less GHO available than _accruedFees.
@@ -91,7 +93,7 @@ rule sellAssetIncreasesExposure()
 
 definition canChangeExposureCap(method f) returns bool = 
 	f.selector == sig:updateExposureCap(uint128).selector ||
-	f.selector == sig:initialize(address,address,uint128).selector||
+          f.selector == sig:initialize(address,address,uint128,address).selector||
 	f.selector == sig:seize().selector;
 
 
@@ -365,7 +367,7 @@ rule giftingUnderlyingDoesntCreateExcessOrDearth()
 // https://prover.certora.com/output/6893/ada8f51ae4f7440b86c51e44b0848c45/?anonymousKey=6d86bdd46fd01d54e4d129bc12358b790450b57c
 rule exposureBelowCap(method f)
 	filtered { f -> 
-		f.selector != sig:initialize(address,address,uint128).selector
+    f.selector != sig:initialize(address,address,uint128,address).selector
 		&& f.selector != sig:updateExposureCap(uint128).selector
 		&& f.selector != sig:backWithUnderlying(uint256).selector
 	}   

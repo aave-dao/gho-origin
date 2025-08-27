@@ -1,8 +1,14 @@
-import "../GsmMethods/methods4626_base.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/erc4626.spec";
+import "methods4626_base.spec";
 
+import "../shared/methods_divint_summary.spec";
+import "erc4626.spec";
+
+//methods/
+//{
+  // GSM4626.sol
+//  function _.UNDERLYING_ASSET() external  => DISPATCHER(true);
+//}
+  
 // @title The amount of asset returned is less than or equal to given param
 // STATUS: PASS
 // https://prover.certora.com/output/11775/66c7c0a501d04b7e815fcd13680c087d?anonymousKey=6c44ce466f01c24f3e7d5432b4ddd2b8170da571

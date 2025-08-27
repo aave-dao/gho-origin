@@ -1,10 +1,10 @@
 methods {
-	// summarization for elimination the raymul operation in balance of and totalSupply.
-	//getReserveNormalizedVariableDebt(address asset) returns (uint256) => indexAtTimestamp(e.block.timestamp)
-	//setAdditionalData(address user, uint128 data) envfree
-    function _.handleAction(address, uint256, uint256) external => NONDET;
-	function scaledBalanceOfToBalanceOf(uint256) external returns (uint256) envfree;
-    //balanceOf(address) returns (uint256) envfree
+  // summarization for elimination the raymul operation in balance of and totalSupply.
+  //getReserveNormalizedVariableDebt(address asset) returns (uint256) => indexAtTimestamp(e.block.timestamp)
+  //setAdditionalData(address user, uint128 data) envfree
+  function _.handleAction(address, uint256, uint256) external => NONDET;
+  function scaledBalanceOfToBalanceOf(uint256) external returns (uint256);
+  //balanceOf(address) returns (uint256) envfree
 }
 
 definition ray() returns uint256 = 1000000000000000000000000000; // 10^27
@@ -34,20 +34,20 @@ ghost sumAllBalance() returns mathint {
     init_state axiom sumAllBalance() == 0;
 }
 
-hook Sstore _userState[KEY address a].balance uint128 balance (uint128 old_balance) STORAGE {
+hook Sstore _userState[KEY address a].balance uint128 balance (uint128 old_balance) {
   havoc sumAllBalance assuming sumAllBalance@new() == sumAllBalance@old() + balance - old_balance;
 }
 
 invariant totalSupplyEqualsSumAllBalance(env e)
-    totalSupply() == scaledBalanceOfToBalanceOf(sumAllBalance())
-    filtered { f -> !f.isView && !disAllowedFunctions(f) }
+  totalSupply(e) == scaledBalanceOfToBalanceOf(e,require_uint256(sumAllBalance()))
+  filtered { f -> !f.isView && !disAllowedFunctions(f) }
     {
-        preserved mint(address user, address onBehalfOf, uint256 amount, uint256 index) with (env e2) {
-            require index == indexAtTimestamp(e.block.timestamp);
-        }
-        preserved burn(address from, uint256 amount, uint256 index) with (env e3) {
-            require index == indexAtTimestamp(e.block.timestamp);
-        }
+      preserved mint(address user, address onBehalfOf, uint256 amount, uint256 index) with (env e2) {
+        require index == indexAtTimestamp(e.block.timestamp);
+      }
+      preserved burn(address from, uint256 amount, uint256 index) with (env e3) {
+        require index == indexAtTimestamp(e.block.timestamp);
+      }
     }
 
 

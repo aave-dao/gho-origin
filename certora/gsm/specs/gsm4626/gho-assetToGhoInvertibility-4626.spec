@@ -1,5 +1,5 @@
-import "../GsmMethods/methods4626_base.spec";
-import "../GsmMethods/erc4626.spec";
+import "methods4626_base.spec";
+import "erc4626.spec";
 
 
 

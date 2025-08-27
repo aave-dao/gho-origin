@@ -1,7 +1,8 @@
-import "../GsmMethods/methods4626_base.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/erc4626.spec";
+import "methods4626_base.spec";
+
+//import "../GsmMethods/aave_price_fee_limits.spec";
+import "../shared/methods_divint_summary.spec";
+import "erc4626.spec";
 
 // @Title 4626: For values given by `getAssetAmountForBuyAsset`, the user can only get more by paying more
 // STATUS: https://prover.certora.com/output/11775/e8e6630d5b58425d8c0b6a251ff080be?anonymousKey=900815aac4f3703ba08d4a8c64402ac6cc9979bf

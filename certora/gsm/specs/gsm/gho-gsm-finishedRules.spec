@@ -1,6 +1,7 @@
-import "../GsmMethods/methods_base.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
-import "../GsmMethods/methods_divint_summary.spec";
+
+import "methods_base.spec";
+import "../shared/methods_divint_summary.spec";
+import "../shared/erc20.spec"; 
 
 rule reachability(method f)
 {
@@ -101,7 +102,7 @@ rule cantSellIfExposureTooHigh()
 
 definition canChangeExposureCap(method f) returns bool = 
 	f.selector == sig:updateExposureCap(uint128).selector ||
-	f.selector == sig:initialize(address,address,uint128).selector||
+          f.selector == sig:initialize(address,address,uint128,address).selector||
 	f.selector == sig:seize().selector;
 
 
@@ -318,7 +319,7 @@ rule getAssetAmountForSellAsset_optimality()
 // https://prover.certora.com/output/6893/14a1440d3114460f8b64b388a706ca46/?anonymousKey=bb420c63b5b5b11810d5d72026ed6cb6baec43ac
 rule exposureBelowCap(method f)
 	filtered { f -> 
-		f.selector != sig:initialize(address,address,uint128).selector
+    f.selector != sig:initialize(address,address,uint128,address).selector
 		&& f.selector != sig:updateExposureCap(uint128).selector
 	}   
 {

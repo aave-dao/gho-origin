@@ -1,9 +1,15 @@
 diff -ruN ../../src/contracts/gho/GhoToken.sol contracts/gho/GhoToken.sol
---- ../../src/contracts/gho/GhoToken.sol	2024-05-21 10:57:52.000000000 +0300
-+++ contracts/gho/GhoToken.sol	2024-05-27 12:55:24.588859419 +0300
-@@ -7,1 +7,1 @@
+--- ../../src/contracts/gho/GhoToken.sol	2025-07-06 15:01:13.000000000 +0300
++++ contracts/gho/GhoToken.sol	2025-07-23 12:11:37.173811676 +0300
+@@ -4,7 +4,7 @@
+ import {EnumerableSet} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
+ import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
+ import {ERC20} from 'src/contracts/gho/ERC20.sol';
 -import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 +import {IGhoToken} from './interfaces/IGhoToken.sol';
+ 
+ /**
+  * @title GHO Token
 @@ -66,11 +66,16 @@
      uint128 bucketCapacity
    ) external onlyRole(FACILITATOR_MANAGER_ROLE) {
@@ -59,8 +65,8 @@ diff -ruN ../../src/contracts/gho/GhoToken.sol contracts/gho/GhoToken.sol
    }
  }
 diff -ruN ../../src/contracts/gho/interfaces/IGhoToken.sol contracts/gho/interfaces/IGhoToken.sol
---- ../../src/contracts/gho/interfaces/IGhoToken.sol	2024-05-21 10:57:52.000000000 +0300
-+++ contracts/gho/interfaces/IGhoToken.sol	2024-05-27 12:55:24.588859419 +0300
+--- ../../src/contracts/gho/interfaces/IGhoToken.sol	2025-07-06 15:01:13.000000000 +0300
++++ contracts/gho/interfaces/IGhoToken.sol	2025-07-23 12:11:37.173811676 +0300
 @@ -13,6 +13,7 @@
      uint128 bucketCapacity;
      uint128 bucketLevel;
@@ -70,11 +76,17 @@ diff -ruN ../../src/contracts/gho/interfaces/IGhoToken.sol contracts/gho/interfa
  
    /**
 diff -ruN ../../src/contracts/gho/UpgradeableGhoToken.sol contracts/gho/UpgradeableGhoToken.sol
---- ../../src/contracts/gho/UpgradeableGhoToken.sol	2024-05-21 11:57:23.000000000 +0300
-+++ contracts/gho/UpgradeableGhoToken.sol	2024-05-27 15:04:16.458997293 +0300
-@@ -8,1 +8,1 @@
+--- ../../src/contracts/gho/UpgradeableGhoToken.sol	2025-07-06 15:01:13.000000000 +0300
++++ contracts/gho/UpgradeableGhoToken.sol	2025-07-23 12:11:37.174811677 +0300
+@@ -5,7 +5,7 @@
+ import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
+ import {Initializable} from 'src/contracts/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
+ import {UpgradeableERC20} from 'src/contracts/gho/UpgradeableERC20.sol';
 -import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 +import {IGhoToken} from './interfaces/IGhoToken.sol';
+ 
+ /**
+  * @title Upgradeable GHO Token
 @@ -76,11 +76,16 @@
      uint128 bucketCapacity
    ) external onlyRole(FACILITATOR_MANAGER_ROLE) {
@@ -128,10 +140,10 @@ diff -ruN ../../src/contracts/gho/UpgradeableGhoToken.sol contracts/gho/Upgradea
 +  function getFacilitatorsList() public view returns (address[] memory) {
      return _facilitatorsList.values();
    }
- 
+ }
 diff -ruN ../../src/.gitignore .gitignore
 --- ../../src/.gitignore	1970-01-01 02:00:00.000000000 +0200
-+++ .gitignore	2024-05-27 12:55:24.588859419 +0300
++++ .gitignore	2025-07-23 12:11:37.175811677 +0300
 @@ -0,0 +1,2 @@
 +*
 +!.gitignore

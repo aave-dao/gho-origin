@@ -1,5 +1,5 @@
-import "../GsmMethods/methods_base.spec";
-import "../GsmMethods/methods_divint_summary.spec";
+import "methods_base.spec";
+import "../shared/methods_divint_summary.spec";
 
 // @title Buy/sell invariants property #6: In case of using a 1:1 ratio and 0 fees, the inverse action of buyAsset must be sellAsset. (e.g. if buyAsset(x assets) needs y GHO, sellAsset(x assets) gives y GHO).
 // STATUS: PASSED

@@ -1,10 +1,13 @@
 name: certora-gsm
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
-      - main
-      - certora
+      - "*"
   push:
     branches:
       - main
@@ -14,53 +17,44 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install python
-        uses: actions/setup-python@v5
-        with: { python-version: 3.9 }
-
-      - name: Install java
-        uses: actions/setup-java@v4
-        with: { distribution: "zulu", java-version: "11", java-package: jre }
-
-      - name: Install certora cli
-        run: pip install certora-cli==6.1.3
-
-      - name: Install solc
-        run: |
-          wget https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux
-          chmod +x solc-static-linux
-          sudo mv solc-static-linux /usr/local/bin/solc8.10
-
-      - name: Verify rule ${{ matrix.rule }}
-        run: |
-          certoraRun certora/gsm/conf/gsm/${{ matrix.rule }}
+      - uses: Certora/certora-run-action@v2
+        with:
+          cli-version: 7.31.2
+          configurations: |-
+            certora/gsm/conf/gsm/gho-gsm-1.conf
+            certora/gsm/conf/gsm/gho-gsm-2.conf
+            certora/gsm/conf/gsm/gho-gsm-inverse.conf
+            certora/gsm/conf/gsm/balances-buy.conf
+            certora/gsm/conf/gsm/balances-sell.conf --exclude_rule R3_sellAssetUpdatesAssetBalanceCorrectly R4_buyGhoUpdatesGhoBalanceCorrectly
+            #certora/gsm/conf/gsm/balances-sell.conf --rule R3_sellAssetUpdatesAssetBalanceCorrectly   waiting for ticket CERT-9408
+            #certora/gsm/conf/gsm/balances-sell.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly     waiting for ticket CERT-9408
+            certora/gsm/conf/gsm/fees-buy.conf
+            certora/gsm/conf/gsm/fees-sell.conf --exclude_rule R3_estimatedSellFeeCanBeHigherThanActualSellFee
+            certora/gsm/conf/gsm/fees-sell.conf --rule R3_estimatedSellFeeCanBeHigherThanActualSellFee
+            certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty_getAssetAmountForBuyAsset sellAssetInverse_all buyAssetInverse_all basicProperty_getGhoAmountForSellAsset basicProperty_getAssetAmountForSellAsset basicProperty_getGhoAmountForBuyAsset
+            certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty2_getAssetAmountForBuyAsset
+            certora/gsm/conf/gsm/optimality.conf --rule R3_optimalityOfSellAsset_v1 R1_optimalityOfBuyAsset_v1 R6a_externalOptimalityOfBuyAsset R5a_externalOptimalityOfSellAsset R2_optimalityOfBuyAsset_v2
+            certora/gsm/conf/gsm/getAmount_properties.conf --rule getAssetAmountForBuyAsset_funcProperty_LR getAssetAmountForBuyAsset_funcProperty_RL
+            certora/gsm/conf/gsm/finishedRules.conf --rule whoCanChangeExposure whoCanChangeAccruedFees sellingDoesntExceedExposureCap cantBuyOrSellWhenSeized giftingGhoDoesntAffectStorageSIMPLE giftingUnderlyingDoesntAffectStorageSIMPLE collectedBuyFeePlus1IsAtLeastAsRequired sellAssetSameAsGetGhoAmountForSellAsset collectedSellFeeIsAtLeastAsRequired collectedBuyFeeIsAtLeastAsRequired correctnessOfBuyAsset collectedBuyFeePlus2IsAtLeastAsRequired getAssetAmountForSellAsset_correctness cantBuyOrSellWhenFrozen whoCanChangeExposureCap cantSellIfExposureTooHigh sellAssetIncreasesExposure buyAssetDecreasesExposure rescuingGhoKeepsAccruedFees rescuingAssetKeepsAccruedFees
+            certora/gsm/conf/gsm/gho-fixedPriceStrategy.conf
+            certora/gsm/conf/gsm/FixedFeeStrategy.conf
+            certora/gsm/conf/gsm/OracleSwapFreezer.conf
+          solc-versions: 0.8.20
+          comment-fail-only: false
+          solc-remove-version-prefix: "0."
+          job-name: "Certora Prover Run"
+          certora-key: ${{ secrets.CERTORAKEY }}
+          install-java: true
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CERTORAKEY: ${{ secrets.CERTORAKEY }}
-
-    strategy:
-      fail-fast: false
-      max-parallel: 16
-      matrix:
-        rule:
-          - gho-gsm_inverse.conf
-          - gho-gsm.conf
-          - balances-buy.conf
-          - balances-sell.conf
-          - gho-assetToGhoInvertibility.conf --rule basicProperty_getAssetAmountForBuyAsset sellAssetInverse_all buyAssetInverse_all basicProperty_getGhoAmountForSellAsset basicProperty_getAssetAmountForSellAsset basicProperty_getGhoAmountForBuyAsset
-          - gho-assetToGhoInvertibility.conf --rule basicProperty2_getAssetAmountForBuyAsset
-          - gho-fixedPriceStrategy.conf
-          - fees-buy.conf
-          - fees-sell.conf
-          - FixedFeeStrategy.conf
-          - gho-gsm.conf
-          - optimality.conf --rule R3_optimalityOfSellAsset_v1 R1_optimalityOfBuyAsset_v1 R6a_externalOptimalityOfBuyAsset R5a_externalOptimalityOfSellAsset R2_optimalityOfBuyAsset_v2
-          - getAmount_properties.conf --rule getAssetAmountForBuyAsset_funcProperty_LR getAssetAmountForBuyAsset_funcProperty_RL
-          - finishedRules.conf --rule whoCanChangeExposure whoCanChangeAccruedFees sellingDoesntExceedExposureCap cantBuyOrSellWhenSeized giftingGhoDoesntAffectStorageSIMPLE giftingUnderlyingDoesntAffectStorageSIMPLE collectedBuyFeePlus1IsAtLeastAsRequired sellAssetSameAsGetGhoAmountForSellAsset collectedSellFeeIsAtLeastAsRequired collectedBuyFeeIsAtLeastAsRequired correctnessOfBuyAsset collectedBuyFeePlus2IsAtLeastAsRequired getAssetAmountForSellAsset_correctness cantBuyOrSellWhenFrozen whoCanChangeExposureCap cantSellIfExposureTooHigh sellAssetIncreasesExposure buyAssetDecreasesExposure rescuingGhoKeepsAccruedFees rescuingAssetKeepsAccruedFees
-          - OracleSwapFreezer.conf

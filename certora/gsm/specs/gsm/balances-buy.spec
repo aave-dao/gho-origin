@@ -1,8 +1,8 @@
-import "../GsmMethods/erc20.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
+import "methods_base.spec";
+import "../shared/methods_divint_summary.spec";
 
 using DiffHelper as diffHelper;
+//using GhoReserve as _ghoReserve;
 
 // ========================= Buying ==============================
 // The results are available in this run:
@@ -165,31 +165,33 @@ rule R1UB_getAssetAmountForBuyAssetRV2_UB {
 // Holds.
 // (2)
 rule R2_getAssetAmountForBuyAssetRV_vs_GhoBalance {
-    env e;
-    feeLimits(e);
-    priceLimits(e);
+  env e;
+  feeLimits(e);
+  priceLimits(e);
+  
+  require e.msg.sender != currentContract; // Otherwise the fee in GHO will come back to me, messing up the balance calculation
+  require e.msg.sender != _ghoReserve;
+  require e.msg.sender != 0;
+  require GHO_TOKEN(e) != UNDERLYING_ASSET(e); // This is inflation prevention (and also avoids an overflow)
+  
+  uint256 ghoWithFee;
+  uint256 assetsToBuy;
+  uint256 exactGHO;
+  address receiver;
 
-    require e.msg.sender != currentContract; // Otherwise the fee in GHO will come back to me, messing up the balance calculation
-    require GHO_TOKEN(e) != UNDERLYING_ASSET(e); // This is inflation prevention (and also avoids an overflow)
-
-    uint256 ghoWithFee;
-    uint256 assetsToBuy;
-    uint256 exactGHO;
-    address receiver;
-
-    // For debugging:
-    uint256 priceRatio = getPriceRatio(e);
-    uint256 underlyingAssetUnits = getUnderlyingAssetUnits(e);
+  // For debugging:
+  uint256 priceRatio = getPriceRatio(e);
+  uint256 underlyingAssetUnits = getUnderlyingAssetUnits(e);
 
 
-    assetsToBuy, exactGHO, _, _ = getAssetAmountForBuyAsset(e, ghoWithFee);
-    uint256 buyerGhoBalanceBefore = balanceOfGho(e, e.msg.sender);
-    require assetsToBuy <= max_uint128;
-    buyAsset(e, assert_uint128(assetsToBuy), receiver);
-    uint256 buyerGhoBalanceAfter = balanceOfGho(e, e.msg.sender);
+  assetsToBuy, exactGHO, _, _ = getAssetAmountForBuyAsset(e, ghoWithFee);
+  uint256 buyerGhoBalanceBefore = balanceOfGho(e, e.msg.sender);
+  require assetsToBuy <= max_uint128;
+  buyAsset(e, assert_uint128(assetsToBuy), receiver);
+  uint256 buyerGhoBalanceAfter = balanceOfGho(e, e.msg.sender);
 
-    mathint balanceDiff = buyerGhoBalanceBefore - buyerGhoBalanceAfter;
-    assert to_mathint(exactGHO) == balanceDiff;
+  mathint balanceDiff = buyerGhoBalanceBefore - buyerGhoBalanceAfter;
+  assert to_mathint(exactGHO) == balanceDiff;
 }
 
 // @Title The asset amount deduced from user's account at `buyAsset(minAssets)` is at least `minAssets`

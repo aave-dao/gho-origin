@@ -1,20 +1,26 @@
 // verifies properties of FixedFeestrategy
 
-import "../GsmMethods/aave_fee_limits.spec";
-import "../GsmMethods/methods_divint_summary.spec";
+import "../shared/methods_divint_summary.spec";
 
 methods {
-	function getBuyFeeBP() external returns uint256 envfree;
-	function getSellFeeBP() external returns uint256 envfree;
-	function getPercMathPercentageFactor() external returns uint256 envfree;
+  function getBuyFeeBP() external returns uint256 envfree;
+  function getSellFeeBP() external returns uint256 envfree;
+  function getPercMathPercentageFactor() external returns uint256 envfree;
 	
-    function getBuyFee(uint256) external returns uint256 envfree;
-	function getSellFee(uint256) external returns uint256 envfree;
-
-	function getGrossAmountFromTotalBought(uint256) external returns (uint256)envfree;
-	function getGrossAmountFromTotalSold(uint256) external returns (uint256)envfree;
-
+  function getBuyFee(uint256) external returns uint256 envfree;
+  function getSellFee(uint256) external returns uint256 envfree;
+  
+  function getGrossAmountFromTotalBought(uint256) external returns (uint256)envfree;
+  function getGrossAmountFromTotalSold(uint256) external returns (uint256)envfree;
 }
+
+function feeLimits(env e) {
+  require
+    currentContract.getSellFeeBP(e) <= 5000 &&
+    currentContract.getBuyFeeBP(e) < 5000 &&
+    (currentContract.getSellFeeBP(e) > 0 || currentContract.getBuyFeeBP(e) > 0);
+}
+
 
 // @title get{Buy|Sell}Fee(x) <= x
 // STATUS: PASS
@@ -86,10 +92,10 @@ rule byuFeeAndInverse0()
 	feeLimits(e);
 	uint amount;
 	uint buyFee = getBuyFee(amount);
-	mathint sum = amount + buyFee;
-	require sum < max_uint256;
+	mathint summ = amount + buyFee;
+	require summ < max_uint256;
 
-	uint amount2 = getGrossAmountFromTotalBought(assert_uint256(sum));
+	uint amount2 = getGrossAmountFromTotalBought(assert_uint256(summ));
 
 	//assert differsByAtMostOne(amount, amount2);
 	assert amount == amount2;
@@ -104,10 +110,10 @@ rule byuFeeAndInverse1()
 	feeLimits(e);
 	uint amount;
 	uint buyFee = getBuyFee(amount);
-	mathint sum = amount + buyFee;
-	require sum < max_uint256;
+	mathint summ = amount + buyFee;
+	require summ < max_uint256;
 
-	uint amount2 = getGrossAmountFromTotalBought(assert_uint256(sum));
+	uint amount2 = getGrossAmountFromTotalBought(assert_uint256(summ));
 
 	assert differsByAtMostOne(amount, amount2);
 	//assert amount == amount2;

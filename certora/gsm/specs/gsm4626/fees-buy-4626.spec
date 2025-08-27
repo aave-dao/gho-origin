@@ -1,8 +1,12 @@
-import "../GsmMethods/erc20.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
-import "../GsmMethods/erc4626.spec";
+import "methods4626_base.spec";
+
+import "../shared/erc20.spec";
+import "../shared/methods_divint_summary.spec";
+//import "../GsmMethods/aave_price_fee_limits.spec";
+import "erc4626.spec";
+
 using DiffHelper as diffHelper;
+//using GhoReserve as _ghoReserve;
 
 // ========================= Buying ==============================
 
@@ -64,28 +68,28 @@ rule R2_getAssetAmountForBuyAssetNeBuyAssetFee {
     feeLimits(e);
     priceLimits(e);
 
-    address receiver;
+    require e.msg.sender != currentContract;
+    require e.msg.sender != _ghoReserve ;
 
     uint256 preAccruedFees = currentContract._accruedFees;
-
-    uint256 amountOfGhoToSell;
-    uint256 estimatedFee;
-
-    uint256 assetAmount;
-
+    uint256 amountOfGhoToSell; uint256 estimatedFee;
+    uint256 assetAmount; address receiver;
+    require receiver != currentContract;
+    
     assetAmount, _, _, estimatedFee = getAssetAmountForBuyAsset(e, amountOfGhoToSell);
-
     require assetAmount <= max_uint128; // No overflow
+
     require getExcess(e) == 0; // Are we blocking important executions?
 
     buyAsset(e, assert_uint128(assetAmount), receiver);
 
     uint256 postAccruedFees = currentContract._accruedFees;
-
     uint256 actualFee = assert_uint256(postAccruedFees - preAccruedFees);
 
     assert estimatedFee == actualFee;
 }
+
+
 
 // @Title 4626: The fee reported by `getAssetAmountForBuyAsset` is equal to the fee accrued by `getBuyFee`
 // getAssetAmountForBuyAssetFee -(==)-> getBuyFee

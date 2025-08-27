@@ -54,18 +54,14 @@ library JsonBindings {
     string memory objectKey,
     string memory valueKey
   ) internal returns (string memory) {
-    return
-      vm.serializeJsonType(objectKey, valueKey, schema_BuyAssetWithSig, abi.encode(value));
+    return vm.serializeJsonType(objectKey, valueKey, schema_BuyAssetWithSig, abi.encode(value));
   }
 
   function deserializeBuyAssetWithSig(
     string memory json
   ) public pure returns (EIP712Types.BuyAssetWithSig memory) {
     return
-      abi.decode(
-        vm.parseJsonType(json, schema_BuyAssetWithSig),
-        (EIP712Types.BuyAssetWithSig)
-      );
+      abi.decode(vm.parseJsonType(json, schema_BuyAssetWithSig), (EIP712Types.BuyAssetWithSig));
   }
 
   function deserializeBuyAssetWithSig(
@@ -90,7 +86,9 @@ library JsonBindings {
       );
   }
 
-  function serialize(EIP712Types.SellAssetWithSig memory value) internal pure returns (string memory) {
+  function serialize(
+    EIP712Types.SellAssetWithSig memory value
+  ) internal pure returns (string memory) {
     return vm.serializeJsonType(schema_SellAssetWithSig, abi.encode(value));
   }
 
@@ -102,21 +100,32 @@ library JsonBindings {
     return vm.serializeJsonType(objectKey, valueKey, schema_SellAssetWithSig, abi.encode(value));
   }
 
-  function deserializeSellAssetWithSig(string memory json) public pure returns (EIP712Types.SellAssetWithSig memory) {
-    return abi.decode(vm.parseJsonType(json, schema_SellAssetWithSig), (EIP712Types.SellAssetWithSig));
+  function deserializeSellAssetWithSig(
+    string memory json
+  ) public pure returns (EIP712Types.SellAssetWithSig memory) {
+    return
+      abi.decode(vm.parseJsonType(json, schema_SellAssetWithSig), (EIP712Types.SellAssetWithSig));
   }
 
   function deserializeSellAssetWithSig(
     string memory json,
     string memory path
   ) public pure returns (EIP712Types.SellAssetWithSig memory) {
-    return abi.decode(vm.parseJsonType(json, path, schema_SellAssetWithSig), (EIP712Types.SellAssetWithSig));
+    return
+      abi.decode(
+        vm.parseJsonType(json, path, schema_SellAssetWithSig),
+        (EIP712Types.SellAssetWithSig)
+      );
   }
 
   function deserializeSellAssetWithSigArray(
     string memory json,
     string memory path
   ) public pure returns (EIP712Types.SellAssetWithSig[] memory) {
-    return abi.decode(vm.parseJsonTypeArray(json, path, schema_SellAssetWithSig), (EIP712Types.SellAssetWithSig[]));
+    return
+      abi.decode(
+        vm.parseJsonTypeArray(json, path, schema_SellAssetWithSig),
+        (EIP712Types.SellAssetWithSig[])
+      );
   }
 }

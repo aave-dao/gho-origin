@@ -142,12 +142,16 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     bytes calldata signature
   ) external notFrozen notSeized returns (uint256, uint256) {
     require(deadline >= block.timestamp, 'SIGNATURE_DEADLINE_EXPIRED');
-    bytes32 digest = keccak256(
-      abi.encode(
-        '\x19\x01',
-        _domainSeparatorV4(),
-        BUY_ASSET_WITH_SIG_TYPEHASH,
-        abi.encode(originator, minAmount, receiver, nonces[originator]++, deadline)
+    bytes32 digest = _hashTypedDataV4(
+      keccak256(
+        abi.encode(
+          BUY_ASSET_WITH_SIG_TYPEHASH,
+          originator,
+          minAmount,
+          receiver,
+          nonces[originator]++,
+          deadline
+        )
       )
     );
     require(
@@ -175,12 +179,16 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     bytes calldata signature
   ) external notFrozen notSeized returns (uint256, uint256) {
     require(deadline >= block.timestamp, 'SIGNATURE_DEADLINE_EXPIRED');
-    bytes32 digest = keccak256(
-      abi.encode(
-        '\x19\x01',
-        _domainSeparatorV4(),
-        SELL_ASSET_WITH_SIG_TYPEHASH,
-        abi.encode(originator, maxAmount, receiver, nonces[originator]++, deadline)
+    bytes32 digest = _hashTypedDataV4(
+      keccak256(
+        abi.encode(
+          SELL_ASSET_WITH_SIG_TYPEHASH,
+          originator,
+          maxAmount,
+          receiver,
+          nonces[originator]++,
+          deadline
+        )
       )
     );
     require(

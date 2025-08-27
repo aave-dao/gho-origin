@@ -3,12 +3,14 @@ pragma solidity ^0.8.0;
 
 import 'forge-std/Test.sol';
 import 'forge-std/console2.sol';
+import {Vm} from 'forge-std/Vm.sol';
 
 // helpers
 import {Constants} from '../helpers/Constants.sol';
 import {DebtUtils} from '../helpers/DebtUtils.sol';
 import {Events} from '../helpers/Events.sol';
 import {AccessControlErrorsLib, OwnableErrorsLib} from '../helpers/ErrorsLib.sol';
+import {EIP712Types} from '../helpers/EIP712Types.sol';
 
 // generic libs
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
@@ -721,5 +723,31 @@ contract TestGhoBase is Test, Constants, Events {
       abi.encodePacked('\x19\x01', GHO_TOKEN.DOMAIN_SEPARATOR(), innerHash)
     );
     (v, r, s) = vm.sign(ownerPk, outerHash);
+  }
+
+  function _getBuyTypedDataHash(
+    EIP712Types.BuyAssetWithSig memory params
+  ) internal view returns (bytes32) {
+    return
+      keccak256(
+        abi.encodePacked(
+          '\x19\x01',
+          GHO_GSM.DOMAIN_SEPARATOR(),
+          vm.eip712HashStruct('BuyAssetWithSig', abi.encode(params))
+        )
+      );
+  }
+
+  function _getSellTypedDataHash(
+    EIP712Types.SellAssetWithSig memory params
+  ) internal view returns (bytes32) {
+    return
+      keccak256(
+        abi.encodePacked(
+          '\x19\x01',
+          GHO_GSM.DOMAIN_SEPARATOR(),
+          vm.eip712HashStruct('SellAssetWithSig', abi.encode(params))
+        )
+      );
   }
 }

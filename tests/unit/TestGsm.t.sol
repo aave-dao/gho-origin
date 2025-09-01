@@ -196,17 +196,24 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getSellAssetTypedDataHash(
-      EIP712Types.SellAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.SellAssetWithSig memory params = EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getSellAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != ALICE, 'Signer is the same as Alice');
 
@@ -249,17 +256,24 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getSellAssetTypedDataHash(
-      EIP712Types.SellAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.SellAssetWithSig memory params = EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getSellAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != ALICE, 'Signer is the same as Alice');
 
@@ -291,17 +305,24 @@ contract TestGsm is TestGhoBase {
   function testRevertSellAssetWithSigExpiredSignature() public {
     uint256 deadline = block.timestamp - 1;
 
-    bytes32 digest = _getSellAssetTypedDataHash(
-      EIP712Types.SellAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.SellAssetWithSig memory params = EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getSellAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != ALICE, 'Signer is the same as Alice');
 
@@ -320,17 +341,24 @@ contract TestGsm is TestGhoBase {
   function testRevertSellAssetWithSigInvalidSignature() public {
     uint256 deadline = block.timestamp + 1 hours;
 
-    bytes32 digest = _getSellAssetTypedDataHash(
-      EIP712Types.SellAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.SellAssetWithSig memory params = EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getSellAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != ALICE, 'Signer is the same as Alice');
 
@@ -597,17 +625,24 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getBuyAssetTypedDataHash(
-      EIP712Types.BuyAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.BuyAssetWithSig memory params = EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getBuyAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != BOB, 'Signer is the same as Bob');
 
@@ -665,17 +700,24 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getBuyAssetTypedDataHash(
-      EIP712Types.BuyAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.BuyAssetWithSig memory params = EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getBuyAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != BOB, 'Signer is the same as Bob');
 
@@ -758,17 +800,24 @@ contract TestGsm is TestGhoBase {
   function testRevertBuyAssetWithSigExpiredSignature() public {
     uint256 deadline = block.timestamp - 1;
 
-    bytes32 digest = _getBuyAssetTypedDataHash(
-      EIP712Types.BuyAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.BuyAssetWithSig memory params = EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getBuyAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != BOB, 'Signer is the same as Bob');
 
@@ -786,17 +835,24 @@ contract TestGsm is TestGhoBase {
   function testRevertBuyAssetWithSigInvalidSignature() public {
     uint256 deadline = block.timestamp + 1 hours;
 
-    bytes32 digest = _getBuyAssetTypedDataHash(
-      EIP712Types.BuyAssetWithSig({
+    bytes memory signature;
+    {
+      EIP712Types.BuyAssetWithSig memory params = EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
         receiver: gsmSignerAddr,
         nonce: GHO_GSM.nonces(gsmSignerAddr),
         deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
-    bytes memory signature = abi.encodePacked(r, s, v);
+      });
+      bytes32 digest = _getBuyAssetTypedDataHash(params);
+      assertEq(
+        digest,
+        _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
+        'EIP712 digest not similar'
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
     assertTrue(gsmSignerAddr != BOB, 'Signer is the same as Bob');
 

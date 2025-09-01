@@ -94,8 +94,16 @@ contract TestGsm is TestGhoBase {
   function testTypehash() public {
     bytes32 buyTypeHash = vm.eip712HashType('BuyAssetWithSig');
     bytes32 sellTypeHash = vm.eip712HashType('SellAssetWithSig');
-    assertEq(buyTypeHash, GHO_GSM.BUY_ASSET_WITH_SIG_TYPEHASH(), 'Unexpected buy asset typed data hash');
-    assertEq(sellTypeHash, GHO_GSM.SELL_ASSET_WITH_SIG_TYPEHASH(), 'Unexpected sell asset typed data hash');
+    assertEq(
+      buyTypeHash,
+      GHO_GSM.BUY_ASSET_WITH_SIG_TYPEHASH(),
+      'Unexpected buy asset typed data hash'
+    );
+    assertEq(
+      sellTypeHash,
+      GHO_GSM.SELL_ASSET_WITH_SIG_TYPEHASH(),
+      'Unexpected sell asset typed data hash'
+    );
   }
 
   function testSellAssetZeroFee() public {

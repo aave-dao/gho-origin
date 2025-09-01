@@ -91,7 +91,7 @@ contract TestGsm is TestGhoBase {
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
 
-  function testTypehash() public {
+  function testTypehash() public view {
     bytes32 buyTypeHash = vm.eip712HashType('BuyAssetWithSig');
     bytes32 sellTypeHash = vm.eip712HashType('SellAssetWithSig');
     assertEq(
@@ -209,7 +209,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -269,7 +269,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -318,7 +318,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -354,7 +354,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getSellAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -638,7 +638,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -713,7 +713,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -813,7 +813,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);
@@ -848,7 +848,7 @@ contract TestGsm is TestGhoBase {
       assertEq(
         digest,
         _getBuyAssetEIP712Digest(params, block.chainid, address(GHO_GSM)),
-        'EIP712 digest not similar'
+        'EIP712 digest does not match'
       );
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
       signature = abi.encodePacked(r, s, v);

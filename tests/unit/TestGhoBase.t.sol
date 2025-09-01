@@ -725,7 +725,7 @@ contract TestGhoBase is Test, Constants, Events {
     (v, r, s) = vm.sign(ownerPk, outerHash);
   }
 
-  function _getBuyTypedDataHash(
+  function _getBuyAssetTypedDataHash(
     EIP712Types.BuyAssetWithSig memory params
   ) internal view returns (bytes32) {
     return
@@ -738,7 +738,7 @@ contract TestGhoBase is Test, Constants, Events {
       );
   }
 
-  function _getSellTypedDataHash(
+  function _getSellAssetTypedDataHash(
     EIP712Types.SellAssetWithSig memory params
   ) internal view returns (bytes32) {
     return

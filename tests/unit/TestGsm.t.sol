@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {EIP712Types} from '../helpers/EIP712Types.sol';
-
 import './TestGhoBase.t.sol';
 
 contract TestGsm is TestGhoBase {
@@ -91,6 +89,13 @@ contract TestGsm is TestGhoBase {
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
     vm.expectRevert('Contract instance has already been initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
+  }
+
+  function testTypehash() public {
+    bytes32 buyTypeHash = vm.eip712HashType('BuyAssetWithSig');
+    bytes32 sellTypeHash = vm.eip712HashType('SellAssetWithSig');
+    assertEq(buyTypeHash, GHO_GSM.BUY_ASSET_WITH_SIG_TYPEHASH(), 'Unexpected buy asset typed data hash');
+    assertEq(sellTypeHash, GHO_GSM.SELL_ASSET_WITH_SIG_TYPEHASH(), 'Unexpected sell asset typed data hash');
   }
 
   function testSellAssetZeroFee() public {
@@ -183,7 +188,7 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getSellTypedDataHash(
+    bytes32 digest = _getSellAssetTypedDataHash(
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -236,7 +241,7 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getSellTypedDataHash(
+    bytes32 digest = _getSellAssetTypedDataHash(
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -278,7 +283,7 @@ contract TestGsm is TestGhoBase {
   function testRevertSellAssetWithSigExpiredSignature() public {
     uint256 deadline = block.timestamp - 1;
 
-    bytes32 digest = _getSellTypedDataHash(
+    bytes32 digest = _getSellAssetTypedDataHash(
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -307,7 +312,7 @@ contract TestGsm is TestGhoBase {
   function testRevertSellAssetWithSigInvalidSignature() public {
     uint256 deadline = block.timestamp + 1 hours;
 
-    bytes32 digest = _getSellTypedDataHash(
+    bytes32 digest = _getSellAssetTypedDataHash(
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -584,7 +589,7 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getBuyTypedDataHash(
+    bytes32 digest = _getBuyAssetTypedDataHash(
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -652,7 +657,7 @@ contract TestGsm is TestGhoBase {
 
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
-    bytes32 digest = _getBuyTypedDataHash(
+    bytes32 digest = _getBuyAssetTypedDataHash(
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -745,7 +750,7 @@ contract TestGsm is TestGhoBase {
   function testRevertBuyAssetWithSigExpiredSignature() public {
     uint256 deadline = block.timestamp - 1;
 
-    bytes32 digest = _getBuyTypedDataHash(
+    bytes32 digest = _getBuyAssetTypedDataHash(
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -773,7 +778,7 @@ contract TestGsm is TestGhoBase {
   function testRevertBuyAssetWithSigInvalidSignature() public {
     uint256 deadline = block.timestamp + 1 hours;
 
-    bytes32 digest = _getBuyTypedDataHash(
+    bytes32 digest = _getBuyAssetTypedDataHash(
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,

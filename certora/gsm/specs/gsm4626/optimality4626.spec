@@ -37,6 +37,7 @@ rule R1_optimalityOfBuyAsset_v1() {
     uint Da;
     uint Dx;
     Da, Dx = buyAsset(e, a, recipient);
+    assert Da <= a, "slippage enforced";
 
     uint ap;
     uint Dap;
@@ -121,6 +122,7 @@ rule R3_optimalityOfSellAsset_v1 {
     uint Da;
     uint Dx;
     Da, Dx = sellAsset(e, a, recipient);
+    assert Da >= a, "slippage enforced";
 
     uint ap;
     uint Dap;

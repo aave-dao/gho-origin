@@ -16,6 +16,7 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {ECDSA} from 'openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol';
 import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
+import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
 
 // ========================================
 // TEST ORGANIZATION
@@ -74,6 +75,11 @@ import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contr
 //
 // 14. INTERNAL UTILITY FUNCTIONS
 //     - Helper functions for test calculations
+//
+// 15. PAUSABILITY TESTS
+//     - Pause/unpause functionality and access control
+//     - User operations blocked while paused
+//     - Admin functions work while paused
 // ========================================
 
 // --- Test Contract ---
@@ -2586,5 +2592,123 @@ contract sGhoTest is TestnetProcedures {
     uint256 newYieldIndex = sgho.yieldIndex();
     assertTrue(newYieldIndex > initialYieldIndex, 'Yield index should increase after time passes');
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
+  }
+
+  // ========================================
+  // PAUSABILITY TESTS
+  // ========================================
+
+  function test_pausability_deposit_withdraw() external {
+    address pauseGuardian = vm.addr(0xBAD);
+    sgho.grantRole(sgho.PAUSE_GUARDIAN_ROLE(), pauseGuardian);
+
+    // Pause the contract
+    vm.startPrank(pauseGuardian);
+    sgho.pause();
+    vm.stopPrank();
+
+    // Try to deposit while paused
+    vm.startPrank(user1);
+    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    sgho.deposit(100 ether, user1);
+    vm.stopPrank();
+
+    // Unpause the contract
+    vm.startPrank(pauseGuardian);
+    sgho.unpause();
+    vm.stopPrank();
+
+    // Deposit successfully
+    vm.startPrank(user1);
+    uint256 shares = sgho.deposit(100 ether, user1);
+    assertEq(shares, 100 ether);
+    vm.stopPrank();
+
+    // Pause again
+    vm.startPrank(pauseGuardian);
+    sgho.pause();
+    vm.stopPrank();
+
+    // Try to withdraw while paused
+    vm.startPrank(user1);
+    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    sgho.withdraw(50 ether, user1, user1);
+    vm.stopPrank();
+
+    // Unpause and withdraw
+    vm.startPrank(pauseGuardian);
+    sgho.unpause();
+    vm.stopPrank();
+
+    vm.startPrank(user1);
+    sgho.withdraw(50 ether, user1, user1);
+    vm.stopPrank();
+
+    assertEq(
+      sgho.convertToAssets(sgho.balanceOf(user1)),
+      50 ether,
+      'User should have 50 GHO worth of sGHO left'
+    );
+  }
+
+  function test_pausability_admin_functions_work_while_paused() external {
+    address pauseGuardian = vm.addr(0xBAD);
+    sgho.grantRole(sgho.PAUSE_GUARDIAN_ROLE(), pauseGuardian);
+
+    // Deploy a mock ERC20 token for rescue testing
+    TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
+    uint256 rescueAmount = 100 ether;
+    deal(address(mockToken), address(sgho), rescueAmount, true);
+
+    // Pause the contract
+    vm.startPrank(pauseGuardian);
+    sgho.pause();
+    vm.stopPrank();
+
+    // Verify contract is paused
+    assertTrue(sgho.paused(), 'Contract should be paused');
+
+    // Test 1: Set target rate while paused (should work)
+    vm.startPrank(yManager);
+    uint16 newRate = 2000; // 20% APR
+    sgho.setTargetRate(newRate);
+    assertEq(sgho.targetRate(), newRate, 'Target rate should be updated while paused');
+    vm.stopPrank();
+
+    // Test 2: Set supply cap while paused (should work)
+    vm.startPrank(yManager);
+    uint160 newSupplyCap = 2_000_000 ether;
+    sgho.setSupplyCap(newSupplyCap);
+    assertEq(sgho.supplyCap(), newSupplyCap, 'Supply cap should be updated while paused');
+    vm.stopPrank();
+
+    // Test 3: Rescue tokens while paused (should work)
+    vm.startPrank(fundsAdmin);
+    uint256 initialBalance = mockToken.balanceOf(user1);
+    sgho.emergencyTokenTransfer(address(mockToken), user1, rescueAmount);
+    assertEq(
+      mockToken.balanceOf(user1),
+      initialBalance + rescueAmount,
+      'Tokens should be rescued while paused'
+    );
+    vm.stopPrank();
+
+    // Test 4: Verify user operations are still blocked
+    vm.startPrank(user1);
+    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    sgho.deposit(100 ether, user1);
+    vm.stopPrank();
+
+    // Test 5: Unpause and verify everything works normally
+    vm.startPrank(pauseGuardian);
+    sgho.unpause();
+    vm.stopPrank();
+
+    assertFalse(sgho.paused(), 'Contract should be unpaused');
+
+    // User operations should work again
+    vm.startPrank(user1);
+    sgho.deposit(100 ether, user1);
+    vm.stopPrank();
   }
 }

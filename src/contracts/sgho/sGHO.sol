@@ -8,6 +8,7 @@ import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/t
 import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
 import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
 import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
+import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
 import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
@@ -29,6 +30,7 @@ contract sGHO is
   ERC20PermitUpgradeable,
   AccessControlUpgradeable,
   RescuableACL,
+  PausableUpgradeable,
   IsGHO
 {
   using Math for uint256;
@@ -61,6 +63,7 @@ contract sGHO is
   uint16 public constant MAX_SAFE_RATE = 5000; // Maximum safe annual yield rate in basis points (50%)
   bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN'; // Role for managing rescued funds
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER'; // Role for managing yield rates and supply caps
+  bytes32 public constant PAUSE_GUARDIAN_ROLE = 'PAUSE_GUARDIAN_ROLE'; // Role for managing pause and unpause
 
   /**
    * @dev Disable initializers on the implementation contract
@@ -86,8 +89,9 @@ contract sGHO is
     __ERC4626_init(IERC20(gho_));
     __ERC20Permit_init('sGHO');
     __AccessControl_init();
-
+    __Pausable_init();
     _grantRole(DEFAULT_ADMIN_ROLE, executor_);
+    _grantRole(PAUSE_GUARDIAN_ROLE, executor_);
 
     sGHOStorage storage $ = _getsGHOStorage();
     $.supplyCap = supplyCap_;
@@ -174,6 +178,16 @@ contract sGHO is
     return _convertToAssets(totalSupply(), Math.Rounding.Floor);
   }
 
+  /// @inheritdoc IsGHO
+  function pause() external onlyRole(PAUSE_GUARDIAN_ROLE) {
+    _pause();
+  }
+
+  /// @inheritdoc IsGHO
+  function unpause() external onlyRole(PAUSE_GUARDIAN_ROLE) {
+    _unpause();
+  }
+
   /**
    * @inheritdoc IsGHO
    */
@@ -215,7 +229,7 @@ contract sGHO is
     return IERC20(erc20Token).balanceOf(address(this));
   }
 
-  function _update(address from, address to, uint256 value) internal override {
+  function _update(address from, address to, uint256 value) internal override whenNotPaused {
     _updateYieldIndex();
     super._update(from, to, value);
   }

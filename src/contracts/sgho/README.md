@@ -10,6 +10,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 - **Automatic Yield Accrual**: Yield compounds linearly between operations and is tracked via a yield index
 - **Gas-Efficient Design**: Optimized storage layout and cached rate calculations
 - **Role-Based Access Control**: Granular permissions for yield management and emergency operations
+- **Pausability**: Emergency pause mechanism to halt user operations while preserving admin functions
 - **Permit Support**: Gasless deposits using EIP-2612 permits
 - **Supply Cap Management**: Configurable maximum vault capacity
 - **Emergency Token Rescue**: Ability to recover accidentally sent non-GHO tokens
@@ -24,6 +25,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 - ERC-20 token standard with permit support
 - Automatic yield accrual via yield index mechanism
 - Role-based access control using OpenZeppelin's AccessControl
+- Pausability mechanism for emergency situations
 - Emergency token rescue functionality
 
 ### Storage Layout
@@ -71,6 +73,7 @@ newYieldIndex = oldYieldIndex * growthFactor / RAY;
 - **DEFAULT_ADMIN_ROLE**: Can grant/revoke other roles
 - **YIELD_MANAGER_ROLE**: Can set target rate and supply cap
 - **FUNDS_ADMIN_ROLE**: Can rescue non-GHO tokens in emergencies
+- **PAUSE_GUARDIAN_ROLE**: Can pause and unpause the contract
 
 ### Role Management
 
@@ -81,8 +84,52 @@ sgho.setTargetRate(1000); // 10% APR
 // Set supply cap (YIELD_MANAGER_ROLE only)
 sgho.setSupplyCap(1000000e18); // 1M GHO
 
+// Pause/unpause contract (PAUSE_GUARDIAN_ROLE only)
+sgho.pause();
+sgho.unpause();
+
 // Rescue tokens (FUNDS_ADMIN_ROLE only)
 sgho.emergencyTokenTransfer(tokenAddress, recipient, amount);
+```
+
+### Pausability
+
+The contract includes a pausability mechanism that allows authorized accounts to halt user operations during emergency situations while preserving administrative functions.
+
+**Functions Affected by Pause:**
+
+- `deposit()` - User deposits are blocked
+- `mint()` - User minting is blocked
+- `withdraw()` - User withdrawals are blocked
+- `redeem()` - User redemptions are blocked
+- `depositWithPermit()` - Permit-based deposits are blocked
+- `transfer()` - Token transfers are blocked
+- `transferFrom()` - Token transfers are blocked
+
+**Functions NOT Affected by Pause:**
+
+- `pause()` / `unpause()` - Pause control functions
+- `setTargetRate()` - Yield rate management
+- `setSupplyCap()` - Supply cap management
+- `emergencyTokenTransfer()` - Token rescue operations
+- All view functions (preview, conversion, getters)
+- Role management functions
+
+**Usage:**
+
+```solidity
+// Pause the contract (blocks user operations)
+sgho.pause();
+
+// Admin functions still work while paused
+sgho.setTargetRate(2000); // ✅ Works
+sgho.emergencyTokenTransfer(token, user, amount); // ✅ Works
+
+// User operations are blocked
+sgho.deposit(1000e18, user); // ❌ Reverts with EnforcedPause()
+
+// Unpause to restore normal operations
+sgho.unpause();
 ```
 
 ## Usage Examples
@@ -136,6 +183,7 @@ uint256 maxWithdraw = sgho.maxWithdraw(user);
 - **Rate Limits**: Maximum 50% annual rate to prevent excessive yield
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 - **Safe Math**: Overflow protection with SafeCast
+- **Pausability**: Emergency stop mechanism to halt user operations
 
 ### Important Limitations
 
@@ -201,6 +249,7 @@ The contract includes comprehensive test coverage for:
 - ERC-4626 compliance
 - Yield accrual mechanisms
 - Access control
+- Pausability functionality
 - Edge cases and precision
 - Emergency functions
 
@@ -238,6 +287,7 @@ For a comprehensive analysis of precision handling, edge cases, and mathematical
 **[Precision Analysis](./docs/precision_analysis/PRECISION.md)**
 
 This document covers:
+
 - Mathematical foundations of the yield mechanism
 - Precision loss scenarios and mitigations
 - Edge case handling for extreme values

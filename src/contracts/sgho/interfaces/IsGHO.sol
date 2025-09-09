@@ -120,6 +120,18 @@ interface IsGHO {
   // --- Functions ---
 
   /**
+   * @notice Pauses the contract, can be called by `PAUSE_GUARDIAN_ROLE`.
+   * Emits a {Paused} event.
+   */
+  function pause() external;
+
+  /**
+   * @notice Unpauses the contract, can be called by `PAUSE_GUARDIAN_ROLE`.
+   * Emits a {Unpaused} event.
+   */
+  function unpause() external;
+
+  /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * The new rate must be less than 50% (5000 basis points).

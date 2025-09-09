@@ -2609,7 +2609,9 @@ contract sGhoTest is TestnetProcedures {
 
     // Try to deposit while paused
     vm.startPrank(user1);
-    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxDeposit.selector, user1, 100 ether, 0)
+    );
     sgho.deposit(100 ether, user1);
     vm.stopPrank();
 
@@ -2631,7 +2633,9 @@ contract sGhoTest is TestnetProcedures {
 
     // Try to withdraw while paused
     vm.startPrank(user1);
-    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxWithdraw.selector, user1, 50 ether, 0)
+    );
     sgho.withdraw(50 ether, user1, user1);
     vm.stopPrank();
 
@@ -2695,7 +2699,9 @@ contract sGhoTest is TestnetProcedures {
 
     // Test 4: Verify user operations are still blocked
     vm.startPrank(user1);
-    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxDeposit.selector, user1, 100 ether, 0)
+    );
     sgho.deposit(100 ether, user1);
     vm.stopPrank();
 
@@ -2710,5 +2716,49 @@ contract sGhoTest is TestnetProcedures {
     vm.startPrank(user1);
     sgho.deposit(100 ether, user1);
     vm.stopPrank();
+  }
+
+  function test_pausability_max_functions_return_zero_when_paused() external {
+    address pauseGuardian = vm.addr(0xBAD);
+    sgho.grantRole(sgho.PAUSE_GUARDIAN_ROLE(), pauseGuardian);
+
+    // First deposit some amount to have a balance
+    vm.startPrank(user1);
+    sgho.deposit(100 ether, user1);
+    vm.stopPrank();
+
+    // Verify max functions return non-zero values when unpaused
+    assertTrue(sgho.maxDeposit(user2) > 0, 'maxDeposit should be > 0 when unpaused');
+    assertTrue(sgho.maxMint(user2) > 0, 'maxMint should be > 0 when unpaused');
+    assertTrue(sgho.maxWithdraw(user1) > 0, 'maxWithdraw should be > 0 when unpaused');
+    assertTrue(sgho.maxRedeem(user1) > 0, 'maxRedeem should be > 0 when unpaused');
+
+    // Pause the contract
+    vm.startPrank(pauseGuardian);
+    sgho.pause();
+    vm.stopPrank();
+
+    // Verify contract is paused
+    assertTrue(sgho.paused(), 'Contract should be paused');
+
+    // All max functions should return 0 when paused
+    assertEq(sgho.maxDeposit(user2), 0, 'maxDeposit should return 0 when paused');
+    assertEq(sgho.maxMint(user2), 0, 'maxMint should return 0 when paused');
+    assertEq(sgho.maxWithdraw(user1), 0, 'maxWithdraw should return 0 when paused');
+    assertEq(sgho.maxRedeem(user1), 0, 'maxRedeem should return 0 when paused');
+
+    // Unpause the contract
+    vm.startPrank(pauseGuardian);
+    sgho.unpause();
+    vm.stopPrank();
+
+    // Verify contract is unpaused
+    assertFalse(sgho.paused(), 'Contract should be unpaused');
+
+    // Max functions should return non-zero values again when unpaused
+    assertTrue(sgho.maxDeposit(user2) > 0, 'maxDeposit should be > 0 when unpaused again');
+    assertTrue(sgho.maxMint(user2) > 0, 'maxMint should be > 0 when unpaused again');
+    assertTrue(sgho.maxWithdraw(user1) > 0, 'maxWithdraw should be > 0 when unpaused again');
+    assertTrue(sgho.maxRedeem(user1) > 0, 'maxRedeem should be > 0 when unpaused again');
   }
 }

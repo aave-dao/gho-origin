@@ -115,6 +115,13 @@ The contract includes a pausability mechanism that allows authorized accounts to
 - All view functions (preview, conversion, getters)
 - Role management functions
 
+**Max Functions Return 0 When Paused:**
+
+- `maxDeposit()` - Returns 0 (no deposits allowed)
+- `maxMint()` - Returns 0 (no minting allowed)
+- `maxWithdraw()` - Returns 0 (no withdrawals allowed)
+- `maxRedeem()` - Returns 0 (no redemptions allowed)
+
 **Usage:**
 
 ```solidity
@@ -125,8 +132,12 @@ sgho.pause();
 sgho.setTargetRate(2000); // ✅ Works
 sgho.emergencyTokenTransfer(token, user, amount); // ✅ Works
 
+// Max functions return 0 when paused
+sgho.maxDeposit(user); // Returns 0
+sgho.maxWithdraw(user); // Returns 0
+
 // User operations are blocked
-sgho.deposit(1000e18, user); // ❌ Reverts with EnforcedPause()
+sgho.deposit(1000e18, user); // ❌ Reverts with ERC4626ExceededMaxDeposit
 
 // Unpause to restore normal operations
 sgho.unpause();

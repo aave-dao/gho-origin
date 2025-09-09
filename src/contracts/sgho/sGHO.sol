@@ -115,6 +115,10 @@ contract sGHO is
    * @inheritdoc IERC4626
    */
   function maxWithdraw(address owner) public view override returns (uint256) {
+    if (paused()) {
+      return 0;
+    }
+
     uint256 ghoBalance = IERC20(asset()).balanceOf(address(this));
     uint256 maxWithdrawAssets = super.maxWithdraw(owner);
     return maxWithdrawAssets < ghoBalance ? maxWithdrawAssets : ghoBalance;
@@ -124,6 +128,10 @@ contract sGHO is
    * @inheritdoc IERC4626
    */
   function maxRedeem(address owner) public view override returns (uint256) {
+    if (paused()) {
+      return 0;
+    }
+
     uint256 ghoBalance = IERC20(asset()).balanceOf(address(this));
     uint256 maxRedeemShares = super.maxRedeem(owner);
     uint256 sharesForBalance = convertToShares(ghoBalance);
@@ -134,6 +142,10 @@ contract sGHO is
    * @inheritdoc IERC4626
    */
   function maxDeposit(address) public view override returns (uint256) {
+    if (paused()) {
+      return 0;
+    }
+
     sGHOStorage storage $ = _getsGHOStorage();
     uint256 currentAssets = totalAssets();
     return currentAssets >= $.supplyCap ? 0 : $.supplyCap - currentAssets;

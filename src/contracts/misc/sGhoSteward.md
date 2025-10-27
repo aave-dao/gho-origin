@@ -31,7 +31,7 @@ In addition to the admin role, there are four specialized manager roles:
 |       SUPPLY_CAP_MANAGER_ROLE      |          Authorized to update the Supply Cap.                    |
 
 Initially, all roles are assigned to the `ghoCommittee`, a 3-of-4 multisig composed of service providers.
-Over time, **Aave DAO** may choose to delegate or reassign these roles to other addresses as it deems appropriate.
+Over time, **Aave DAO** may choose to delegate or reassign these roles to other addresses as it deems appropriate - for example, allowing oracles to control certain components while councils or other entities manage others.
 
 ## Target Rate Configuration
 

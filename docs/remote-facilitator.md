@@ -18,7 +18,7 @@ A single `GhoReserve` instance can be shared across multiple remote faciltiators
 
 ### Remote Facilitators
 
-Remote facilitators function similarly to those on Ethereum, but the way GHO is brought into circulation differs—since GHO can only be minted on Ethereum. Existing minting strategies such as `GhoDirectMinter` (for distribution via Aave V3 Pools) and GSM (for swapping GHO with exogenous assets) can be adapted as remote facilitators using the following setup:
+Remote facilitators function similarly to those on Ethereum, but the way GHO is brought into circulation differs (since GHO can only be minted on Ethereum). Existing minting strategies such as `GhoDirectMinter` (for distribution via Aave V3 Pools) and GSM (for swapping GHO with exogenous assets) can be adapted as remote facilitators using the following setup:
 
 [On Ethereum]
 

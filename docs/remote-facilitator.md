@@ -2,7 +2,7 @@
 
 The following section explains how remote facilitators for GHO operate and outlines the contracts involved in the setup.
 
-### [OwnableFacilitator](/src/contracts/facilitators/gsm/OwnableFacilitator.sol)
+### [GhoDirectFacilitator](/src/contracts/facilitators/gsm/GhoDirectFacilitator.sol)
 
 A minimal facilitator contract with minting and burning capabilities, controlled by a single entity. It must be granted the `Facilitator` role on the GHO token with a defined bucket capacity.
 
@@ -22,8 +22,8 @@ Remote facilitators function similarly to those on Ethereum, but the way GHO is 
 
 [On Ethereum]
 
-1. An `OwnableFacilitator` contract is deployed to represent the minting strategy on the remote chain. It is granted the `Facilitator` role on the Ethereum `GhoToken` contract, with a defined bucket capacity X.
-2. An amount X of GHO is minted via the `OwnableFacilitator` and bridged to the remote chain (typically via `CCIP`).
+1. An `GhoDirectFacilitator` contract is deployed to represent the minting strategy on the remote chain. It is granted the `Facilitator` role on the Ethereum `GhoToken` contract, with a defined bucket capacity X.
+2. An amount X of GHO is minted via the `GhoDirectFacilitator` and bridged to the remote chain (typically via `CCIP`).
 
 [On the Remote Chain]
 

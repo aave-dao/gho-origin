@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
 import {VersionedInitializable} from 'aave-v3-origin/contracts/misc/aave-upgradeability/VersionedInitializable.sol';
@@ -14,9 +14,18 @@ import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve
  * @notice It allows approved entities to withdraw and return GHO funds, with a defined maximum withdrawal capacity per entity.
  * @dev To be covered by a proxy contract.
  */
-contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
+contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCast for uint256;
+
+  /// @inheritdoc IGhoReserve
+  bytes32 public constant MANAGE_ENTITY_ROLE = keccak256('MANAGE_ENTITY_ROLE');
+
+  /// @inheritdoc IGhoReserve
+  bytes32 public constant SET_LIMIT_ROLE = keccak256('SET_LIMIT_ROLE');
+
+  /// @inheritdoc IGhoReserve
+  bytes32 public constant TRANSFER_ROLE = keccak256('TRANSFER_ROLE');
 
   /// @inheritdoc IGhoReserve
   address public immutable GHO_TOKEN;
@@ -31,18 +40,22 @@ contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
    * @dev Constructor
    * @param ghoAddress The address of the GHO token on the remote chain
    */
-  constructor(address ghoAddress) Ownable(msg.sender) {
+  constructor(address ghoAddress) {
     require(ghoAddress != address(0), 'ZERO_ADDRESS_NOT_VALID');
     GHO_TOKEN = ghoAddress;
   }
 
   /**
    * @dev Initializer
-   * @param newOwner The address of the new owner
+   * @param admin The address of the new owner
    */
-  function initialize(address newOwner) external initializer {
-    require(newOwner != address(0), 'ZERO_ADDRESS_NOT_VALID');
-    _transferOwnership(newOwner);
+  function initialize(address admin) external initializer {
+    require(admin != address(0), 'ZERO_ADDRESS_NOT_VALID');
+
+    _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    _grantRole(MANAGE_ENTITY_ROLE, admin);
+    _grantRole(SET_LIMIT_ROLE, admin);
+    _grantRole(TRANSFER_ROLE, admin);
   }
 
   /// @inheritdoc IGhoReserve
@@ -63,19 +76,19 @@ contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
   }
 
   /// @inheritdoc IGhoReserve
-  function transfer(address to, uint256 amount) external onlyOwner {
+  function transfer(address to, uint256 amount) external onlyRole(TRANSFER_ROLE) {
     IERC20(GHO_TOKEN).transfer(to, amount);
     emit GhoTransferred(to, amount);
   }
 
   /// @inheritdoc IGhoReserve
-  function addEntity(address entity) external onlyOwner {
+  function addEntity(address entity) external onlyRole(MANAGE_ENTITY_ROLE) {
     require(_entities.add(entity), 'ENTITY_ALREADY_EXISTS');
     emit EntityAdded(entity);
   }
 
   /// @inheritdoc IGhoReserve
-  function removeEntity(address entity) external onlyOwner {
+  function removeEntity(address entity) external onlyRole(MANAGE_ENTITY_ROLE) {
     GhoUsage memory usage = _ghoUsage[entity];
     require(usage.used == 0, 'ENTITY_GHO_USED_NOT_ZERO');
     require(usage.limit == 0, 'ENTITY_GHO_LIMIT_NOT_ZERO');
@@ -85,7 +98,7 @@ contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
   }
 
   /// @inheritdoc IGhoReserve
-  function setLimit(address entity, uint256 limit) external onlyOwner {
+  function setLimit(address entity, uint256 limit) external onlyRole(SET_LIMIT_ROLE) {
     require(_entities.contains(entity), 'ENTITY_DOES_NOT_EXIST');
     _ghoUsage[entity].limit = limit.toUint128();
 

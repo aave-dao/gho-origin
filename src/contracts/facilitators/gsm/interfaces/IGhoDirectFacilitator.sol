@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title IOwnableFacilitator
+ * @title IGhoDirectFacilitator
  * @author Aave/TokenLogic
- * @notice Defines the behaviour of an OwnableFacilitator
+ * @notice Defines the behaviour of an GhoDirectFacilitator
  */
-interface IOwnableFacilitator {
+interface IGhoDirectFacilitator {
   /**
    * @notice Mint an amount of GHO to an address
-   * @dev Only callable by the owner of the Facilitator.
+   * @dev Only callable by address with MINTER_ROLE.
    * @param account The address receiving GHO
    * @param amount The amount of GHO to be minted
    */
@@ -17,10 +17,22 @@ interface IOwnableFacilitator {
 
   /**
    * @notice Burns an amount of GHO
-   * @dev Only callable by the owner of the Facilitator.
+   * @dev Only callable by address with BURNER_ROLE.
    * @param amount The amount of GHO to be burned
    */
   function burn(uint256 amount) external;
+
+  /**
+   * @notice Returns the identifier of the Minter Role
+   * @return The bytes32 id hash of the Minter role
+   */
+  function MINTER_ROLE() external pure returns (bytes32);
+
+  /**
+   * @notice Returns the identifier of the Burner Role
+   * @return The bytes32 id hash of the Burner role
+   */
+  function BURNER_ROLE() external pure returns (bytes32);
 
   /**
    * @notice Returns the address of the GHO token

@@ -100,6 +100,24 @@ interface IGhoReserve {
   function setLimit(address entity, uint256 limit) external;
 
   /**
+   * @notice Returns the identifier of the ManageEntity Role
+   * @return The bytes32 id hash of the ManageEntity role
+   */
+  function MANAGE_ENTITY_ROLE() external pure returns (bytes32);
+
+  /**
+   * @notice Returns the identifier of the SetLimit Role
+   * @return The bytes32 id hash of the SetLimit role
+   */
+  function SET_LIMIT_ROLE() external pure returns (bytes32);
+
+  /**
+   * @notice Returns the identifier of the Transfer Role
+   * @return The bytes32 id hash of the Transfer role
+   */
+  function TRANSFER_ROLE() external pure returns (bytes32);
+
+  /**
    * @notice Returns the address of the GHO token
    * @return The address of GHO token contract
    */

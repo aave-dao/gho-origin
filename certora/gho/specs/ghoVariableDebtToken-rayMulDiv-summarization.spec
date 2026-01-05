@@ -50,7 +50,7 @@ methods{
     /********************************;
      *	GhoVariableDebtToken.sol	*;
      *********************************/
-    function totalSupply() external returns(uint256) envfree;
+    function totalSupply() external returns(uint256);
     function balanceOf(address) external returns (uint256);
     function mint(address, address, uint256, uint256) external returns (bool, uint256);
     function burn(address ,uint256 ,uint256) external returns (uint256);

@@ -1,8 +1,8 @@
-import "../GsmMethods/erc20.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
+import "methods_base.spec";
+import "../shared/methods_divint_summary.spec";
 
 using DiffHelper as diffHelper;
+//using GhoReserve as _ghoReserve;
 
 // ========================= Selling ==============================
 // The user wants to buy GHO and asks how much asset should be sold.  Fees are
@@ -63,6 +63,7 @@ rule R2_getAssetAmountForSellAsset_sellAsset_eq {
 
     address recipient;
     require recipient != currentContract; // Otherwise the balance grows because of the fees.
+    require recipient != _ghoReserve;
 
     assetsToSell, ghoToReceive, _, _ = getAssetAmountForSellAsset(e, minGhoToReceive);
 
@@ -124,8 +125,8 @@ rule R3a_sellAssetUpdatesAssetBalanceCorrectly {
 
 // @Title The GHO amount added to the user's account at `sellAsset` is at least the value `x` passed to `getAssetAmountForSellAsset(x)`
 // (4)
-// STATUS: TIMEOUT
-// https://prover.certora.com/output/11775/04f9aa998c0045839ed5e0fa8f17465d?anonymousKey=ba48d972104e53d04391136fa6e98e2eaeaf7d56
+// STATUS: 
+// 
 rule R4_buyGhoUpdatesGhoBalanceCorrectly {
     env e;
     feeLimits(e);
@@ -137,6 +138,7 @@ rule R4_buyGhoUpdatesGhoBalanceCorrectly {
     address seller = e.msg.sender;
     address recipient;
     require recipient != currentContract; // Otherwise the balance grows because of the fees.
+    require recipient != _ghoReserve;
 
     uint256 minGhoToSend;
     uint256 assetsToSpend;
@@ -151,6 +153,7 @@ rule R4_buyGhoUpdatesGhoBalanceCorrectly {
     uint256 balanceDiff = require_uint256(balanceAfter - balanceBefore);
     assert minGhoToSend <= balanceDiff;
 }
+
 
 // @Title The GHO amount added to the user's account at `sellAsset` can be greater than the value `x` passed to `getAssetAmountForSellAsset(x)`
 // Show that the GHO amount requested by the user to be transferred to the

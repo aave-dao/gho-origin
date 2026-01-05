@@ -5,6 +5,7 @@ test = 'tests'
 script = 'scripts'
 cache_path = 'cache'
 libs = ['node_modules', 'lib']
+fs_permissions = [{ access = "read", path = "tests/mocks/JsonBindings.sol" }]
 ffi = true
 evm_version = 'paris'
 solc_version = '0.8.22'
@@ -19,3 +20,10 @@ ignored_warnings_from = [
 ]
 optimizer = true
 optimizer_runs = 200
+
+[bind_json]
+out = "tests/mocks/JsonBindings.sol"
+include = ["tests/helpers/EIP712Types.sol"]
+
+[lint]
+ignore = ["tests/mocks/JsonBindings.sol"]

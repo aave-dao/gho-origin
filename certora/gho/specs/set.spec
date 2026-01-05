@@ -114,7 +114,7 @@ ghost uint256 mirrorArrayLen{
  * hook for Set array stores
  * @dev user of this spec must replace _list with the instance name of the Set.
  **/
-hook Sstore _facilitatorsList .(offset 0)[INDEX uint256 index] bytes32 newValue (bytes32 oldValue) STORAGE {
+hook Sstore _facilitatorsList .(offset 0)[INDEX uint256 index] bytes32 newValue (bytes32 oldValue)  {
     mirrorArray[index] = newValue;
 }
 
@@ -122,14 +122,14 @@ hook Sstore _facilitatorsList .(offset 0)[INDEX uint256 index] bytes32 newValue 
  * hook for Set array loads
  * @dev user of this spec must replace _list with the instance name of the Set.
  **/
-hook Sload bytes32 value _facilitatorsList .(offset 0)[INDEX uint256 index] STORAGE {
+hook Sload bytes32 value _facilitatorsList .(offset 0)[INDEX uint256 index]  {
     require(mirrorArray[index] == value);
 }
 /**
  * hook for Set map stores
  * @dev user of this spec must replace _list with the instance name of the Set.
  **/
-hook Sstore _facilitatorsList .(offset 32)[KEY bytes32 key] uint256 newIndex (uint256 oldIndex) STORAGE {
+hook Sstore _facilitatorsList .(offset 32)[KEY bytes32 key] uint256 newIndex (uint256 oldIndex)  {
       mirrorMap[key] = newIndex;
 }
 
@@ -137,7 +137,7 @@ hook Sstore _facilitatorsList .(offset 32)[KEY bytes32 key] uint256 newIndex (ui
  * hook for Set map loads
  * @dev user of this spec must replace _list with the instance name of the Set.
  **/
-hook Sload uint256 index _facilitatorsList .(offset 32)[KEY bytes32 key] STORAGE {
+hook Sload uint256 index _facilitatorsList .(offset 32)[KEY bytes32 key]  {
     require(mirrorMap[key] == index);
 }
 
@@ -145,7 +145,7 @@ hook Sload uint256 index _facilitatorsList .(offset 32)[KEY bytes32 key] STORAGE
  * hook for Set array length stores
  * @dev user of this spec must replace _list with the instance name of the Set.
  **/
-hook Sstore _facilitatorsList .(offset 0).(offset 0) uint256 newLen (uint256 oldLen) STORAGE {
+hook Sstore _facilitatorsList .(offset 0).(offset 0) uint256 newLen (uint256 oldLen)  {
         mirrorArrayLen = newLen;
 }
 
@@ -153,7 +153,7 @@ hook Sstore _facilitatorsList .(offset 0).(offset 0) uint256 newLen (uint256 old
  * hook for Set array length load
  * @dev user of this spec must replace _facilitatorsList with the instance name of the Set.
  **/
-hook Sload uint256 len _facilitatorsList .(offset 0).(offset 0) STORAGE {
+hook Sload uint256 len _facilitatorsList .(offset 0).(offset 0)  {
     require mirrorArrayLen == len;
 }
 

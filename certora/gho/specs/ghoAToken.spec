@@ -9,7 +9,7 @@ methods{
 	function UNDERLYING_ASSET_ADDRESS() external returns (address) envfree;
 	function transferUnderlyingTo(address,uint256) external;
 	function handleRepayment(address,address,uint256) external; 
-	function distributeFeesToTreasury() external envfree ;
+	function distributeFeesToTreasury() external;
 	function rescueTokens(address,address,uint256) external; 
 	function setVariableDebtToken(address)  external;
 	function getVariableDebtToken() external returns (address) envfree;
@@ -95,7 +95,7 @@ rule totalSupplyAlwaysZero() {
 * @title Proves that any user's balance of GhoAToken is always zero
 **/
 invariant userBalanceAlwaysZero(address user)
-	scaledBalanceOf(user) == 0;
+  scaledBalanceOf(user) == 0;
 
 
 

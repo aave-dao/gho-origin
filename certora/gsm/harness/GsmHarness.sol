@@ -23,9 +23,9 @@ contract GsmHarness is Gsm {
     return _currentExposure;
   }
 
-  function getGhoMinted() public view returns (uint256 ghoMinted) {
-    (, ghoMinted) = IGhoToken(GHO_TOKEN).getFacilitatorBucket(address(this));
-  }
+  //  function getGhoMinted() public view returns (uint256 ghoMinted) {
+  //  (, ghoMinted) = IGhoToken(GHO_TOKEN).getFacilitatorBucket(address(this));
+  //}
 
   function getPriceRatio() external returns (uint256 priceRatio) {
     priceRatio = FixedPriceStrategyHarness(PRICE_STRATEGY).PRICE_RATIO();

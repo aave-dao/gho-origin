@@ -1,10 +1,13 @@
 name: certora-steward
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
-      - main
-      - certora
+      - "*"
   push:
     branches:
       - main
@@ -14,46 +17,36 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install python
-        uses: actions/setup-python@v5
-        with: { python-version: 3.9 }
-
-      - name: Install java
-        uses: actions/setup-java@v4
-        with: { distribution: "zulu", java-version: "11", java-package: jre }
-
-      - name: Install certora cli
-        run: pip install certora-cli
-
-      - name: Install solc
+      - name: Munged
         run: |
-          cd certora/steward/
+          cd certora/steward
           touch applyHarness.patch
           make munged
-          cd ../..
-          wget https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux
-          chmod +x solc-static-linux
-          sudo mv solc-static-linux /usr/local/bin/solc8.10
 
-      - name: Verify rule ${{ matrix.rule }}
-        run: |
-          certoraRun certora/steward/conf/${{ matrix.rule }}
+      - uses: Certora/certora-run-action@v2
+        with:
+          cli-version: 7.31.2
+          configurations: |-
+            certora/steward/conf/GhoAaveSteward.conf
+            certora/steward/conf/GhoBucketSteward.conf
+            certora/steward/conf/GhoCcipSteward.conf
+            certora/steward/conf/GhoGsmSteward.conf
+          solc-versions: 0.8.10
+          comment-fail-only: false
+          solc-remove-version-prefix: "0."
+          job-name: "Certora Prover Run"
+          certora-key: ${{ secrets.CERTORAKEY }}
+          install-java: true
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CERTORAKEY: ${{ secrets.CERTORAKEY }}
-
-    strategy:
-      fail-fast: false
-      max-parallel: 16
-      matrix:
-        rule:
-          - GhoAaveSteward.conf
-          - GhoBucketSteward.conf
-          - GhoCcipSteward.conf
-          - GhoGsmSteward.conf

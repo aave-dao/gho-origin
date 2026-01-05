@@ -1,7 +1,9 @@
-import "../GsmMethods/erc20.spec";
-import "../GsmMethods/methods_divint_summary.spec";
-import "../GsmMethods/aave_price_fee_limits.spec";
-import "../GsmMethods/erc4626.spec";
+import "methods4626_base.spec";
+
+import "../shared/erc20.spec";
+import "../shared/methods_divint_summary.spec";
+//import "../GsmMethods/aave_price_fee_limits.spec";
+import "erc4626.spec";
 
 using DiffHelper as diffHelper;
 

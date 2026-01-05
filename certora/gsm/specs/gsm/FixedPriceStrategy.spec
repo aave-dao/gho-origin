@@ -1,4 +1,4 @@
-// import "../GsmMethods/methods_base.spec";
+// import "methods_base.spec";
 
 
 methods {

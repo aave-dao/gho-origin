@@ -27,6 +27,13 @@ interface IGsm is IAccessControl, IGhoFacilitator {
   );
 
   /**
+   * @dev Emitted when the GHO reserve is updated
+   * @param oldReserve The address of the old reserve
+   * @param newReserve The address of the new reserve
+   */
+  event GhoReserveUpdated(address oldReserve, address newReserve);
+
+  /**
    * @dev Emitted when a user sells an asset (buying GHO) in the GSM
    * @param originator The address of the seller originating the request
    * @param receiver The address of the receiver of GHO
@@ -157,6 +164,8 @@ interface IGsm is IAccessControl, IGhoFacilitator {
 
   /**
    * @notice Rescue and transfer tokens locked in this contract
+   * @dev In a Gsm4626 instance, distributeFeesToTreasury() must be called first to ensure the accounting of
+   * accrued fees is up-to-date.
    * @param token The address of the token
    * @param to The address of the recipient
    * @param amount The amount of token to transfer
@@ -198,6 +207,13 @@ interface IGsm is IAccessControl, IGhoFacilitator {
    * @param exposureCap The new value for the exposure cap (in underlying asset terms)
    */
   function updateExposureCap(uint128 exposureCap) external;
+
+  /**
+   * @notice Updates the GHO reserve address
+   * @dev It revokes the allowance to the old reserve and grants maximum allowance to the new one.
+   * @param newGhoReserve The new address of the GHO reserve
+   */
+  function updateGhoReserve(address newGhoReserve) external;
 
   /**
    * @notice Returns the EIP712 domain separator
@@ -296,6 +312,24 @@ interface IGsm is IAccessControl, IGhoFacilitator {
    * @return True if the GSM has been seized, false if not
    */
   function getIsSeized() external view returns (bool);
+
+  /**
+   * @notice Returns the address of the GHO reserve
+   * @return The address of the GHO reserve
+   */
+  function getGhoReserve() external view returns (address);
+
+  /**
+   * @notice Returns the amount of GHO used by the GSM
+   * @return The amount of GHO used
+   */
+  function getUsed() external view returns (uint256);
+
+  /**
+   * @notice Returns the maximum amount of GHO that can be used
+   * @return The maximum amount of GHO that can be used
+   */
+  function getLimit() external view returns (uint256);
 
   /**
    * @notice Returns whether or not swaps via buyAsset/sellAsset are currently possible

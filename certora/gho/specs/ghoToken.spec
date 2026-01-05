@@ -20,11 +20,11 @@ ghost sumAllBalance() returns mathint {
     init_state axiom sumAllBalance() == 0;
 }
 
-hook Sstore balanceOf[KEY address a] uint256 balance (uint256 old_balance) STORAGE {
+hook Sstore balanceOf[KEY address a] uint256 balance (uint256 old_balance)  {
   havoc sumAllBalance assuming sumAllBalance@new() == sumAllBalance@old() + balance - old_balance;
 }
 
-hook Sload uint256 balance balanceOf[KEY address a] STORAGE {
+hook Sload uint256 balance balanceOf[KEY address a]  {
     require to_mathint(balance) <= sumAllBalance();
 } 
 
@@ -39,7 +39,7 @@ ghost sumAllLevel() returns mathint {
  * @dev Sample stores to  _facilitators[*].bucketLevel
  * @dev first field of struct Facilitator is uint128 so offset 16 is used  
  **/
-hook Sstore _facilitators[KEY address a].(offset 16) uint128 level (uint128 old_level)   STORAGE {
+hook Sstore _facilitators[KEY address a].(offset 16) uint128 level (uint128 old_level)    {
   havoc sumAllLevel assuming sumAllLevel@new() == sumAllLevel@old() + level - old_level;
 }
 
@@ -139,7 +139,7 @@ invariant inv_valid_level(address facilitator)
 invariant address_in_set_values_iff_in_set_indexes(address facilitator)
 	is_in_facilitator_set_array(facilitator) <=> is_in_facilitator_set_map(facilitator)
 	{preserved{
-		requireInvariant addressSetInvariant();
+		requireInvariant addressSetInvariant_2();
 		requireInvariant length_leq_max_uint160();
 		}
 	}
@@ -153,7 +153,7 @@ invariant address_in_set_values_iff_in_set_indexes(address facilitator)
 invariant addr_in_set_iff_in_map(address facilitator)
 	is_in_facilitator_mapping(facilitator) <=> is_in_facilitator_set_map(facilitator)
 	{preserved{
- 		requireInvariant addressSetInvariant();
+ 		requireInvariant addressSetInvariant_2();
 
 	}
 	}
@@ -167,7 +167,7 @@ invariant addr_in_set_iff_in_map(address facilitator)
 invariant addr_in_set_list_iff_in_map(address facilitator)
 	is_in_facilitator_mapping(facilitator) <=> is_in_facilitator_set_array(facilitator)
 	{preserved{
-		requireInvariant addressSetInvariant();
+		requireInvariant addressSetInvariant_2();
 		requireInvariant length_leq_max_uint160();
 		}
 	}
@@ -207,7 +207,7 @@ rule mint_after_burn(method f) filtered {f -> !f.isView}
 	
 	require getFacilitatorBucketLevel(e.msg.sender) <= getFacilitatorBucketCapacity(e.msg.sender);
 	require amount_mint > 0;
-	requireInvariant addressSetInvariant();
+	requireInvariant addressSetInvariant_2();
 
 	requireInvariant inv_balanceOf_leq_totalSupply(e.msg.sender);
 	requireInvariant inv_valid_capacity(e.msg.sender);
@@ -362,7 +362,7 @@ rule facilitator_in_list_after_mint_and_burn(method f){
 **/
 rule address_not_in_list_after_removeFacilitator(address facilitator){
 	env e;
-	requireInvariant addressSetInvariant();
+	requireInvariant addressSetInvariant_2();
 	requireInvariant length_leq_max_uint160();
 	requireInvariant addr_in_set_iff_in_map(facilitator);
 	removeFacilitator(e, facilitator);
@@ -499,7 +499,8 @@ invariant ARRAY_IS_INVERSE_OF_MAP_Invariant()
 	}
 
 //pass with workaround for https://certora.atlassian.net/browse/CERT-1060
-invariant addressSetInvariant()
+
+invariant addressSetInvariant_2()
     ADDRESS_SET_INVARIANT()
 	{
 		preserved{
@@ -513,7 +514,7 @@ invariant addressSetInvariant()
 //pass with  axiom mirrorArrayLen < TWO_TO_160() - 1 
 rule address_not_in_list_after_removeFacilitator_CASE_SPLIT_zero_address(address facilitator){
 	env e;
-	requireInvariant addressSetInvariant();
+	requireInvariant addressSetInvariant_2();
 	require facilitator == 0;
 	
 	requireInvariant addr_in_set_iff_in_map(facilitator);

@@ -279,6 +279,12 @@ contract TestGhoBase is Test, Constants, Events {
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
     );
+    AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
+      address(GHO_GSM_4626),
+      SHORT_EXECUTOR,
+      ''
+    );
+    GHO_GSM_4626 = Gsm4626(address(gsm4626Proxy));
     GHO_GSM_4626.initialize(
       address(this),
       TREASURY,

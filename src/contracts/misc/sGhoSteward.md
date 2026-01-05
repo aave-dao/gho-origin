@@ -15,7 +15,7 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 - Supports updating with each rate parameter *individually* or *multiple parameters simultaneously*.
 - Integrates **Role-Based Access Control** from OpenZeppelin, enabling secure assignment, modification, and revocation of roles.
 - Provides functions to view the current configuration and pre-calculate the `targetRate` for any given configuration.
-- Enforces a hard cap of `50%` for the computed `targetRate`, regardless of configuration input.
+- Enforces a hard cap of `50%` for the computed `targetRate`, reverting the transaction if the changes do not meet the condition.
 
 ## Access Control
 

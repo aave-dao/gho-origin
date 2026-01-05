@@ -50,7 +50,7 @@ interface IsGhoSteward {
   /**
    * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
    */
-  error TooBigRate();
+  error RateTooBig();
 
   /**
    * @dev Attempted to set the same value, which is already installed.

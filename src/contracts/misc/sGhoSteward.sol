@@ -16,16 +16,27 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   using SafeCast for uint256;
 
   /// @notice Current rate parameters
-  RateConfig public rateConfig;
+  RateConfig internal _rateConfig;
 
-  IsGHO public immutable sGHO;
+  /// @notice sGho contract address
+  IsGHO internal immutable _sGHO;
+
+  /// @inheritdoc IsGhoSteward
   uint16 public immutable MAX_RATE;
 
+  /// @inheritdoc IsGhoSteward
   uint16 public constant AMPLIFICATION_DENOMINATOR = 100_00;
 
+  /// @inheritdoc IsGhoSteward
   bytes32 public constant AMPLIFICATION_MANAGER_ROLE = keccak256('AMPLIFICATION_MANAGER_ROLE');
+
+  /// @inheritdoc IsGhoSteward
   bytes32 public constant FLOAT_RATE_MANAGER_ROLE = keccak256('FLOAT_RATE_MANAGER_ROLE');
+
+  /// @inheritdoc IsGhoSteward
   bytes32 public constant FIXED_RATE_MANAGER_ROLE = keccak256('FIXED_RATE_MANAGER_ROLE');
+
+  /// @inheritdoc IsGhoSteward
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
 
   constructor(address sGho, address governance, address ghoCommittee) {
@@ -33,8 +44,8 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       revert ZeroAddress();
     }
 
-    sGHO = IsGHO(sGho);
-    MAX_RATE = sGHO.MAX_SAFE_RATE();
+    _sGHO = IsGHO(sGho);
+    MAX_RATE = _sGHO.MAX_SAFE_RATE();
 
     _grantRole(DEFAULT_ADMIN_ROLE, governance);
 
@@ -45,29 +56,30 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     _grantRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee);
   }
 
-  function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16) {
-    RateConfig memory rateConfigCopy = rateConfig;
+  /// @inheritdoc IsGhoSteward
+  function setRateConfig(RateConfig calldata rateConfig) external returns (uint16) {
+    RateConfig memory rateConfigCopy = _rateConfig;
     bool isRateChanged;
 
-    if (rateConfigCopy.amplification != rateConfig_.amplification) {
+    if (rateConfigCopy.amplification != rateConfig.amplification) {
       _checkRole(AMPLIFICATION_MANAGER_ROLE);
 
       isRateChanged = true;
-      rateConfigCopy.amplification = rateConfig_.amplification;
+      rateConfigCopy.amplification = rateConfig.amplification;
     }
 
-    if (rateConfigCopy.floatRate != rateConfig_.floatRate) {
+    if (rateConfigCopy.floatRate != rateConfig.floatRate) {
       _checkRole(FLOAT_RATE_MANAGER_ROLE);
 
       isRateChanged = true;
-      rateConfigCopy.floatRate = rateConfig_.floatRate;
+      rateConfigCopy.floatRate = rateConfig.floatRate;
     }
 
-    if (rateConfigCopy.fixedRate != rateConfig_.fixedRate) {
+    if (rateConfigCopy.fixedRate != rateConfig.fixedRate) {
       _checkRole(FIXED_RATE_MANAGER_ROLE);
 
       isRateChanged = true;
-      rateConfigCopy.fixedRate = rateConfig_.fixedRate;
+      rateConfigCopy.fixedRate = rateConfig.fixedRate;
     }
 
     if (!isRateChanged) {
@@ -77,37 +89,45 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     return _setRateConfig(rateConfigCopy);
   }
 
-  function setSupplyCap(uint256 supplyCap_) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
-    uint256 currentSupplyCap = sGHO.supplyCap();
+  /// @inheritdoc IsGhoSteward
+  function setSupplyCap(uint256 supplyCap) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
+    uint256 currentSupplyCap = _sGHO.supplyCap();
 
-    if (currentSupplyCap == supplyCap_) {
+    if (currentSupplyCap == supplyCap) {
       revert SameValue();
     }
 
-    sGHO.setSupplyCap(supplyCap_.toUint160());
-    emit SupplyCapUpdated(msg.sender, supplyCap_);
+    _sGHO.setSupplyCap(supplyCap.toUint160());
+    emit SupplyCapUpdated(msg.sender, supplyCap);
   }
 
-  function previewTargetRate(RateConfig calldata rateConfig_) external view returns (uint16) {
-    return _checkRateConfig(rateConfig_);
+  /// @inheritdoc IsGhoSteward
+  function previewTargetRate(RateConfig calldata rateConfig) external view returns (uint16) {
+    return _checkRateConfig(rateConfig);
   }
 
+  /// @inheritdoc IsGhoSteward
   function getRateConfig() external view returns (RateConfig memory) {
-    return rateConfig;
+    return _rateConfig;
   }
 
-  function _setRateConfig(RateConfig memory rateConfig_) internal returns (uint16) {
-    uint16 targetRate = _checkRateConfig(rateConfig_);
+  /// @inheritdoc IsGhoSteward
+  function sGHO() external view returns (IsGHO) {
+    return _sGHO;
+  }
 
-    sGHO.setTargetRate(targetRate);
-    rateConfig = rateConfig_;
+  function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {
+    uint16 targetRate = _checkRateConfig(rateConfig);
+
+    _sGHO.setTargetRate(targetRate);
+    _rateConfig = rateConfig;
 
     emit RateConfigUpdated(
       msg.sender,
       targetRate,
-      rateConfig_.amplification,
-      rateConfig_.floatRate,
-      rateConfig_.fixedRate
+      rateConfig.amplification,
+      rateConfig.floatRate,
+      rateConfig.fixedRate
     );
 
     return targetRate;
@@ -120,7 +140,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       rateConfig_.fixedRate;
 
     if (targetRate > MAX_RATE) {
-      revert TooBigRate();
+      revert RateTooBig();
     }
 
     return targetRate.toUint16();

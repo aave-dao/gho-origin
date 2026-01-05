@@ -359,10 +359,10 @@ contract sGhoStewardTest is Test {
       fixedRate: fix
     });
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.TooBigRate.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
     steward.previewTargetRate(newConfig);
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.TooBigRate.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
     steward.setRateConfig(newConfig);
   }
 

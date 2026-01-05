@@ -49,13 +49,15 @@ contract sGhoStewardTest is Test {
     new sGhoSteward(address(sGho), executor, address(0));
   }
 
-  function test_initialRoles() public view {
+  function test_initial() public view {
     assertTrue(steward.hasRole(DEFAULT_ADMIN_ROLE, executor));
 
     assertTrue(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee));
     assertTrue(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee));
     assertTrue(steward.hasRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee));
     assertTrue(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee));
+
+    assertEq(address(steward.sGHO()), address(sGho));
   }
 
   function test_setRateConfig() public {

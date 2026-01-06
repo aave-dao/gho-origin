@@ -92,7 +92,11 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
    * @param underlyingAsset The address of the collateral asset
    * @param priceStrategy The address of the price strategy
    */
-  constructor(address ghoToken, address underlyingAsset, address priceStrategy) EIP712('GSM', '1') initializer {
+  constructor(
+    address ghoToken,
+    address underlyingAsset,
+    address priceStrategy
+  ) EIP712('GSM', '1') initializer {
     require(ghoToken != address(0), 'ZERO_ADDRESS_NOT_VALID');
     require(underlyingAsset != address(0), 'ZERO_ADDRESS_NOT_VALID');
     require(

@@ -31,8 +31,8 @@ contract Constants {
   bytes32 public constant BURNER_ROLE = keccak256('MINTER_ROLE');
 
   // admin role for GhoReserve
-  bytes32 public constant MANAGE_ENTITY_ROLE = keccak256('MANAGE_ENTITY_ROLE');
-  bytes32 public constant SET_LIMIT_ROLE = keccak256('SET_LIMIT_ROLE');
+  bytes32 public constant ENTITY_MANAGER_ROLE = keccak256('ENTITY_MANAGER_ROLE');
+  bytes32 public constant LIMIT_MANAGER_ROLE = keccak256('LIMIT_MANAGER_ROLE');
   bytes32 public constant TRANSFER_ROLE = keccak256('TRANSFER_ROLE');
 
   // signature typehash for GSM

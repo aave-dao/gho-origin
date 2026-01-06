@@ -8,7 +8,7 @@ import {IGhoDirectFacilitator} from 'src/contracts/facilitators/gsm/interfaces/I
 /**
  * @title GhoDirectFacilitator
  * @author Aave/TokenLogic
- * @notice GHO Facilitator used to directly mint GHO to a given address.
+ * @notice Basic facilitator for minting and burning tokens to and from an account, controlled by an access control list.
  */
 contract GhoDirectFacilitator is AccessControl, IGhoDirectFacilitator {
   /// @inheritdoc IGhoDirectFacilitator
@@ -23,17 +23,17 @@ contract GhoDirectFacilitator is AccessControl, IGhoDirectFacilitator {
   /**
    * @dev Constructor
    * @param admin The address of the initial owner
-   * @param ghoAddress The address of GHO token
+   * @param gho The address of GHO token
    */
-  constructor(address admin, address ghoAddress) {
+  constructor(address admin, address gho) {
     require(admin != address(0), 'ZERO_ADDRESS_NOT_VALID');
-    require(ghoAddress != address(0), 'ZERO_ADDRESS_NOT_VALID');
+    require(gho != address(0), 'ZERO_ADDRESS_NOT_VALID');
 
     _grantRole(DEFAULT_ADMIN_ROLE, admin);
     _grantRole(MINTER_ROLE, admin);
     _grantRole(BURNER_ROLE, admin);
 
-    GHO_TOKEN = ghoAddress;
+    GHO_TOKEN = gho;
   }
 
   /// @inheritdoc IGhoDirectFacilitator

@@ -19,15 +19,15 @@ contract TestGhoReserve is TestGhoBase {
     GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
 
     assertFalse(reserve.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
-    assertFalse(reserve.hasRole(MANAGE_ENTITY_ROLE, address(this)));
-    assertFalse(reserve.hasRole(SET_LIMIT_ROLE, address(this)));
+    assertFalse(reserve.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+    assertFalse(reserve.hasRole(LIMIT_MANAGER_ROLE, address(this)));
     assertFalse(reserve.hasRole(TRANSFER_ROLE, address(this)));
 
     reserve.initialize(address(this));
 
     assertTrue(reserve.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
-    assertTrue(reserve.hasRole(MANAGE_ENTITY_ROLE, address(this)));
-    assertTrue(reserve.hasRole(SET_LIMIT_ROLE, address(this)));
+    assertTrue(reserve.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+    assertTrue(reserve.hasRole(LIMIT_MANAGER_ROLE, address(this)));
     assertTrue(reserve.hasRole(TRANSFER_ROLE, address(this)));
   }
 
@@ -167,7 +167,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertAddEntityNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(MANAGE_ENTITY_ROLE, ALICE));
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.addEntity(ALICE);
   }
@@ -231,7 +231,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertRemoveEntityNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(MANAGE_ENTITY_ROLE, ALICE));
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.removeEntity(ALICE);
   }
@@ -261,7 +261,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertSetLimitNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(SET_LIMIT_ROLE, ALICE));
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(LIMIT_MANAGER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.setLimit(ALICE, 1_000_000 ether);
   }

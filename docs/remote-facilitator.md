@@ -22,7 +22,7 @@ Remote facilitators function similarly to those on Ethereum, but the way GHO is 
 
 [On Ethereum]
 
-1. An `GhoDirectFacilitator` contract is deployed to represent the minting strategy on the remote chain. It is granted the `Facilitator` role on the Ethereum `GhoToken` contract, with a defined bucket capacity X.
+1. A `GhoDirectFacilitator` contract is deployed to represent the minting strategy on the remote chain. It is granted the `Facilitator` role on the Ethereum `GhoToken` contract, with a defined bucket capacity of X.
 2. An amount X of GHO is minted via the `GhoDirectFacilitator` and bridged to the remote chain (typically via `CCIP`).
 
 [On the Remote Chain]

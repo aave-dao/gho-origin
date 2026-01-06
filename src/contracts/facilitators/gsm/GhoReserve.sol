@@ -19,10 +19,10 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
   using SafeCast for uint256;
 
   /// @inheritdoc IGhoReserve
-  bytes32 public constant MANAGE_ENTITY_ROLE = keccak256('MANAGE_ENTITY_ROLE');
+  bytes32 public constant ENTITY_MANAGER_ROLE = keccak256('ENTITY_MANAGER_ROLE');
 
   /// @inheritdoc IGhoReserve
-  bytes32 public constant SET_LIMIT_ROLE = keccak256('SET_LIMIT_ROLE');
+  bytes32 public constant LIMIT_MANAGER_ROLE = keccak256('LIMIT_MANAGER_ROLE');
 
   /// @inheritdoc IGhoReserve
   bytes32 public constant TRANSFER_ROLE = keccak256('TRANSFER_ROLE');
@@ -38,11 +38,11 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
 
   /**
    * @dev Constructor
-   * @param ghoAddress The address of the GHO token on the remote chain
+   * @param gho The address of the GHO token on the remote chain
    */
-  constructor(address ghoAddress) {
-    require(ghoAddress != address(0), 'ZERO_ADDRESS_NOT_VALID');
-    GHO_TOKEN = ghoAddress;
+  constructor(address gho) {
+    require(gho != address(0), 'ZERO_ADDRESS_NOT_VALID');
+    GHO_TOKEN = gho;
   }
 
   /**
@@ -53,8 +53,8 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
     require(admin != address(0), 'ZERO_ADDRESS_NOT_VALID');
 
     _grantRole(DEFAULT_ADMIN_ROLE, admin);
-    _grantRole(MANAGE_ENTITY_ROLE, admin);
-    _grantRole(SET_LIMIT_ROLE, admin);
+    _grantRole(ENTITY_MANAGER_ROLE, admin);
+    _grantRole(LIMIT_MANAGER_ROLE, admin);
     _grantRole(TRANSFER_ROLE, admin);
   }
 
@@ -82,13 +82,13 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
   }
 
   /// @inheritdoc IGhoReserve
-  function addEntity(address entity) external onlyRole(MANAGE_ENTITY_ROLE) {
+  function addEntity(address entity) external onlyRole(ENTITY_MANAGER_ROLE) {
     require(_entities.add(entity), 'ENTITY_ALREADY_EXISTS');
     emit EntityAdded(entity);
   }
 
   /// @inheritdoc IGhoReserve
-  function removeEntity(address entity) external onlyRole(MANAGE_ENTITY_ROLE) {
+  function removeEntity(address entity) external onlyRole(ENTITY_MANAGER_ROLE) {
     GhoUsage memory usage = _ghoUsage[entity];
     require(usage.used == 0, 'ENTITY_GHO_USED_NOT_ZERO');
     require(usage.limit == 0, 'ENTITY_GHO_LIMIT_NOT_ZERO');
@@ -98,7 +98,7 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
   }
 
   /// @inheritdoc IGhoReserve
-  function setLimit(address entity, uint256 limit) external onlyRole(SET_LIMIT_ROLE) {
+  function setLimit(address entity, uint256 limit) external onlyRole(LIMIT_MANAGER_ROLE) {
     require(_entities.contains(entity), 'ENTITY_DOES_NOT_EXIST');
     _ghoUsage[entity].limit = limit.toUint128();
 

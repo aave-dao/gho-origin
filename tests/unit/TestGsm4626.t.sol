@@ -169,12 +169,7 @@ contract TestGsm4626 is TestGhoBase {
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
     );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      ''
-    );
-    gsm = Gsm4626(address(gsmProxy));
+    gsm = Gsm4626(address(new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, '')));
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE - 1, address(GHO_RESERVE));
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Exposure Cap', DEFAULT_CAPACITY);
 

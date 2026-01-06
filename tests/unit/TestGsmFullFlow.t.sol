@@ -16,6 +16,7 @@ contract TestGsmFullFlow is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, '')));
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(reserve));
 
     reserve.addEntity(address(gsm));

@@ -50,6 +50,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     vm.expectEmit(true, true, true, true, address(gsm));
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
     vm.expectEmit(true, true, false, true, address(gsm));
@@ -66,6 +71,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
     gsm.initialize(address(0), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
@@ -76,6 +86,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(0));
   }
@@ -86,6 +101,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
     vm.expectRevert('Contract instance has already been initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
@@ -368,6 +388,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
@@ -388,6 +413,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE - 1, address(GHO_RESERVE));
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Exposure Cap', DEFAULT_CAPACITY);
 
@@ -1073,6 +1103,11 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
+    gsm = Gsm(address(new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    )));
     vm.expectRevert(bytes('ZERO_ADDRESS_NOT_VALID'));
     gsm.initialize(address(this), address(0), DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }

@@ -89,6 +89,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -175,6 +181,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
 
     // Get gho amount for selling assets
@@ -212,6 +224,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_TOKEN.addFacilitator(address(gsm), 'Test GSM', type(uint128).max);
 
@@ -253,6 +271,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -305,6 +329,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -350,6 +380,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -395,6 +431,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -441,6 +483,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
@@ -487,6 +535,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, uint128(assetAmount), address(GHO_RESERVE));
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
@@ -558,6 +612,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, uint128(assetAmount), address(GHO_RESERVE));
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
@@ -625,6 +685,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, uint128(assetAmount), address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -724,6 +790,12 @@ contract TestGsmSwapFuzz is TestGhoBase {
       underlyingDecimals // decimals
     );
     Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      ''
+    );
+    gsm = Gsm(address(gsmProxy));
     gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);

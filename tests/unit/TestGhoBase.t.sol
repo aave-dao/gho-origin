@@ -261,7 +261,7 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
@@ -274,12 +274,12 @@ contract TestGhoBase is Test, Constants, Events {
       address(GHO_RESERVE)
     );
     AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
+      address(gsm),
       SHORT_EXECUTOR,
       gsmInitParams
     );
     GHO_GSM = Gsm(address(gsmProxy));
-    Gsm4626 gsm4626Impl = new Gsm4626(
+    Gsm4626 gsm4626 = new Gsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
@@ -292,7 +292,7 @@ contract TestGhoBase is Test, Constants, Events {
       address(GHO_RESERVE)
     );
     AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
-      address(gsm4626Impl),
+      address(gsm4626),
       SHORT_EXECUTOR,
       gsm4626InitParams
     );
@@ -393,7 +393,7 @@ contract TestGhoBase is Test, Constants, Events {
     uint128 exposureCap,
     address ghoReserve
   ) internal returns (Gsm) {
-    Gsm gsmImpl = new Gsm(ghoToken, underlyingAsset, priceStrategy);
+    Gsm gsm = new Gsm(ghoToken, underlyingAsset, priceStrategy);
     bytes memory initParams = abi.encodeWithSignature(
       'initialize(address,address,uint128,address)',
       admin,
@@ -402,7 +402,7 @@ contract TestGhoBase is Test, Constants, Events {
       ghoReserve
     );
     AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
+      address(gsm),
       SHORT_EXECUTOR,
       initParams
     );
@@ -413,11 +413,11 @@ contract TestGhoBase is Test, Constants, Events {
    * @dev Helper function to deploy GhoReserve through proxy with initialization
    */
   function _deployReserve() internal returns (GhoReserve) {
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
     bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-      address(reserveImpl),
+      address(reserve),
       proxyAdmin,
       initParams
     );
@@ -436,7 +436,7 @@ contract TestGhoBase is Test, Constants, Events {
     uint128 exposureCap,
     address ghoReserve
   ) internal returns (Gsm4626) {
-    Gsm4626 gsm4626Impl = new Gsm4626(ghoToken, underlyingAsset, priceStrategy);
+    Gsm4626 gsm = new Gsm4626(ghoToken, underlyingAsset, priceStrategy);
     bytes memory initParams = abi.encodeWithSignature(
       'initialize(address,address,uint128,address)',
       admin,
@@ -445,7 +445,7 @@ contract TestGhoBase is Test, Constants, Events {
       ghoReserve
     );
     AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsm4626Impl),
+      address(gsm),
       SHORT_EXECUTOR,
       initParams
     );

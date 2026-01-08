@@ -45,7 +45,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testInitialize() public {
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
@@ -64,16 +64,16 @@ contract TestGsm is TestGhoBase {
     vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
     AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
+      address(gsm),
       SHORT_EXECUTOR,
       initParams
     );
-    Gsm gsm = Gsm(address(proxy));
+    gsm = Gsm(address(proxy));
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
   }
 
   function testRevertInitializeZeroAdmin() public {
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
@@ -86,11 +86,11 @@ contract TestGsm is TestGhoBase {
       address(GHO_RESERVE)
     );
     vm.expectRevert();
-    new AdminUpgradeabilityProxy(address(gsmImpl), SHORT_EXECUTOR, initParams);
+    new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, initParams);
   }
 
   function testRevertInitializeZeroGhoReserve() public {
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
@@ -103,11 +103,11 @@ contract TestGsm is TestGhoBase {
       address(0)
     );
     vm.expectRevert();
-    new AdminUpgradeabilityProxy(address(gsmImpl), SHORT_EXECUTOR, initParams);
+    new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, initParams);
   }
 
   function testRevertInitializeTwice() public {
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
@@ -120,11 +120,11 @@ contract TestGsm is TestGhoBase {
       address(GHO_RESERVE)
     );
     AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
+      address(gsm),
       SHORT_EXECUTOR,
       initParams
     );
-    Gsm gsm = Gsm(address(proxy));
+    gsm = Gsm(address(proxy));
     vm.expectRevert('Initializable: contract is already initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
@@ -1112,7 +1112,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeTreasuryZeroAddress() public {
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
@@ -1125,7 +1125,7 @@ contract TestGsm is TestGhoBase {
       address(GHO_RESERVE)
     );
     vm.expectRevert();
-    new AdminUpgradeabilityProxy(address(gsmImpl), SHORT_EXECUTOR, initParams);
+    new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, initParams);
   }
 
   function testUpdateGhoTreasuryRevertIfZero() public {

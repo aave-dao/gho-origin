@@ -24,11 +24,11 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertInitializeInvalidZeroOwner() public {
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
     bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(0));
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
-    new TransparentUpgradeableProxy(address(reserveImpl), proxyAdmin, initParams);
+    new TransparentUpgradeableProxy(address(reserve), proxyAdmin, initParams);
   }
 
   function testRevertInitializeTwice() public {

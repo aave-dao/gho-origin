@@ -9,18 +9,18 @@ import './TestGhoBase.t.sol';
 contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
   function setUp() public {
     // Deploy Gho GSM Steward
-    FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
+    FixedFeeStrategyFactory factory = new FixedFeeStrategyFactory();
     bytes memory factoryInitParams = abi.encodeWithSignature(
       'initialize(address[])',
       new address[](0)
     );
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     TransparentUpgradeableProxy factoryProxy = new TransparentUpgradeableProxy(
-      address(factoryImpl),
+      address(factory),
       proxyAdmin,
       factoryInitParams
     );
-    FIXED_FEE_STRATEGY_FACTORY = FixedFeeStrategyFactory(address(factoryProxy));
+    FIXED_FEE_STRATEGY_FACTORY = FixedFeeStrategyFactory(address(factory));
     GHO_GSM_STEWARD = GhoGsmSteward(
       _deployGhoGsmSteward({
         fixedFeeStrategyFactory: address(FIXED_FEE_STRATEGY_FACTORY),

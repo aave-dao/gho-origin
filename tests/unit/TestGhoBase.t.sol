@@ -223,7 +223,6 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
     POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
-    // Deploy GHO_RESERVE through proxy
     GHO_RESERVE = _deployReserve();
 
     OWNABLE_FACILITATOR = new OwnableFacilitator(address(this), address(GHO_TOKEN));

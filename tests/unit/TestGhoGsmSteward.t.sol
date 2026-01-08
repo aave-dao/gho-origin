@@ -3,12 +3,24 @@ pragma solidity ^0.8.0;
 
 import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
+import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import './TestGhoBase.t.sol';
 
 contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
   function setUp() public {
     // Deploy Gho GSM Steward
-    FIXED_FEE_STRATEGY_FACTORY = new FixedFeeStrategyFactory();
+    FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
+    bytes memory factoryInitParams = abi.encodeWithSignature(
+      'initialize(address[])',
+      new address[](0)
+    );
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    TransparentUpgradeableProxy factoryProxy = new TransparentUpgradeableProxy(
+      address(factoryImpl),
+      proxyAdmin,
+      factoryInitParams
+    );
+    FIXED_FEE_STRATEGY_FACTORY = FixedFeeStrategyFactory(address(factoryProxy));
     GHO_GSM_STEWARD = GhoGsmSteward(
       _deployGhoGsmSteward({
         fixedFeeStrategyFactory: address(FIXED_FEE_STRATEGY_FACTORY),

@@ -223,8 +223,16 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
     POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
-    GHO_RESERVE = new GhoReserve(address(GHO_TOKEN));
-    GHO_RESERVE.initialize(address(this));
+    // Deploy GHO_RESERVE through proxy
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    bytes memory reserveInitParams = abi.encodeWithSignature('initialize(address)', address(this));
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
+      address(reserveImpl),
+      proxyAdmin,
+      reserveInitParams
+    );
+    GHO_RESERVE = GhoReserve(address(reserveProxy));
 
     OWNABLE_FACILITATOR = new OwnableFacilitator(address(this), address(GHO_TOKEN));
     // Give OwnableFacilitator twice the default capacity to fully fund two GSMs
@@ -261,36 +269,42 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    Gsm gsm = new Gsm(
+    Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      ''
-    );
-    GHO_GSM = Gsm(address(gsmProxy));
-
-    GHO_GSM.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
-    GHO_GSM_4626 = new Gsm4626(
-      address(GHO_TOKEN),
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
-    );
-    AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
-      address(GHO_GSM_4626),
-      SHORT_EXECUTOR,
-      ''
-    );
-    GHO_GSM_4626 = Gsm4626(address(gsm4626Proxy));
-    GHO_GSM_4626.initialize(
+    bytes memory gsmInitParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
       address(this),
       TREASURY,
       DEFAULT_GSM_USDX_EXPOSURE,
       address(GHO_RESERVE)
     );
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      gsmInitParams
+    );
+    GHO_GSM = Gsm(address(gsmProxy));
+    Gsm4626 gsm4626Impl = new Gsm4626(
+      address(GHO_TOKEN),
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+    );
+    bytes memory gsm4626InitParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
+      address(this),
+      TREASURY,
+      DEFAULT_GSM_USDX_EXPOSURE,
+      address(GHO_RESERVE)
+    );
+    AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
+      address(gsm4626Impl),
+      SHORT_EXECUTOR,
+      gsm4626InitParams
+    );
+    GHO_GSM_4626 = Gsm4626(address(gsm4626Proxy));
 
     GHO_RESERVE.addEntity(address(GHO_GSM));
     GHO_RESERVE.addEntity(address(GHO_GSM_4626));
@@ -373,6 +387,77 @@ contract TestGhoBase is Test, Constants, Events {
 
   function borrowAction(address user, uint256 amount) public {
     borrowActionOnBehalf(user, user, amount);
+  }
+
+  /**
+   * @dev Helper function to deploy Gsm through proxy with initialization
+   */
+  function _deployGsm(
+    address ghoToken,
+    address underlyingAsset,
+    address priceStrategy,
+    address admin,
+    address ghoTreasury,
+    uint128 exposureCap,
+    address ghoReserve
+  ) internal returns (Gsm) {
+    Gsm gsmImpl = new Gsm(ghoToken, underlyingAsset, priceStrategy);
+    bytes memory initParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
+      admin,
+      ghoTreasury,
+      exposureCap,
+      ghoReserve
+    );
+    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      initParams
+    );
+    return Gsm(address(proxy));
+  }
+
+  /**
+   * @dev Helper function to deploy GhoReserve through proxy with initialization
+   */
+  function _deployGhoReserve(address ghoToken, address owner) internal returns (GhoReserve) {
+    GhoReserve reserveImpl = new GhoReserve(ghoToken);
+    bytes memory initParams = abi.encodeWithSignature('initialize(address)', owner);
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(reserveImpl),
+      proxyAdmin,
+      initParams
+    );
+    return GhoReserve(address(proxy));
+  }
+
+  /**
+   * @dev Helper function to deploy Gsm4626 through proxy with initialization
+   */
+  function _deployGsm4626(
+    address ghoToken,
+    address underlyingAsset,
+    address priceStrategy,
+    address admin,
+    address ghoTreasury,
+    uint128 exposureCap,
+    address ghoReserve
+  ) internal returns (Gsm4626) {
+    Gsm4626 gsm4626Impl = new Gsm4626(ghoToken, underlyingAsset, priceStrategy);
+    bytes memory initParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
+      admin,
+      ghoTreasury,
+      exposureCap,
+      ghoReserve
+    );
+    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
+      address(gsm4626Impl),
+      SHORT_EXECUTOR,
+      initParams
+    );
+    return Gsm4626(address(proxy));
   }
 
   function borrowActionOnBehalf(address caller, address onBehalfOf, uint256 amount) public {

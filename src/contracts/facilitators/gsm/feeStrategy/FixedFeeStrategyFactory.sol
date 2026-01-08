@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {EnumerableSet} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
-import {VersionedInitializable} from 'aave-v3-origin/contracts/misc/aave-upgradeability/VersionedInitializable.sol';
+import {Initializable} from 'src/contracts/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
 import {IFixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IFixedFeeStrategyFactory.sol';
 import {IGsmFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
 import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategy.sol';
@@ -12,7 +12,7 @@ import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/Fixed
  * @author Aave Labs
  * @notice Factory contract to create and keep record of Gsm FixedFeeStrategy contracts
  */
-contract FixedFeeStrategyFactory is VersionedInitializable, IFixedFeeStrategyFactory {
+contract FixedFeeStrategyFactory is Initializable, IFixedFeeStrategyFactory {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   // Mapping of fee strategy contracts by buy and sell fees (buyFee => sellFee => feeStrategy)
@@ -76,10 +76,5 @@ contract FixedFeeStrategyFactory is VersionedInitializable, IFixedFeeStrategyFac
   ///@inheritdoc IFixedFeeStrategyFactory
   function REVISION() public pure virtual override returns (uint256) {
     return 1;
-  }
-
-  /// @inheritdoc VersionedInitializable
-  function getRevision() internal pure virtual override returns (uint256) {
-    return REVISION();
   }
 }

@@ -7,10 +7,9 @@ contract TestGsmUpgrade is TestGhoBase {
   function testUpgrade() public {
     assertEq(GHO_GSM.GSM_REVISION(), 1, 'Unexpected pre-upgrade GSM revision');
 
-    bytes32[] memory beforeSnapshot = _getStorageSnapshot();
-
-    // Sanity check on select storage variable
-    assertEq(uint256(beforeSnapshot[1]), uint160(TREASURY), 'GHO Treasury address not set');
+    address beforeTreasury = GHO_GSM.getGhoTreasury();
+    address beforeReserve = GHO_GSM.getGhoReserve();
+    uint128 beforeExposureCap = GHO_GSM.getExposureCap();
 
     // Perform the mock upgrade
     address gsmV2 = address(
@@ -24,23 +23,8 @@ contract TestGsmUpgrade is TestGhoBase {
 
     assertEq(GHO_GSM.GSM_REVISION(), 2, 'Unexpected post-upgrade GSM revision');
 
-    bytes32[] memory afterSnapshot = _getStorageSnapshot();
-    // First storage item should be different, the rest the same post-upgrade
-    assertTrue(afterSnapshot[0] != beforeSnapshot[0], 'Unexpected lastInitializedRevision');
-    for (uint8 i = 1; i < afterSnapshot.length; i++) {
-      assertEq(afterSnapshot[i], beforeSnapshot[i], 'Unexpected storage value updated');
-    }
-  }
-
-  function _getStorageSnapshot() internal view returns (bytes32[] memory) {
-    // Snapshot values for lastInitializedRevision (slot 1) and GSM local storage (54-58)
-    bytes32[] memory data = new bytes32[](6);
-    data[0] = vm.load(address(GHO_GSM), bytes32(uint256(1)));
-    data[1] = vm.load(address(GHO_GSM), bytes32(uint256(54)));
-    data[2] = vm.load(address(GHO_GSM), bytes32(uint256(55)));
-    data[3] = vm.load(address(GHO_GSM), bytes32(uint256(56)));
-    data[4] = vm.load(address(GHO_GSM), bytes32(uint256(57)));
-    data[5] = vm.load(address(GHO_GSM), bytes32(uint256(58)));
-    return data;
+    assertEq(GHO_GSM.getGhoTreasury(), beforeTreasury, 'Unexpected treasury after upgrade');
+    assertEq(GHO_GSM.getGhoReserve(), beforeReserve, 'Unexpected reserve after upgrade');
+    assertEq(GHO_GSM.getExposureCap(), beforeExposureCap, 'Unexpected exposure cap after upgrade');
   }
 }

@@ -5,7 +5,7 @@ import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
-import {VersionedInitializable} from 'aave-v3-origin/contracts/misc/aave-upgradeability/VersionedInitializable.sol';
+import {Initializable} from 'src/contracts/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
 import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve.sol';
 
 /**
@@ -14,7 +14,7 @@ import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve
  * @notice It allows approved entities to withdraw and return GHO funds, with a defined maximum withdrawal capacity per entity.
  * @dev To be covered by a proxy contract.
  */
-contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
+contract GhoReserve is Ownable, Initializable, IGhoReserve {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCast for uint256;
 
@@ -126,10 +126,5 @@ contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
   /// @inheritdoc IGhoReserve
   function GHO_REMOTE_RESERVE_REVISION() public pure virtual override returns (uint256) {
     return 1;
-  }
-
-  /// @inheritdoc VersionedInitializable
-  function getRevision() internal pure virtual override returns (uint256) {
-    return GHO_REMOTE_RESERVE_REVISION();
   }
 }

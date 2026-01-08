@@ -191,13 +191,15 @@ contract TestGsm4626Edge is TestGhoBase {
   }
 
   function testExposureLimitWithSharpExchangeRate() public {
-    Gsm4626 gsm = new Gsm4626(
+    Gsm4626 gsm = _deployGsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      address(this),
+      TREASURY,
+      DEFAULT_GSM_USDX_EXPOSURE - 1,
+      address(GHO_RESERVE)
     );
-    gsm = Gsm4626(address(new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, '')));
-    gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE - 1, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), DEFAULT_CAPACITY);
 
@@ -220,13 +222,15 @@ contract TestGsm4626Edge is TestGhoBase {
   }
 
   function testRevertExposureWithSharpExchangeRate() public {
-    Gsm4626 gsm = new Gsm4626(
+    Gsm4626 gsm = _deployGsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      address(this),
+      TREASURY,
+      DEFAULT_GSM_USDX_EXPOSURE - 1,
+      address(GHO_RESERVE)
     );
-    gsm = Gsm4626(address(new AdminUpgradeabilityProxy(address(gsm), SHORT_EXECUTOR, '')));
-    gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE - 1, address(GHO_RESERVE));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), DEFAULT_CAPACITY);
 

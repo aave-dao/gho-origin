@@ -26,7 +26,7 @@ contract MockGsmV2 is Gsm {
     // Excludes contract from coverage.
   }
 
-  function initialize() external initializer {
+  function initialize() external reinitializer(2) {
     // Intentionally left blank
   }
 

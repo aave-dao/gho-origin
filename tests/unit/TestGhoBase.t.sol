@@ -224,15 +224,7 @@ contract TestGhoBase is Test, Constants, Events {
     POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
     // Deploy GHO_RESERVE through proxy
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-    bytes memory reserveInitParams = abi.encodeWithSignature('initialize(address)', address(this));
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
-    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
-      address(reserveImpl),
-      proxyAdmin,
-      reserveInitParams
-    );
-    GHO_RESERVE = GhoReserve(address(reserveProxy));
+    GHO_RESERVE = _deployReserve();
 
     OWNABLE_FACILITATOR = new OwnableFacilitator(address(this), address(GHO_TOKEN));
     // Give OwnableFacilitator twice the default capacity to fully fund two GSMs
@@ -420,9 +412,9 @@ contract TestGhoBase is Test, Constants, Events {
   /**
    * @dev Helper function to deploy GhoReserve through proxy with initialization
    */
-  function _deployGhoReserve(address ghoToken, address owner) internal returns (GhoReserve) {
-    GhoReserve reserveImpl = new GhoReserve(ghoToken);
-    bytes memory initParams = abi.encodeWithSignature('initialize(address)', owner);
+  function _deployReserve() internal returns (GhoReserve) {
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
       address(reserveImpl),

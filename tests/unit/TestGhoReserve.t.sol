@@ -17,17 +17,9 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testInitialize() public {
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-    bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
     vm.expectEmit(true, true, true, true);
     emit OwnershipTransferred(address(0), address(this));
-    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-      address(reserveImpl),
-      proxyAdmin,
-      initParams
-    );
-    GhoReserve reserve = GhoReserve(address(proxy));
+    GhoReserve reserve = _deployReserve();
     assertEq(reserve.owner(), address(this));
   }
 
@@ -374,23 +366,5 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(makeAddr('alice'));
 
     assertEq(GHO_RESERVE.totalEntities(), 3);
-  }
-
-  function _deployReserve() public returns (GhoReserve) {
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
-
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-    bytes memory ghoReserveInitParams = abi.encodeWithSignature(
-      'initialize(address)',
-      address(this)
-    );
-
-    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
-      address(reserveImpl),
-      proxyAdmin,
-      ghoReserveInitParams
-    );
-
-    return GhoReserve(address(reserveProxy));
   }
 }

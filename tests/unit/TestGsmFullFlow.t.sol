@@ -8,7 +8,7 @@ contract TestGsmFullFlow is TestGhoBase {
     OwnableFacilitator facilitator = new OwnableFacilitator(address(this), address(GHO_TOKEN));
     GHO_TOKEN.addFacilitator(address(facilitator), 'OwnableFacilitatorFlow', DEFAULT_CAPACITY);
 
-    GhoReserve reserve = _deployGhoReserve(address(GHO_TOKEN), address(this));
+    GhoReserve reserve = _deployReserve();
 
     Gsm gsm = _deployGsm(
       address(GHO_TOKEN),

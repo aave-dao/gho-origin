@@ -260,42 +260,24 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    Gsm gsm = new Gsm(
+    GHO_GSM = _deployGsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
-    );
-    bytes memory gsmInitParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
       address(this),
       TREASURY,
       DEFAULT_GSM_USDX_EXPOSURE,
       address(GHO_RESERVE)
     );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      gsmInitParams
-    );
-    GHO_GSM = Gsm(address(gsmProxy));
-    Gsm4626 gsm4626 = new Gsm4626(
+    GHO_GSM_4626 = _deployGsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
-    );
-    bytes memory gsm4626InitParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
       address(this),
       TREASURY,
       DEFAULT_GSM_USDX_EXPOSURE,
       address(GHO_RESERVE)
     );
-    AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
-      address(gsm4626),
-      SHORT_EXECUTOR,
-      gsm4626InitParams
-    );
-    GHO_GSM_4626 = Gsm4626(address(gsm4626Proxy));
 
     GHO_RESERVE.addEntity(address(GHO_GSM));
     GHO_RESERVE.addEntity(address(GHO_GSM_4626));
@@ -378,77 +360,6 @@ contract TestGhoBase is Test, Constants, Events {
 
   function borrowAction(address user, uint256 amount) public {
     borrowActionOnBehalf(user, user, amount);
-  }
-
-  /**
-   * @dev Helper function to deploy Gsm through proxy with initialization
-   */
-  function _deployGsm(
-    address ghoToken,
-    address underlyingAsset,
-    address priceStrategy,
-    address admin,
-    address ghoTreasury,
-    uint128 exposureCap,
-    address ghoReserve
-  ) internal returns (Gsm) {
-    Gsm gsm = new Gsm(ghoToken, underlyingAsset, priceStrategy);
-    bytes memory initParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
-      admin,
-      ghoTreasury,
-      exposureCap,
-      ghoReserve
-    );
-    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      initParams
-    );
-    return Gsm(address(proxy));
-  }
-
-  /**
-   * @dev Helper function to deploy GhoReserve through proxy with initialization
-   */
-  function _deployReserve() internal returns (GhoReserve) {
-    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
-    bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
-    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-      address(reserve),
-      proxyAdmin,
-      initParams
-    );
-    return GhoReserve(address(proxy));
-  }
-
-  /**
-   * @dev Helper function to deploy Gsm4626 through proxy with initialization
-   */
-  function _deployGsm4626(
-    address ghoToken,
-    address underlyingAsset,
-    address priceStrategy,
-    address admin,
-    address ghoTreasury,
-    uint128 exposureCap,
-    address ghoReserve
-  ) internal returns (Gsm4626) {
-    Gsm4626 gsm = new Gsm4626(ghoToken, underlyingAsset, priceStrategy);
-    bytes memory initParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
-      admin,
-      ghoTreasury,
-      exposureCap,
-      ghoReserve
-    );
-    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      initParams
-    );
-    return Gsm4626(address(proxy));
   }
 
   function borrowActionOnBehalf(address caller, address onBehalfOf, uint256 amount) public {
@@ -777,6 +688,71 @@ contract TestGhoBase is Test, Constants, Events {
       vm.prank(address(vault));
       token.transfer(address(1), amount);
     }
+  }
+
+  /// Helper function to deploy Gsm through proxy with initialization
+  function _deployGsm(
+    address ghoToken,
+    address underlyingAsset,
+    address priceStrategy,
+    address admin,
+    address ghoTreasury,
+    uint128 exposureCap,
+    address ghoReserve
+  ) internal returns (Gsm) {
+    Gsm gsm = new Gsm(ghoToken, underlyingAsset, priceStrategy);
+    bytes memory initParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
+      admin,
+      ghoTreasury,
+      exposureCap,
+      ghoReserve
+    );
+    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      initParams
+    );
+    return Gsm(address(proxy));
+  }
+
+  /// Helper function to deploy GhoReserve through proxy with initialization
+  function _deployReserve() internal returns (GhoReserve) {
+    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
+    bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(reserve),
+      proxyAdmin,
+      initParams
+    );
+    return GhoReserve(address(proxy));
+  }
+
+  /// Helper function to deploy Gsm4626 through proxy with initialization
+  function _deployGsm4626(
+    address ghoToken,
+    address underlyingAsset,
+    address priceStrategy,
+    address admin,
+    address ghoTreasury,
+    uint128 exposureCap,
+    address ghoReserve
+  ) internal returns (Gsm4626) {
+    Gsm4626 gsm = new Gsm4626(ghoToken, underlyingAsset, priceStrategy);
+    bytes memory initParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
+      admin,
+      ghoTreasury,
+      exposureCap,
+      ghoReserve
+    );
+    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      initParams
+    );
+    return Gsm4626(address(proxy));
   }
 
   function _contains(address[] memory list, address item) internal pure returns (bool) {

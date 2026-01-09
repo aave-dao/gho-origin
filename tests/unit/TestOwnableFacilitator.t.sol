@@ -12,7 +12,7 @@ contract TestOwnableFacilitator is TestGhoBase {
   }
 
   function testRevertConstructorInvalidOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
+    vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
     new OwnableFacilitator(address(0), address(GHO_TOKEN));
   }
 

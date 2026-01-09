@@ -41,7 +41,7 @@ contract GhoReserve is Ownable, VersionedInitializable, IGhoReserve {
    * @dev Constructor
    * @param ghoAddress The address of the GHO token on the remote chain
    */
-  constructor(address ghoAddress) Ownable(msg.sender) {
+  constructor(address ghoAddress) {
     require(ghoAddress != address(0), 'ZERO_ADDRESS_NOT_VALID');
     GHO_TOKEN = ghoAddress;
   }

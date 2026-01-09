@@ -260,9 +260,7 @@ contract TestGhoReserve is TestGhoBase {
     address facilitator = makeAddr('facilitator');
     uint256 amount = 1_000 ether;
 
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(GHO_TOKEN))
-    );
+    vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
     vm.prank(address(GHO_TOKEN));
     reserve.transfer(facilitator, amount);
   }

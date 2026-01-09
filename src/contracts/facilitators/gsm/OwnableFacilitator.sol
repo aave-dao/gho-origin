@@ -23,7 +23,7 @@ contract OwnableFacilitator is Ownable, IOwnableFacilitator {
    * @param initialOwner The address of the initial owner
    * @param ghoAddress The address of GHO token
    */
-  constructor(address initialOwner, address ghoAddress) Ownable(initialOwner) {
+  constructor(address initialOwner, address ghoAddress) {
     require(initialOwner != address(0), 'ZERO_ADDRESS_NOT_VALID');
     require(ghoAddress != address(0), 'ZERO_ADDRESS_NOT_VALID');
 

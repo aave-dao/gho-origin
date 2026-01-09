@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {
-  Ownable
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/Ownable.sol';
+import {Ownable} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
-import {
-  IOwnableFacilitator
-} from 'src/contracts/facilitators/gsm/interfaces/IOwnableFacilitator.sol';
+import {IOwnableFacilitator} from 'src/contracts/facilitators/gsm/interfaces/IOwnableFacilitator.sol';
 
 /**
  * @title OwnableFacilitator

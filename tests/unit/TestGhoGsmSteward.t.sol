@@ -20,7 +20,7 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
       proxyAdmin,
       factoryInitParams
     );
-    FIXED_FEE_STRATEGY_FACTORY = FixedFeeStrategyFactory(address(factory));
+    FIXED_FEE_STRATEGY_FACTORY = FixedFeeStrategyFactory(address(factoryProxy));
     GHO_GSM_STEWARD = GhoGsmSteward(
       _deployGhoGsmSteward({
         fixedFeeStrategyFactory: address(FIXED_FEE_STRATEGY_FACTORY),

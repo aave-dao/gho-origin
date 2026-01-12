@@ -106,7 +106,6 @@ contract TestSGhoBase is TestnetProcedures {
     vm.stopPrank();
   }
 
-  
   // ========================================
   // INTERNAL UTILITY FUNCTIONS
   // ========================================

@@ -54,20 +54,29 @@ contract sGho is
   bytes32 private constant sGhoStorageLocation =
     0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
 
+  /**
+   * @dev Returns the sGhoParameters storage location
+   */
+  function _getSGhoStorage() private pure returns (sGhoStorage storage $) {
+    assembly {
+      $.slot := sGhoStorageLocation
+    }
+  }
+
   /// @inheritdoc IsGho
   uint16 public constant MAX_SAFE_RATE = 50_00;
 
   /// @inheritdoc IsGho
-  bytes32 public constant FUNDS_ADMIN_ROLE = 'FUNDS_ADMIN_ROLE';
+  bytes32 public constant FUNDS_ADMIN_ROLE = keccak256('FUNDS_ADMIN_ROLE');
 
   /// @inheritdoc IsGho
-  bytes32 public constant PAUSE_GUARDIAN_ROLE = 'PAUSE_GUARDIAN_ROLE';
+  bytes32 public constant PAUSE_GUARDIAN_ROLE = keccak256('PAUSE_GUARDIAN_ROLE');
 
   /// @inheritdoc IsGho
-  bytes32 public constant TOKEN_RESCUER_ROLE = 'TOKEN_RESCUER_ROLE';
+  bytes32 public constant TOKEN_RESCUER_ROLE = keccak256('TOKEN_RESCUER_ROLE');
 
   /// @inheritdoc IsGho
-  bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER_ROLE';
+  bytes32 public constant YIELD_MANAGER_ROLE = keccak256('YIELD_MANAGER_ROLE');
 
   /**
    * @dev Disable initializers on the implementation contract
@@ -78,9 +87,9 @@ contract sGho is
 
   /**
    * @notice Initializer for the sGHO vault.
-   * @param gho       Address of the underlying GHO token.
+   * @param gho Address of the underlying GHO token.
    * @param initialSupplyCap The total supply cap for the vault.
-   * @param executor  The address that will be granted the DEFAULT_ADMIN_ROLE.
+   * @param executor The address that will be granted the DEFAULT_ADMIN_ROLE.
    */
   function initialize(
     address gho,
@@ -97,7 +106,7 @@ contract sGho is
     _grantRole(DEFAULT_ADMIN_ROLE, executor);
     _grantRole(PAUSE_GUARDIAN_ROLE, executor);
 
-    sGhoStorage storage $ = _getsGhoStorage();
+    sGhoStorage storage $ = _getSGhoStorage();
     $.supplyCap = initialSupplyCap;
     $.yieldIndex = RAY;
     $.lastUpdate = uint64(block.timestamp);
@@ -140,7 +149,7 @@ contract sGho is
 
   /// @inheritdoc IsGho
   function setTargetRate(uint16 newRate) public onlyRole(YIELD_MANAGER_ROLE) {
-    sGhoStorage storage $ = _getsGhoStorage();
+    sGhoStorage storage $ = _getSGhoStorage();
     // Update the yield index before changing the rate to ensure proper accrual
     if (newRate > MAX_SAFE_RATE) {
       revert RateMustBeLessThanMaxRate();
@@ -159,7 +168,7 @@ contract sGho is
 
   /// @inheritdoc IsGho
   function setSupplyCap(uint160 newSupplyCap) public onlyRole(YIELD_MANAGER_ROLE) {
-    _getsGhoStorage().supplyCap = newSupplyCap;
+    _getSGhoStorage().supplyCap = newSupplyCap;
     emit SupplyCapUpdated(newSupplyCap);
   }
 
@@ -180,12 +189,12 @@ contract sGho is
 
   /// @inheritdoc IsGho
   function lastUpdate() public view returns (uint64) {
-    return _getsGhoStorage().lastUpdate;
+    return _getSGhoStorage().lastUpdate;
   }
 
   /// @inheritdoc IsGho
   function targetRate() public view returns (uint16) {
-    return _getsGhoStorage().targetRate;
+    return _getSGhoStorage().targetRate;
   }
 
   /// @inheritdoc IsGho
@@ -222,7 +231,7 @@ contract sGho is
       return 0;
     }
 
-    sGhoStorage storage $ = _getsGhoStorage();
+    sGhoStorage storage $ = _getSGhoStorage();
     uint256 currentAssets = totalAssets();
     return currentAssets >= $.supplyCap ? 0 : $.supplyCap - currentAssets;
   }
@@ -234,7 +243,7 @@ contract sGho is
 
   /// @inheritdoc IsGho
   function supplyCap() public view returns (uint160) {
-    return _getsGhoStorage().supplyCap;
+    return _getSGhoStorage().supplyCap;
   }
 
   /**
@@ -246,12 +255,12 @@ contract sGho is
 
   /// @inheritdoc IsGho
   function ratePerSecond() public view returns (uint96) {
-    return _getsGhoStorage().ratePerSecond;
+    return _getSGhoStorage().ratePerSecond;
   }
 
   /// @inheritdoc IsGho
   function yieldIndex() public view returns (uint176) {
-    return _getsGhoStorage().yieldIndex;
+    return _getSGhoStorage().yieldIndex;
   }
 
   /**
@@ -316,7 +325,7 @@ contract sGho is
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint176) {
-    sGhoStorage storage $ = _getsGhoStorage();
+    sGhoStorage storage $ = _getSGhoStorage();
     if ($.ratePerSecond == 0) return $.yieldIndex;
 
     uint256 timeSinceLastUpdate = block.timestamp - $.lastUpdate;
@@ -337,21 +346,12 @@ contract sGho is
    * instead of silently wrapping, protecting user rewards.
    */
   function _updateYieldIndex() internal {
-    sGhoStorage storage $ = _getsGhoStorage();
+    sGhoStorage storage $ = _getSGhoStorage();
     if ($.lastUpdate != block.timestamp) {
       uint176 newYieldIndex = _getCurrentYieldIndex();
       $.yieldIndex = newYieldIndex;
       $.lastUpdate = uint64(block.timestamp);
       emit ExchangeRateUpdate(block.timestamp, newYieldIndex);
-    }
-  }
-
-  /**
-   * @dev Returns the sGhoParameters storage location
-   */
-  function _getsGhoStorage() private pure returns (sGhoStorage storage $) {
-    assembly {
-      $.slot := sGhoStorageLocation
     }
   }
 }

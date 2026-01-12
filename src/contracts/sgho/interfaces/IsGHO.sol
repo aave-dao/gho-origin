@@ -7,11 +7,6 @@ pragma solidity ^0.8.19;
  */
 interface IsGho {
   /**
-   * @notice Thrown when a direct ETH transfer is attempted.
-   */
-  error NoEthAllowed();
-
-  /**
    * @notice Thrown if the target rate is set to a value greater than the max rate.
    */
   error RateMustBeLessThanMaxRate();
@@ -107,28 +102,28 @@ interface IsGho {
   /**
    * @notice Returns the role identifier for the Funds Admin.
    * @dev This role has permissions to manage funds, such as rescuing tokens.
-   * @return The string "FUNDS_ADMIN_ROLE".
+   * @return The keccak256 hash of "FUNDS_ADMIN_ROLE".
    */
   function FUNDS_ADMIN_ROLE() external view returns (bytes32);
 
   /**
    * @notice Returns the role identifier for the Pause Guardian.
    * @dev This role has permissions to pause/unpause sGho.
-   * @return The string "PAUSE_GUARDIAN_ROLE".
+   * @return The keccak256 hash of "PAUSE_GUARDIAN_ROLE".
    */
   function PAUSE_GUARDIAN_ROLE() external view returns (bytes32);
 
   /**
    * @notice Returns the role identifier for the Token Rescuer.
    * @dev This role has permissions to rescue tokens held on the contract.
-   * @return The string "TOKEN_RESCUER_ROLE".
+   * @return The keccak256 hash of "TOKEN_RESCUER_ROLE".
    */
   function TOKEN_RESCUER_ROLE() external view returns (bytes32);
 
   /**
    * @notice Returns the role identifier for the Yield Manager.
    * @dev This role has permissions to update the target rate.
-   * @return The string "YIELD_MANAGER_ROLE".
+   * @return The keccak256 hash of "YIELD_MANAGER_ROLE".
    */
   function YIELD_MANAGER_ROLE() external view returns (bytes32);
 

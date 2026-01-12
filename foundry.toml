@@ -8,7 +8,7 @@ libs = ['node_modules', 'lib']
 fs_permissions = [{ access = "read", path = "tests/mocks/JsonBindings.sol" }]
 ffi = true
 evm_version = 'paris'
-solc_version = '0.8.22'
+solc_version = '0.8.27'
 bytecode_hash = 'none'
 extra_output_files = ['metadata']
 ignored_warnings_from = [

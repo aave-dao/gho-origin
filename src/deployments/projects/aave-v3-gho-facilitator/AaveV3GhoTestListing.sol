@@ -13,7 +13,6 @@ import {MockAggregator} from 'aave-v3-origin/contracts/mocks/oracle/CLAggregator
 import {AaveProtocolDataProvider} from 'aave-v3-origin/contracts/helpers/AaveProtocolDataProvider.sol';
 import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
-import {GhoInterestRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoInterestRateStrategy.sol';
 import {MockStakedToken} from '../../../../tests/mocks/MockStakedToken.sol';
 import {IGhoVariableDebtTokenTransferHook} from '../../../../tests/mocks/MockStakedToken/interfaces/IGhoVariableDebtTokenTransferHook.sol';
 

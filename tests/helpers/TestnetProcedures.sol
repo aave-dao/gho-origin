@@ -24,9 +24,6 @@ import {BatchTestProcedures} from './BatchTestProcedures.sol';
 
 import {Vm} from 'forge-std/Vm.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
-import {IReserveInterestRateStrategy} from 'aave-v3-origin/contracts/interfaces/IReserveInterestRateStrategy.sol';
-import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
-import {GhoInterestRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoInterestRateStrategy.sol';
 
 contract TestnetProcedures is BatchTestProcedures {
   using MarketReportUtils for MarketReport;
@@ -193,10 +190,6 @@ contract TestnetProcedures is BatchTestProcedures {
     // Enable variable borrowing on GHO
     marketContracts.poolConfiguratorProxy.setReserveBorrowing(address(ghoContracts.ghoToken), true);
 
-    // Mock the interest rate strategy for GHO to return a fixed rate without liquidity calculations
-    // This is needed because GHO doesn't have virtual underlying balance (it's minted on demand)
-    _mockGhoInterestRate();
-
     // Set oracle for GHO in Aave Oracle
     address[] memory assets = new address[](1);
     assets[0] = address(ghoContracts.ghoToken);
@@ -229,6 +222,10 @@ contract TestnetProcedures is BatchTestProcedures {
     ghoVariableDebtToken.setAToken(reserveATokenAddress);
     ghoVariableDebtToken.updateDiscountRateStrategy(address(ghoContracts.ghoDiscountRateStrategy));
     ghoVariableDebtToken.updateDiscountToken(tokenList.stkAave);
+
+    // Prevent underflow in the default interest rate strategy for GHO by
+    // seeding a large virtual underlying balance on the reserve.
+    _mockGhoInterestRate();
 
     vm.stopPrank();
   }

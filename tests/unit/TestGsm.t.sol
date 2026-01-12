@@ -51,7 +51,7 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
-    
+
     // Expect events from proxy deployment/initialization
     vm.expectEmit(true, true, true, true);
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
@@ -59,7 +59,7 @@ contract TestGsm is TestGhoBase {
     emit GhoTreasuryUpdated(address(0), address(TREASURY));
     vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
-    
+
     AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
       address(gsmImpl),
       SHORT_EXECUTOR,
@@ -72,7 +72,7 @@ contract TestGsm is TestGhoBase {
       )
     );
     Gsm gsm = Gsm(address(gsmProxy));
-    
+
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
   }
 
@@ -83,7 +83,7 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
-    
+
     // AdminUpgradeabilityProxy doesn't bubble up error strings, so just expect a revert
     vm.expectRevert();
     new AdminUpgradeabilityProxy(
@@ -106,7 +106,7 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
-    
+
     // AdminUpgradeabilityProxy doesn't bubble up error strings, so just expect a revert
     vm.expectRevert();
     new AdminUpgradeabilityProxy(
@@ -141,7 +141,7 @@ contract TestGsm is TestGhoBase {
       )
     );
     Gsm gsm = Gsm(address(gsmProxy));
-    
+
     // Try to initialize again - should fail
     vm.expectRevert('Contract instance has already been initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
@@ -1154,7 +1154,7 @@ contract TestGsm is TestGhoBase {
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
-    
+
     vm.expectRevert();
     new AdminUpgradeabilityProxy(
       address(gsmImpl),

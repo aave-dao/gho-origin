@@ -264,7 +264,11 @@ contract TestDiscountBorrow is TestnetProcedures {
     ghoAToken.distributeFeesToTreasury();
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
     // Allow 1 wei rounding difference
-    assertApproxEqAbs(ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)), bobExpectedInterest, 1);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
+      bobExpectedInterest,
+      1
+    );
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(bob), 0);
   }
 

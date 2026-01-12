@@ -20,18 +20,18 @@ contract TestGhoReserve is TestGhoBase {
     // Deploy implementation and initialize via proxy
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-    
+
     // Expect events from proxy deployment/initialization
     vm.expectEmit(true, true, true, true);
     emit OwnershipTransferred(address(0), address(this));
-    
+
     TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
       address(reserveImpl),
       proxyAdmin,
       abi.encodeWithSignature('initialize(address)', address(this))
     );
     GhoReserve reserve = GhoReserve(address(reserveProxy));
-    
+
     assertEq(reserve.owner(), address(this));
   }
 
@@ -39,7 +39,7 @@ contract TestGhoReserve is TestGhoBase {
     // Deploy implementation and try to initialize via proxy with zero address
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-    
+
     vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
     new TransparentUpgradeableProxy(
       address(reserveImpl),

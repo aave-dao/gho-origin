@@ -40,7 +40,7 @@ contract MockPool {
     DEBT_TOKEN = ghoDebtToken;
     ATOKEN = ghoAToken;
     GHO = ghoAToken.UNDERLYING_ASSET_ADDRESS();
-    
+
     // Initialize reserve data
     _reserves[GHO].liquidityIndex = _currentIndex;
     _reserves[GHO].variableBorrowIndex = _currentIndex;
@@ -48,12 +48,7 @@ contract MockPool {
     _reserves[GHO].variableDebtTokenAddress = address(DEBT_TOKEN);
   }
 
-  function supply(
-    address,
-    uint256,
-    address,
-    uint16
-  ) public virtual {}
+  function supply(address, uint256, address, uint16) public virtual {}
 
   function borrow(
     address, // asset
@@ -64,7 +59,7 @@ contract MockPool {
   ) public virtual {
     uint256 index = _reserves[GHO].variableBorrowIndex;
     uint256 scaledAmount = amount.rayDiv(index);
-    
+
     // New mint signature: mint(user, onBehalfOf, amount, scaledAmount, index)
     DEBT_TOKEN.mint(msg.sender, onBehalfOf, amount, scaledAmount, index);
 
@@ -78,7 +73,7 @@ contract MockPool {
     address onBehalfOf
   ) public virtual returns (uint256) {
     uint256 index = _reserves[GHO].variableBorrowIndex;
-    
+
     uint256 paybackAmount = DEBT_TOKEN.balanceOf(onBehalfOf);
 
     if (amount < paybackAmount) {

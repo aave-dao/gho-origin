@@ -20,7 +20,7 @@ contract TestGhoAToken is TestGhoBase {
     string memory tokenName = 'Aave GHO';
     string memory tokenSymbol = 'aGHO';
     bytes memory empty;
-    
+
     TransparentUpgradeableProxy aTokenProxy = new TransparentUpgradeableProxy(
       address(aTokenImpl),
       proxyAdmin,
@@ -49,7 +49,7 @@ contract TestGhoAToken is TestGhoBase {
     bytes memory empty;
 
     GhoAToken aTokenImpl = new GhoAToken(IPool(address(POOL)), address(0));
-    
+
     vm.expectRevert(Errors.PoolAddressesDoNotMatch.selector);
     new TransparentUpgradeableProxy(
       address(aTokenImpl),

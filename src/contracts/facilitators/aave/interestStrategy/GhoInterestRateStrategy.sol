@@ -69,30 +69,36 @@ contract GhoInterestRateStrategy is IDefaultInterestRateStrategyV2 {
   }
 
   /// @inheritdoc IDefaultInterestRateStrategyV2
-  function getInterestRateData(address reserve) external view override returns (InterestRateDataRay memory) {
+  function getInterestRateData(
+    address reserve
+  ) external view override returns (InterestRateDataRay memory) {
     if (reserve == GHO) {
       // Return GHO-specific rate data
-      return InterestRateDataRay({
-        optimalUsageRatio: WadRayMath.RAY, // 100% - GHO is always "at capacity"
-        baseVariableBorrowRate: GHO_BORROW_RATE,
-        variableRateSlope1: 0,
-        variableRateSlope2: 0
-      });
+      return
+        InterestRateDataRay({
+          optimalUsageRatio: WadRayMath.RAY, // 100% - GHO is always "at capacity"
+          baseVariableBorrowRate: GHO_BORROW_RATE,
+          variableRateSlope1: 0,
+          variableRateSlope2: 0
+        });
     }
     return UNDERLYING_STRATEGY.getInterestRateData(reserve);
   }
 
   /// @inheritdoc IDefaultInterestRateStrategyV2
-  function getInterestRateDataBps(address reserve) external view override returns (InterestRateData memory) {
+  function getInterestRateDataBps(
+    address reserve
+  ) external view override returns (InterestRateData memory) {
     InterestRateDataRay memory rayData = this.getInterestRateData(reserve);
     // Convert from ray to bps (1 ray = 1e27, 1 bps = 0.01% = 1e23 ray)
     uint256 rayToBps = 1e23;
-    return InterestRateData({
-      optimalUsageRatio: uint16(rayData.optimalUsageRatio / rayToBps),
-      baseVariableBorrowRate: uint32(rayData.baseVariableBorrowRate / rayToBps),
-      variableRateSlope1: uint32(rayData.variableRateSlope1 / rayToBps),
-      variableRateSlope2: uint32(rayData.variableRateSlope2 / rayToBps)
-    });
+    return
+      InterestRateData({
+        optimalUsageRatio: uint16(rayData.optimalUsageRatio / rayToBps),
+        baseVariableBorrowRate: uint32(rayData.baseVariableBorrowRate / rayToBps),
+        variableRateSlope1: uint32(rayData.variableRateSlope1 / rayToBps),
+        variableRateSlope2: uint32(rayData.variableRateSlope2 / rayToBps)
+      });
   }
 
   /// @inheritdoc IDefaultInterestRateStrategyV2

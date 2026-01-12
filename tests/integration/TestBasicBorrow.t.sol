@@ -170,7 +170,10 @@ contract TestBasicBorrow is TestnetProcedures {
     // Before that, the aToken holds both principal and interest
     ghoAToken.distributeFeesToTreasury();
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
-    assertEq(ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)), bobExpectedInterest);
+    assertEq(
+      ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
+      bobExpectedInterest
+    );
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(bob), 0);
   }
 

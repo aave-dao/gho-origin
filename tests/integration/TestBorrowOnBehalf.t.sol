@@ -121,7 +121,11 @@ contract TestBorrowOnBehalf is TestnetProcedures {
 
     assertEq(ghoContracts.ghoToken.balanceOf(alice), 0);
     // Allow 1 wei rounding difference
-    assertApproxEqAbs(ghoContracts.ghoToken.balanceOf(bob), BORROW_AMOUNT * 2 - aliceExpectedBalance, 1);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(bob),
+      BORROW_AMOUNT * 2 - aliceExpectedBalance,
+      1
+    );
     assertEq(ghoContracts.ghoToken.balanceOf(charlie), 0);
 
     assertEq(ghoVariableDebtToken.balanceOf(alice), 0);
@@ -134,7 +138,11 @@ contract TestBorrowOnBehalf is TestnetProcedures {
     ghoAToken.distributeFeesToTreasury();
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
     // Allow 1 wei rounding difference
-    assertApproxEqAbs(ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)), aliceExpectedInterest, 1);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
+      aliceExpectedInterest,
+      1
+    );
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), 0);
   }
 }

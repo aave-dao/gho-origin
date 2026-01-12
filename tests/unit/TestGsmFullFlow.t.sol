@@ -48,7 +48,7 @@ contract TestGsmFullFlow is TestGhoBase {
 
     uint256 mintAmount = 10_000_000 ether;
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 0);
-    
+
     {
       (uint256 capacity, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));
       assertEq(capacity, DEFAULT_CAPACITY, 'Unexpected initial capacity');
@@ -71,7 +71,7 @@ contract TestGsmFullFlow is TestGhoBase {
     USDX_TOKEN.approve(address(gsm), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(gsm));
     emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
-    
+
     {
       (uint256 assetAmount, uint256 ghoBought) = gsm.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
       vm.stopPrank();
@@ -98,7 +98,7 @@ contract TestGsmFullFlow is TestGhoBase {
     GHO_TOKEN.approve(address(gsm), DEFAULT_GSM_GHO_AMOUNT);
     vm.expectEmit(true, true, true, true, address(gsm));
     emit BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
-    
+
     {
       (uint256 assetAmountBought, uint256 ghoSold) = gsm.buyAsset(DEFAULT_GSM_USDX_AMOUNT, BOB);
       vm.stopPrank();

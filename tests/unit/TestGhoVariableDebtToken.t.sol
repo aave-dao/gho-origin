@@ -26,7 +26,7 @@ contract TestGhoVariableDebtToken is TestGhoBase {
     string memory tokenName = 'Aave Variable Debt GHO';
     string memory tokenSymbol = 'variableDebtGHO';
     bytes memory empty;
-    
+
     TransparentUpgradeableProxy debtTokenProxy = new TransparentUpgradeableProxy(
       address(debtTokenImpl),
       proxyAdmin,
@@ -55,7 +55,7 @@ contract TestGhoVariableDebtToken is TestGhoBase {
     bytes memory empty;
 
     GhoVariableDebtToken debtTokenImpl = new GhoVariableDebtToken(IPool(address(POOL)), address(0));
-    
+
     vm.expectRevert(Errors.PoolAddressesDoNotMatch.selector);
     new TransparentUpgradeableProxy(
       address(debtTokenImpl),

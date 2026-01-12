@@ -23,6 +23,10 @@ import {GhoVariableDebtToken} from 'src/contracts/facilitators/aave/tokens/GhoVa
 import {BatchTestProcedures} from './BatchTestProcedures.sol';
 
 import {Vm} from 'forge-std/Vm.sol';
+import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
+import {IReserveInterestRateStrategy} from 'aave-v3-origin/contracts/interfaces/IReserveInterestRateStrategy.sol';
+import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
+import {GhoInterestRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoInterestRateStrategy.sol';
 
 contract TestnetProcedures is BatchTestProcedures {
   using MarketReportUtils for MarketReport;
@@ -189,6 +193,10 @@ contract TestnetProcedures is BatchTestProcedures {
     // Enable variable borrowing on GHO
     marketContracts.poolConfiguratorProxy.setReserveBorrowing(address(ghoContracts.ghoToken), true);
 
+    // Mock the interest rate strategy for GHO to return a fixed rate without liquidity calculations
+    // This is needed because GHO doesn't have virtual underlying balance (it's minted on demand)
+    _mockGhoInterestRate();
+
     // Set oracle for GHO in Aave Oracle
     address[] memory assets = new address[](1);
     assets[0] = address(ghoContracts.ghoToken);
@@ -270,5 +278,38 @@ contract TestnetProcedures is BatchTestProcedures {
   function getProxyImplementationAddress(address proxy) internal view returns (address) {
     bytes32 implSlot = vm.load(proxy, ERC1967_IMPLEMENTATION_SLOT);
     return address(uint160(uint256(implSlot)));
+  }
+
+  /// @notice Set a large virtual underlying balance for GHO to prevent underflow
+  /// @dev GHO is minted on demand and starts with virtualUnderlyingBalance = 0,
+  ///      which causes underflow in DefaultReserveInterestRateStrategyV2 when borrowing.
+  ///      We directly set the virtualUnderlyingBalance in storage to a large value.
+  function _mockGhoInterestRate() internal {
+    // Get the reserve data storage slot for GHO
+    // The _reserves mapping is at slot 52 in Pool.sol (after inherited storage)
+    // For a mapping(address => ReserveData), the slot is keccak256(abi.encode(key, slot))
+    bytes32 reservesSlot = bytes32(uint256(52));
+    bytes32 ghoReserveSlot = keccak256(abi.encode(address(ghoContracts.ghoToken), reservesSlot));
+
+    // In DataTypes.ReserveData, virtualUnderlyingBalance is packed with accruedToTreasury
+    // in slot offset 9 (after configuration, liquidityIndex, currentLiquidityRate, etc.)
+    // ReserveData storage layout:
+    // slot 0: ReserveConfigurationMap configuration (256 bits)
+    // slot 1: liquidityIndex (128 bits) + currentLiquidityRate (128 bits)
+    // slot 2: variableBorrowIndex (128 bits) + currentVariableBorrowRate (128 bits)
+    // slot 3: currentStableBorrowRate (128 bits) + lastUpdateTimestamp (40 bits) + id (16 bits) + ...
+    // slot 4: aTokenAddress
+    // slot 5: stableDebtTokenAddress (deprecated)
+    // slot 6: variableDebtTokenAddress
+    // slot 7: interestRateStrategyAddress (deprecated)
+    // slot 8: accruedToTreasury (128 bits) + virtualUnderlyingBalance (128 bits)
+    bytes32 virtualBalanceSlot = bytes32(uint256(ghoReserveSlot) + 8);
+
+    // Set a large virtual underlying balance for GHO (e.g., 1e27 = 1 billion GHO)
+    // The accruedToTreasury (lower 128 bits) should remain 0, virtualUnderlyingBalance is upper 128 bits
+    uint256 largeVirtualBalance = uint256(1e27);
+    uint256 packedValue = (largeVirtualBalance << 128); // virtualUnderlyingBalance in upper bits
+
+    vm.store(address(marketContracts.poolProxy), virtualBalanceSlot, bytes32(packedValue));
   }
 }

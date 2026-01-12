@@ -17,23 +17,41 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testInitialize() public {
-    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
-    vm.expectEmit(true, true, true, true, address(reserve));
-    emit OwnershipTransferred(address(this), address(this));
-    reserve.initialize(address(this));
+    // Deploy implementation and initialize via proxy
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    
+    // Expect events from proxy deployment/initialization
+    vm.expectEmit(true, true, true, true);
+    emit OwnershipTransferred(address(0), address(this));
+    
+    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
+      address(reserveImpl),
+      proxyAdmin,
+      abi.encodeWithSignature('initialize(address)', address(this))
+    );
+    GhoReserve reserve = GhoReserve(address(reserveProxy));
+    
     assertEq(reserve.owner(), address(this));
   }
 
   function testRevertInitializeInvalidZeroOwner() public {
-    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
+    // Deploy implementation and try to initialize via proxy with zero address
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    
     vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
-    reserve.initialize(address(0));
+    new TransparentUpgradeableProxy(
+      address(reserveImpl),
+      proxyAdmin,
+      abi.encodeWithSignature('initialize(address)', address(0))
+    );
   }
 
   function testRevertInitializeTwice() public {
     GhoReserve reserve = _deployReserve();
     vm.expectRevert('Contract instance has already been initialized');
-    reserve.initialize(address(0));
+    reserve.initialize(address(this));
   }
 
   function testRevertUseNoCapacity() public {
@@ -370,8 +388,7 @@ contract TestGhoReserve is TestGhoBase {
   function _deployReserve() public returns (GhoReserve) {
     address proxyAdmin = makeAddr('PROXY_ADMIN');
 
-    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
-    reserve.initialize(address(this));
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
 
     bytes memory ghoReserveInitParams = abi.encodeWithSignature(
       'initialize(address)',
@@ -379,7 +396,7 @@ contract TestGhoReserve is TestGhoBase {
     );
 
     TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
-      address(reserve),
+      address(reserveImpl),
       proxyAdmin,
       ghoReserveInitParams
     );

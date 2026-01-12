@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {SafeCast} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/SafeCast.sol';
+import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {Errors} from 'aave-v3-origin/contracts/protocol/libraries/helpers/Errors.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
@@ -23,31 +23,33 @@ abstract contract ScaledBalanceTokenBase is MintableIncentivizedERC20, IScaledBa
    * @param name The name of the token
    * @param symbol The symbol of the token
    * @param decimals The number of decimals of the token
+   * @param rewardsController The address of the rewards controller
    */
   constructor(
     IPool pool,
     string memory name,
     string memory symbol,
-    uint8 decimals
-  ) MintableIncentivizedERC20(pool, name, symbol, decimals) {
+    uint8 decimals,
+    address rewardsController
+  ) MintableIncentivizedERC20(pool, name, symbol, decimals, rewardsController) {
     // Intentionally left blank
   }
 
   /// @inheritdoc IScaledBalanceToken
   function scaledBalanceOf(address user) external view override returns (uint256) {
-    return super.balanceOf(user);
+    return _userState[user].balance;
   }
 
   /// @inheritdoc IScaledBalanceToken
   function getScaledUserBalanceAndSupply(
     address user
   ) external view override returns (uint256, uint256) {
-    return (super.balanceOf(user), super.totalSupply());
+    return (_userState[user].balance, _totalSupply);
   }
 
   /// @inheritdoc IScaledBalanceToken
   function scaledTotalSupply() public view virtual override returns (uint256) {
-    return super.totalSupply();
+    return _totalSupply;
   }
 
   /// @inheritdoc IScaledBalanceToken
@@ -70,15 +72,16 @@ abstract contract ScaledBalanceTokenBase is MintableIncentivizedERC20, IScaledBa
     uint256 index
   ) internal virtual returns (bool) {
     uint256 amountScaled = amount.rayDiv(index);
-    require(amountScaled != 0, Errors.INVALID_MINT_AMOUNT);
+    require(amountScaled != 0, Errors.InvalidMintAmount());
 
-    uint256 scaledBalance = super.balanceOf(onBehalfOf);
+    // Read directly from storage to avoid potential override issues
+    uint256 scaledBalance = _userState[onBehalfOf].balance;
     uint256 balanceIncrease = scaledBalance.rayMul(index) -
       scaledBalance.rayMul(_userState[onBehalfOf].additionalData);
 
     _userState[onBehalfOf].additionalData = index.toUint128();
 
-    _mint(onBehalfOf, amountScaled.toUint128());
+    _mint(onBehalfOf, amountScaled.toUint120());
 
     uint256 amountToMint = amount + balanceIncrease;
     emit Transfer(address(0), onBehalfOf, amountToMint);
@@ -103,15 +106,16 @@ abstract contract ScaledBalanceTokenBase is MintableIncentivizedERC20, IScaledBa
     uint256 index
   ) internal virtual {
     uint256 amountScaled = amount.rayDiv(index);
-    require(amountScaled != 0, Errors.INVALID_BURN_AMOUNT);
+    require(amountScaled != 0, Errors.InvalidBurnAmount());
 
-    uint256 scaledBalance = super.balanceOf(user);
+    // Read directly from storage to avoid potential override issues
+    uint256 scaledBalance = _userState[user].balance;
     uint256 balanceIncrease = scaledBalance.rayMul(index) -
       scaledBalance.rayMul(_userState[user].additionalData);
 
     _userState[user].additionalData = index.toUint128();
 
-    _burn(user, amountScaled.toUint128());
+    _burn(user, amountScaled.toUint120());
 
     if (balanceIncrease > amount) {
       uint256 amountToMint = balanceIncrease - amount;

@@ -20,7 +20,7 @@ import {EIP712Types} from '../helpers/EIP712Types.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {Errors} from 'aave-v3-origin/contracts/protocol/libraries/helpers/Errors.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
-import {SafeCast} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/SafeCast.sol';
+import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
 // mocks
@@ -33,6 +33,9 @@ import {MockAddressesProvider} from '../mocks/MockAddressesProvider.sol';
 import {MockERC4626} from '../mocks/MockERC4626.sol';
 import {MockUpgradeable} from '../mocks/MockUpgradeable.sol';
 import {PriceOracle} from 'aave-v3-origin/contracts/mocks/oracle/PriceOracle.sol';
+import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {IInitializableDebtToken} from 'aave-v3-origin/contracts/interfaces/IInitializableDebtToken.sol';
+import {IInitializableAToken} from 'aave-v3-origin/contracts/interfaces/IInitializableAToken.sol';
 import {TestnetERC20} from 'aave-v3-origin/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
@@ -172,8 +175,9 @@ contract TestGhoBase is Test, Constants, Events {
     ACL_MANAGER = new MockAclManager();
     PROVIDER = new MockAddressesProvider(address(ACL_MANAGER));
     MOCK_POOL_DATA_PROVIDER = new MockPoolDataProvider(address(PROVIDER));
+    // Use simplified MockPool that doesn't inherit from VersionedInitializable
     POOL = new MockPool(IPoolAddressesProvider(address(PROVIDER)));
-    CONFIGURATOR = new MockConfigurator(IPool(POOL));
+    CONFIGURATOR = new MockConfigurator(IPool(address(POOL)));
     PRICE_ORACLE = new PriceOracle();
     PROVIDER.setPool(address(POOL));
     PROVIDER.setConfigurator(address(CONFIGURATOR));
@@ -187,33 +191,56 @@ contract TestGhoBase is Test, Constants, Events {
     USDX_4626_TOKEN = new MockERC4626('USD Coin 4626', '4626', address(USDX_TOKEN));
     IPool iPool = IPool(address(POOL));
     WETH = new WETH9Mock('Wrapped Ether', 'WETH', FAUCET);
-    GHO_DEBT_TOKEN = new GhoVariableDebtToken(iPool);
+
+    // Deploy GhoVariableDebtToken behind proxy
+    // Use a separate proxy admin to avoid TransparentUpgradeableProxy admin restriction
+    address proxyAdmin = address(0xAD);
+    GhoVariableDebtToken ghoDebtTokenImpl = new GhoVariableDebtToken(iPool, address(0));
+    GHO_DEBT_TOKEN = GhoVariableDebtToken(
+      address(
+        new TransparentUpgradeableProxy(
+          address(ghoDebtTokenImpl),
+          proxyAdmin,
+          abi.encodeWithSelector(
+            IInitializableDebtToken.initialize.selector,
+            iPool,
+            address(GHO_TOKEN),
+            uint8(18),
+            'Aave Variable Debt GHO',
+            'variableDebtGHO',
+            empty
+          )
+        )
+      )
+    );
+
     MockStakedToken stkAave = new MockStakedToken(
       IERC20(address(AAVE_TOKEN)),
       IERC20(address(AAVE_TOKEN)),
       IGhoVariableDebtTokenTransferHook(address(GHO_DEBT_TOKEN))
     );
     STK_TOKEN = IMockStakedToken(address(stkAave));
-    GHO_ATOKEN = new GhoAToken(iPool);
-    GHO_DEBT_TOKEN.initialize(
-      iPool,
-      address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
-      18,
-      'Aave Variable Debt GHO',
-      'variableDebtGHO',
-      empty
+
+    // Deploy GhoAToken behind proxy
+    GhoAToken ghoATokenImpl = new GhoAToken(iPool, address(0));
+    GHO_ATOKEN = GhoAToken(
+      address(
+        new TransparentUpgradeableProxy(
+          address(ghoATokenImpl),
+          proxyAdmin,
+          abi.encodeWithSelector(
+            IInitializableAToken.initialize.selector,
+            iPool,
+            address(GHO_TOKEN),
+            uint8(18),
+            'Aave GHO',
+            'aGHO',
+            empty
+          )
+        )
+      )
     );
-    GHO_ATOKEN.initialize(
-      iPool,
-      TREASURY,
-      address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
-      18,
-      'Aave GHO',
-      'aGHO',
-      empty
-    );
+
     GHO_ATOKEN.updateGhoTreasury(TREASURY);
     GHO_DEBT_TOKEN.updateDiscountToken(address(STK_TOKEN));
     GHO_DISCOUNT_STRATEGY = new GhoDiscountRateStrategy();
@@ -223,8 +250,17 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
     POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
-    GHO_RESERVE = new GhoReserve(address(GHO_TOKEN));
-    GHO_RESERVE.initialize(address(this));
+    // Deploy GhoReserve behind proxy
+    GhoReserve ghoReserveImpl = new GhoReserve(address(GHO_TOKEN));
+    GHO_RESERVE = GhoReserve(
+      address(
+        new TransparentUpgradeableProxy(
+          address(ghoReserveImpl),
+          proxyAdmin,
+          abi.encodeWithSignature('initialize(address)', address(this))
+        )
+      )
+    );
 
     OWNABLE_FACILITATOR = new OwnableFacilitator(address(this), address(GHO_TOKEN));
     // Give OwnableFacilitator twice the default capacity to fully fund two GSMs
@@ -274,11 +310,18 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_GSM = Gsm(address(gsmProxy));
 
     GHO_GSM.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
-    GHO_GSM_4626 = new Gsm4626(
+    // Deploy Gsm4626 behind proxy
+    Gsm4626 gsm4626Impl = new Gsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
     );
+    AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
+      address(gsm4626Impl),
+      SHORT_EXECUTOR,
+      ''
+    );
+    GHO_GSM_4626 = Gsm4626(address(gsm4626Proxy));
     GHO_GSM_4626.initialize(
       address(this),
       TREASURY,
@@ -498,6 +541,10 @@ contract TestGhoBase is Test, Constants, Events {
 
     POOL.repay(address(GHO_TOKEN), amount, 2, user);
     vm.stopPrank();
+
+    // In aave-v3-origin, principal is burned when distributeFeesToTreasury is called
+    // Call it to complete the repayment flow
+    GHO_ATOKEN.distributeFeesToTreasury();
 
     // Checks
     assertEq(

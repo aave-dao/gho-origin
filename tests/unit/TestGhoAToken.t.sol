@@ -2,30 +2,39 @@
 pragma solidity ^0.8.0;
 
 import './TestGhoBase.t.sol';
+import {IInitializableAToken} from 'aave-v3-origin/contracts/interfaces/IInitializableAToken.sol';
+import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 
 contract TestGhoAToken is TestGhoBase {
   function testConstructor() public {
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
+    GhoAToken aToken = new GhoAToken(IPool(address(POOL)), address(0));
     assertEq(aToken.name(), 'GHO_ATOKEN_IMPL', 'Wrong default ERC20 name');
     assertEq(aToken.symbol(), 'GHO_ATOKEN_IMPL', 'Wrong default ERC20 symbol');
     assertEq(aToken.decimals(), 0, 'Wrong default ERC20 decimals');
   }
 
   function testInitialize() public {
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
+    // Deploy behind proxy for initialization to work
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    GhoAToken aTokenImpl = new GhoAToken(IPool(address(POOL)), address(0));
     string memory tokenName = 'Aave GHO';
     string memory tokenSymbol = 'aGHO';
     bytes memory empty;
-    aToken.initialize(
-      IPool(address(POOL)),
-      TREASURY,
-      address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
-      18,
-      tokenName,
-      tokenSymbol,
-      empty
+    
+    TransparentUpgradeableProxy aTokenProxy = new TransparentUpgradeableProxy(
+      address(aTokenImpl),
+      proxyAdmin,
+      abi.encodeWithSelector(
+        IInitializableAToken.initialize.selector,
+        IPool(address(POOL)),
+        address(GHO_TOKEN),
+        uint8(18),
+        tokenName,
+        tokenSymbol,
+        empty
+      )
     );
+    GhoAToken aToken = GhoAToken(address(aTokenProxy));
 
     assertEq(aToken.name(), tokenName, 'Wrong initialized name');
     assertEq(aToken.symbol(), tokenSymbol, 'Wrong initialized symbol');
@@ -33,21 +42,27 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testInitializePoolRevert() public {
+    // Deploy implementation with POOL, then try to initialize via proxy with wrong pool
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
     string memory tokenName = 'Aave GHO';
     string memory tokenSymbol = 'aGHO';
     bytes memory empty;
 
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
-    vm.expectRevert(bytes(Errors.POOL_ADDRESSES_DO_NOT_MATCH));
-    aToken.initialize(
-      IPool(address(0)),
-      TREASURY,
-      address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
-      18,
-      tokenName,
-      tokenSymbol,
-      empty
+    GhoAToken aTokenImpl = new GhoAToken(IPool(address(POOL)), address(0));
+    
+    vm.expectRevert(Errors.PoolAddressesDoNotMatch.selector);
+    new TransparentUpgradeableProxy(
+      address(aTokenImpl),
+      proxyAdmin,
+      abi.encodeWithSelector(
+        IInitializableAToken.initialize.selector,
+        IPool(address(0)), // Wrong pool - should revert
+        address(GHO_TOKEN),
+        uint8(18),
+        tokenName,
+        tokenSymbol,
+        empty
+      )
     );
   }
 
@@ -59,9 +74,7 @@ contract TestGhoAToken is TestGhoBase {
     vm.expectRevert(bytes('Contract instance has already been initialized'));
     GHO_ATOKEN.initialize(
       IPool(address(POOL)),
-      TREASURY,
       address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
       18,
       tokenName,
       tokenSymbol,
@@ -91,67 +104,68 @@ contract TestGhoAToken is TestGhoBase {
 
   function testUnauthorizedMint() public {
     vm.startPrank(ALICE);
-    vm.expectRevert(bytes(Errors.CALLER_MUST_BE_POOL));
+    vm.expectRevert(Errors.CallerMustBePool.selector);
     GHO_ATOKEN.mint(ALICE, ALICE, 0, 0);
   }
 
   function testUnauthorizedBurn() public {
     vm.startPrank(ALICE);
 
-    vm.expectRevert(bytes(Errors.CALLER_MUST_BE_POOL));
-    GHO_ATOKEN.burn(ALICE, ALICE, 0, 0);
+    vm.expectRevert(Errors.CallerMustBePool.selector);
+    GHO_ATOKEN.burn(ALICE, ALICE, 0, 0, 0);
   }
 
   function testUnauthorizedMintToTreasury() public {
     vm.startPrank(ALICE);
 
-    vm.expectRevert(bytes(Errors.CALLER_MUST_BE_POOL));
+    vm.expectRevert(Errors.CallerMustBePool.selector);
     GHO_ATOKEN.mintToTreasury(0, 0);
   }
 
   function testUnauthorizedTransferOnLiquidation() public {
     vm.startPrank(ALICE);
 
-    vm.expectRevert(bytes(Errors.CALLER_MUST_BE_POOL));
-    GHO_ATOKEN.transferOnLiquidation(ALICE, ALICE, 0);
+    vm.expectRevert(Errors.CallerMustBePool.selector);
+    GHO_ATOKEN.transferOnLiquidation(ALICE, ALICE, 0, 0, 0);
   }
 
   function testUnauthorizedTransferUnderlyingTo() public {
     vm.startPrank(ALICE);
 
-    vm.expectRevert(bytes(Errors.CALLER_MUST_BE_POOL));
+    vm.expectRevert(Errors.CallerMustBePool.selector);
     GHO_ATOKEN.transferUnderlyingTo(ALICE, 0);
   }
 
   function testUnauthorizedHandleRepayment() public {
     vm.startPrank(ALICE);
 
-    vm.expectRevert(bytes(Errors.CALLER_MUST_BE_POOL));
+    // handleRepayment now allows both Pool and DebtToken to call it
+    vm.expectRevert(bytes('CALLER_NOT_POOL_OR_DEBT_TOKEN'));
     GHO_ATOKEN.handleRepayment(ALICE, ALICE, 0);
   }
 
   function testUnauthorizedRescueTokens() public {
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
+    GhoAToken aToken = new GhoAToken(IPool(address(POOL)), address(0));
 
     vm.startPrank(ALICE);
     ACL_MANAGER.setState(false);
 
-    vm.expectRevert(bytes(Errors.CALLER_NOT_POOL_ADMIN));
+    vm.expectRevert(Errors.CallerNotPoolAdmin.selector);
     aToken.rescueTokens(address(GHO_TOKEN), ALICE, 0);
   }
 
   function testUnauthorizedSetVariableDebtToken() public {
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
+    GhoAToken aToken = new GhoAToken(IPool(address(POOL)), address(0));
 
     vm.startPrank(ALICE);
     ACL_MANAGER.setState(false);
 
-    vm.expectRevert(bytes(Errors.CALLER_NOT_POOL_ADMIN));
+    vm.expectRevert(Errors.CallerNotPoolAdmin.selector);
     aToken.setVariableDebtToken(ALICE);
   }
 
   function testSetVariableDebtToken() public {
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
+    GhoAToken aToken = new GhoAToken(IPool(address(POOL)), address(0));
 
     vm.expectEmit(address(aToken));
     emit VariableDebtTokenSet(address(GHO_DEBT_TOKEN));
@@ -166,7 +180,7 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testZeroVariableDebtToken() public {
-    GhoAToken aToken = new GhoAToken(IPool(address(POOL)));
+    GhoAToken aToken = new GhoAToken(IPool(address(POOL)), address(0));
 
     vm.startPrank(ALICE);
     vm.expectRevert(bytes('ZERO_ADDRESS_NOT_VALID'));
@@ -174,7 +188,7 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testMintRevert() public {
-    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    vm.expectRevert(Errors.OperationNotSupported.selector);
     vm.prank(address(POOL));
     GHO_ATOKEN.mint(CHARLES, CHARLES, 1, 1);
   }
@@ -182,31 +196,31 @@ contract TestGhoAToken is TestGhoBase {
   function testPermitRevert() public {
     bytes32 empty;
 
-    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    vm.expectRevert(Errors.OperationNotSupported.selector);
     vm.prank(address(POOL));
     GHO_ATOKEN.permit(CHARLES, CHARLES, 1, 1, 1, empty, empty);
   }
 
   function testBurnRevert() public {
-    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    vm.expectRevert(Errors.OperationNotSupported.selector);
     vm.prank(address(POOL));
-    GHO_ATOKEN.burn(CHARLES, CHARLES, 1, 1);
+    GHO_ATOKEN.burn(CHARLES, CHARLES, 1, 1, 1);
   }
 
   function testMintToTreasuryRevert() public {
-    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    vm.expectRevert(Errors.OperationNotSupported.selector);
     vm.prank(address(POOL));
     GHO_ATOKEN.mintToTreasury(1, 1);
   }
 
   function testTransferOnLiquidationRevert() public {
-    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    vm.expectRevert(Errors.OperationNotSupported.selector);
     vm.prank(address(POOL));
-    GHO_ATOKEN.transferOnLiquidation(CHARLES, CHARLES, 1);
+    GHO_ATOKEN.transferOnLiquidation(CHARLES, CHARLES, 1, 1, 1);
   }
 
   function testStandardTransferRevert() public {
-    vm.expectRevert(bytes(Errors.OPERATION_NOT_SUPPORTED));
+    vm.expectRevert(Errors.OperationNotSupported.selector);
     vm.prank(CHARLES);
     GHO_ATOKEN.transfer(ALICE, 0);
   }
@@ -216,9 +230,12 @@ contract TestGhoAToken is TestGhoBase {
     assertEq(balance, 0, 'AToken balance should always be zero');
   }
 
-  function testTotalSupplyAlwaysZero() public view {
+  function testTotalSupplyReturnsBucketCapacity() public view {
+    // In aave-v3-origin, GhoAToken.totalSupply() returns the facilitator bucket capacity
+    // to satisfy ValidationLogic checks during borrowing
     uint256 supply = GHO_ATOKEN.totalSupply();
-    assertEq(supply, 0, 'AToken total supply should always be zero');
+    (uint256 bucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    assertEq(supply, bucketCapacity, 'AToken total supply should equal bucket capacity');
   }
 
   function testReserveTreasuryAddress() public view {
@@ -262,7 +279,7 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testRescueTokenRevertIfUnderlying() public {
-    vm.expectRevert(bytes(Errors.UNDERLYING_CANNOT_BE_RESCUED));
+    vm.expectRevert(Errors.UnderlyingCannotBeRescued.selector);
     vm.prank(FAUCET);
     GHO_ATOKEN.rescueTokens(address(GHO_TOKEN), CHARLES, 1);
   }
@@ -285,7 +302,7 @@ contract TestGhoAToken is TestGhoBase {
 
     vm.prank(ALICE);
 
-    vm.expectRevert(bytes(Errors.CALLER_NOT_POOL_ADMIN));
+    vm.expectRevert(Errors.CallerNotPoolAdmin.selector);
     GHO_ATOKEN.updateGhoTreasury(ALICE);
   }
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
-import {SafeCast} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/SafeCast.sol';
+import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {VersionedInitializable} from 'aave-v3-origin/contracts/misc/aave-upgradeability/VersionedInitializable.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
@@ -17,6 +17,7 @@ import {DebtTokenBase} from 'aave-v3-origin/contracts/protocol/tokenization/base
 // Gho Imports
 import {IGhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/interfaces/IGhoDiscountRateStrategy.sol';
 import {IGhoVariableDebtToken} from 'src/contracts/facilitators/aave/tokens/interfaces/IGhoVariableDebtToken.sol';
+import {IGhoAToken} from 'src/contracts/facilitators/aave/tokens/interfaces/IGhoAToken.sol';
 import {ScaledBalanceTokenBase} from 'src/contracts/facilitators/aave/tokens/base/ScaledBalanceTokenBase.sol';
 
 /**
@@ -73,10 +74,17 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
    * @param pool The address of the Pool contract
    */
   constructor(
-    IPool pool
+    IPool pool,
+    address rewardsController
   )
     DebtTokenBase()
-    ScaledBalanceTokenBase(pool, 'GHO_VARIABLE_DEBT_TOKEN_IMPL', 'GHO_VARIABLE_DEBT_TOKEN_IMPL', 0)
+    ScaledBalanceTokenBase(
+      pool,
+      'GHO_VARIABLE_DEBT_TOKEN_IMPL',
+      'GHO_VARIABLE_DEBT_TOKEN_IMPL',
+      0,
+      rewardsController
+    )
   {
     // Intentionally left blank
   }
@@ -85,26 +93,24 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
   function initialize(
     IPool initializingPool,
     address underlyingAsset,
-    IAaveIncentivesController incentivesController,
     uint8 debtTokenDecimals,
     string memory debtTokenName,
     string memory debtTokenSymbol,
     bytes calldata params
   ) external override initializer {
-    require(initializingPool == POOL, Errors.POOL_ADDRESSES_DO_NOT_MATCH);
+    require(initializingPool == POOL, Errors.PoolAddressesDoNotMatch());
     _setName(debtTokenName);
     _setSymbol(debtTokenSymbol);
     _setDecimals(debtTokenDecimals);
 
     _underlyingAsset = underlyingAsset;
-    _incentivesController = incentivesController;
 
     _domainSeparator = _calculateDomainSeparator();
 
     emit Initialized(
       underlyingAsset,
       address(POOL),
-      address(incentivesController),
+      address(REWARDS_CONTROLLER),
       debtTokenDecimals,
       debtTokenName,
       debtTokenSymbol,
@@ -146,22 +152,43 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
     address user,
     address onBehalfOf,
     uint256 amount,
+    uint256, // scaledAmount - not used, we compute internally
     uint256 index
-  ) external virtual override onlyPool returns (bool, uint256) {
+  ) external virtual override onlyPool returns (uint256) {
     if (user != onBehalfOf) {
-      _decreaseBorrowAllowance(onBehalfOf, user, amount);
+      // Pass amount for both parameters - GHO uses amount-based accounting internally
+      _decreaseBorrowAllowance(onBehalfOf, user, amount, amount);
     }
-    return (_mintScaled(user, onBehalfOf, amount, index), scaledTotalSupply());
+    _mintScaled(user, onBehalfOf, amount, index);
+    return scaledTotalSupply();
   }
 
   /// @inheritdoc IVariableDebtToken
   function burn(
     address from,
-    uint256 amount,
+    uint256 scaledAmount,
     uint256 index
-  ) external virtual override onlyPool returns (uint256) {
+  ) external virtual override onlyPool returns (bool, uint256) {
+    // Cap scaledAmount to the user's actual balance to prevent underflow
+    // This is necessary because the Pool doesn't know about GHO discounts
+    // Read directly from storage to avoid any override issues
+    uint256 scaledBalance = _userState[from].balance;
+    if (scaledAmount > scaledBalance) {
+      scaledAmount = scaledBalance;
+    }
+
+    // Convert scaledAmount back to amount for internal processing
+    uint256 amount = scaledAmount.rayMul(index);
     _burnScaled(from, address(0), amount, index);
-    return scaledTotalSupply();
+
+    // In aave-v3-origin, the Pool no longer calls handleRepayment on the aToken.
+    // We call it here to ensure the principal portion of repaid GHO is burned,
+    // keeping only the interest portion in the aToken.
+    if (_ghoAToken != address(0)) {
+      IGhoAToken(_ghoAToken).handleRepayment(msg.sender, from, amount);
+    }
+
+    return (_userState[from].balance == 0, scaledTotalSupply());
   }
 
   /**
@@ -185,27 +212,27 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
    * standard ERC20 functions for transfer and allowance.
    */
   function transfer(address, uint256) external virtual override returns (bool) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   function allowance(address, address) external view virtual override returns (uint256) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   function approve(address, uint256) external virtual override returns (bool) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   function transferFrom(address, address, uint256) external virtual override returns (bool) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   function increaseAllowance(address, uint256) external virtual override returns (bool) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   function decreaseAllowance(address, uint256) external virtual override returns (bool) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   /// @inheritdoc IVariableDebtToken
@@ -288,7 +315,7 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
         index
       );
 
-      _burn(sender, discountScaled.toUint128());
+      _burn(sender, discountScaled.toUint120());
 
       _refreshDiscountPercent(
         sender,
@@ -309,7 +336,7 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
         index
       );
 
-      _burn(recipient, discountScaled.toUint128());
+      _burn(recipient, discountScaled.toUint120());
 
       _refreshDiscountPercent(
         recipient,
@@ -336,7 +363,7 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
   /// @inheritdoc IGhoVariableDebtToken
   function decreaseBalanceFromInterest(address user, uint256 amount) external override onlyAToken {
     _ghoUserState[user].accumulatedDebtInterest = (_ghoUserState[user].accumulatedDebtInterest -
-      amount).toUint128();
+      amount).toUint120();
   }
 
   /// @inheritdoc IGhoVariableDebtToken
@@ -352,7 +379,7 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
       index
     );
 
-    _burn(user, discountScaled.toUint128());
+    _burn(user, discountScaled.toUint120());
 
     _refreshDiscountPercent(
       user,
@@ -380,7 +407,7 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
     uint256 index
   ) internal override returns (bool) {
     uint256 amountScaled = amount.rayDiv(index);
-    require(amountScaled != 0, Errors.INVALID_MINT_AMOUNT);
+    require(amountScaled != 0, Errors.InvalidMintAmount());
 
     uint256 previousScaledBalance = super.balanceOf(onBehalfOf);
     uint256 discountPercent = _ghoUserState[onBehalfOf].discountPercent;
@@ -393,9 +420,9 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
 
     // confirm the amount being borrowed is greater than the discount
     if (amountScaled > discountScaled) {
-      _mint(onBehalfOf, (amountScaled - discountScaled).toUint128());
+      _mint(onBehalfOf, (amountScaled - discountScaled).toUint120());
     } else {
-      _burn(onBehalfOf, (discountScaled - amountScaled).toUint128());
+      _burn(onBehalfOf, (discountScaled - amountScaled).toUint120());
     }
 
     _refreshDiscountPercent(
@@ -428,41 +455,64 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
     uint256 index
   ) internal override {
     uint256 amountScaled = amount.rayDiv(index);
-    require(amountScaled != 0, Errors.INVALID_BURN_AMOUNT);
+    require(amountScaled != 0, Errors.InvalidBurnAmount());
 
-    uint256 balanceBeforeBurn = balanceOf(user);
+    uint256 previousScaledBalance = uint256(_userState[user].balance);
+    uint256 balanceBeforeBurn = _getBalanceNoExternalCalls(user, previousScaledBalance, index);
 
-    uint256 previousScaledBalance = super.balanceOf(user);
-    uint256 discountPercent = _ghoUserState[user].discountPercent;
-    (uint256 balanceIncrease, uint256 discountScaled) = _accrueDebtOnAction(
-      user,
-      previousScaledBalance,
-      discountPercent,
-      index
-    );
+    uint256 balanceIncrease;
+    {
+      uint256 discountScaled;
+      (balanceIncrease, discountScaled) = _accrueDebtOnAction(
+        user,
+        previousScaledBalance,
+        _ghoUserState[user].discountPercent,
+        index
+      );
 
-    if (amount == balanceBeforeBurn) {
-      _burn(user, previousScaledBalance.toUint128());
-    } else {
-      _burn(user, (amountScaled + discountScaled).toUint128());
+      // Calculate amount to burn: full balance for full repayment, otherwise amountScaled + discountScaled capped
+      uint256 toBurn = previousScaledBalance;
+      if (amount < balanceBeforeBurn) {
+        toBurn = amountScaled + discountScaled;
+        if (toBurn > previousScaledBalance) toBurn = previousScaledBalance;
+      }
+      _burn(user, toBurn.toUint120());
     }
 
+    // Refresh discount percent
     _refreshDiscountPercent(
       user,
-      super.balanceOf(user).rayMul(index),
+      uint256(_userState[user].balance).rayMul(index),
       _discountToken.balanceOf(user),
-      discountPercent
+      _ghoUserState[user].discountPercent
     );
 
+    // Emit events
     if (balanceIncrease > amount) {
-      uint256 amountToMint = balanceIncrease - amount;
-      emit Transfer(address(0), user, amountToMint);
-      emit Mint(user, user, amountToMint, balanceIncrease, index);
+      emit Transfer(address(0), user, balanceIncrease - amount);
+      emit Mint(user, user, balanceIncrease - amount, balanceIncrease, index);
     } else {
-      uint256 amountToBurn = amount - balanceIncrease;
-      emit Transfer(user, address(0), amountToBurn);
-      emit Burn(user, target, amountToBurn, balanceIncrease, index);
+      emit Transfer(user, address(0), amount - balanceIncrease);
+      emit Burn(user, target, amount - balanceIncrease, balanceIncrease, index);
     }
+  }
+
+  /**
+   * @dev Calculates user balance without external calls
+   */
+  function _getBalanceNoExternalCalls(
+    address user,
+    uint256 scaledBalance,
+    uint256 index
+  ) internal view returns (uint256) {
+    uint256 previousIndex = _userState[user].additionalData;
+    uint256 balance = scaledBalance.rayMul(index);
+    uint256 discountPercent = _ghoUserState[user].discountPercent;
+    if (index != previousIndex && discountPercent != 0) {
+      uint256 balanceIncrease = balance - scaledBalance.rayMul(previousIndex);
+      balance -= balanceIncrease.percentMul(discountPercent);
+    }
+    return balance;
   }
 
   /**
@@ -491,10 +541,10 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
       balanceIncrease = balanceIncrease - discount;
     }
 
-    _userState[user].additionalData = index.toUint128();
+    _userState[user].additionalData = index.toUint120();
 
     _ghoUserState[user].accumulatedDebtInterest = (balanceIncrease +
-      _ghoUserState[user].accumulatedDebtInterest).toUint128();
+      _ghoUserState[user].accumulatedDebtInterest).toUint120();
 
     return (balanceIncrease, discountScaled);
   }

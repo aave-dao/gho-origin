@@ -27,4 +27,13 @@ interface IGhoAToken is IAToken, IGhoFacilitator {
    * @return The address of the GhoVariableDebtToken contract
    */
   function getVariableDebtToken() external view returns (address);
+
+  /**
+   * @notice Handles repayment of GHO debt
+   * @dev Called by the GhoVariableDebtToken during burn (repay) to properly handle the interest vs principal
+   * @param caller The address of the repayer
+   * @param onBehalfOf The address of the user who's debt is being repaid
+   * @param amount The amount being repaid
+   */
+  function handleRepayment(address caller, address onBehalfOf, uint256 amount) external;
 }

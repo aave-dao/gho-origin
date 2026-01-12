@@ -13,6 +13,7 @@ import {MockAggregator} from 'aave-v3-origin/contracts/mocks/oracle/CLAggregator
 import {AaveProtocolDataProvider} from 'aave-v3-origin/contracts/helpers/AaveProtocolDataProvider.sol';
 import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
+import {GhoInterestRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoInterestRateStrategy.sol';
 import {MockStakedToken} from '../../../../tests/mocks/MockStakedToken.sol';
 import {IGhoVariableDebtTokenTransferHook} from '../../../../tests/mocks/MockStakedToken/interfaces/IGhoVariableDebtTokenTransferHook.sol';
 
@@ -92,11 +93,7 @@ contract AaveV3GhoTestListing is AaveV3Payload {
     reserves[0] = ConfiguratorInputTypes.InitReserveInput({
       aTokenImpl: GHO_ATOKEN_IMPLEMENTATION,
       variableDebtTokenImpl: GHO_VARIABLE_DEBT_TOKEN_IMPLEMENTATION,
-      useVirtualBalance: false,
-      interestRateStrategyAddress: CONFIG_ENGINE.DEFAULT_INTEREST_RATE_STRATEGY(),
       underlyingAsset: GHO_ADDRESS,
-      treasury: CONFIG_ENGINE.COLLECTOR(),
-      incentivesController: CONFIG_ENGINE.REWARDS_CONTROLLER(),
       aTokenName: 'Aave Ethereum GHO',
       aTokenSymbol: 'aEthGHO',
       variableDebtTokenName: 'Aave Variable Debt Ethereum GHO',

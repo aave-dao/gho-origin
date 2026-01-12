@@ -191,12 +191,24 @@ contract TestGsm4626Edge is TestGhoBase {
   }
 
   function testExposureLimitWithSharpExchangeRate() public {
-    Gsm4626 gsm = new Gsm4626(
+    // Deploy behind proxy for initialization to work
+    Gsm4626 gsmImpl = new Gsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
     );
-    gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE - 1, address(GHO_RESERVE));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(this),
+        TREASURY,
+        uint128(DEFAULT_GSM_USDX_EXPOSURE - 1),
+        address(GHO_RESERVE)
+      )
+    );
+    Gsm4626 gsm = Gsm4626(address(gsmProxy));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), DEFAULT_CAPACITY);
 
@@ -219,12 +231,24 @@ contract TestGsm4626Edge is TestGhoBase {
   }
 
   function testRevertExposureWithSharpExchangeRate() public {
-    Gsm4626 gsm = new Gsm4626(
+    // Deploy behind proxy for initialization to work
+    Gsm4626 gsmImpl = new Gsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
     );
-    gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE - 1, address(GHO_RESERVE));
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(this),
+        TREASURY,
+        uint128(DEFAULT_GSM_USDX_EXPOSURE - 1),
+        address(GHO_RESERVE)
+      )
+    );
+    Gsm4626 gsm = Gsm4626(address(gsmProxy));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), DEFAULT_CAPACITY);
 

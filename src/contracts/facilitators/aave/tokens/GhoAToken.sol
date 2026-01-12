@@ -41,6 +41,11 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
   GhoVariableDebtToken internal _ghoVariableDebtToken;
   address internal _ghoTreasury;
 
+  // Accumulated interest to be distributed to treasury
+  // In aave-v3-origin, handleRepayment is called before GHO is transferred,
+  // so we track the interest portion and burn principal in distributeFeesToTreasury
+  uint256 internal _accumulatedInterest;
+
   /// @inheritdoc VersionedInitializable
   function getRevision() internal pure virtual override returns (uint256) {
     return ATOKEN_REVISION;
@@ -51,38 +56,38 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
    * @param pool The address of the Pool contract
    */
   constructor(
-    IPool pool
-  ) ScaledBalanceTokenBase(pool, 'GHO_ATOKEN_IMPL', 'GHO_ATOKEN_IMPL', 0) EIP712Base() {
+    IPool pool,
+    address rewardsController
+  )
+    ScaledBalanceTokenBase(pool, 'GHO_ATOKEN_IMPL', 'GHO_ATOKEN_IMPL', 0, rewardsController)
+    EIP712Base()
+  {
     // Intentionally left blank
   }
 
   /// @inheritdoc IInitializableAToken
   function initialize(
     IPool initializingPool,
-    address treasury,
     address underlyingAsset,
-    IAaveIncentivesController incentivesController,
     uint8 aTokenDecimals,
     string calldata aTokenName,
     string calldata aTokenSymbol,
     bytes calldata params
   ) external override initializer {
-    require(initializingPool == POOL, Errors.POOL_ADDRESSES_DO_NOT_MATCH);
+    require(initializingPool == POOL, Errors.PoolAddressesDoNotMatch());
     _setName(aTokenName);
     _setSymbol(aTokenSymbol);
     _setDecimals(aTokenDecimals);
 
-    _treasury = treasury;
     _underlyingAsset = underlyingAsset;
-    _incentivesController = incentivesController;
 
     _domainSeparator = _calculateDomainSeparator();
 
     emit Initialized(
       underlyingAsset,
       address(POOL),
-      treasury,
-      address(incentivesController),
+      _treasury,
+      address(REWARDS_CONTROLLER),
       aTokenDecimals,
       aTokenName,
       aTokenSymbol,
@@ -97,22 +102,34 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
     uint256,
     uint256
   ) external virtual override onlyPool returns (bool) {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   /// @inheritdoc IAToken
-  function burn(address, address, uint256, uint256) external virtual override onlyPool {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+  function burn(
+    address,
+    address,
+    uint256,
+    uint256,
+    uint256
+  ) external virtual override onlyPool returns (bool) {
+    revert Errors.OperationNotSupported();
   }
 
   /// @inheritdoc IAToken
   function mintToTreasury(uint256, uint256) external virtual override onlyPool {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   /// @inheritdoc IAToken
-  function transferOnLiquidation(address, address, uint256) external virtual override onlyPool {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+  function transferOnLiquidation(
+    address,
+    address,
+    uint256,
+    uint256,
+    uint256
+  ) external virtual override onlyPool {
+    revert Errors.OperationNotSupported();
   }
 
   /// @inheritdoc IERC20
@@ -123,8 +140,12 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
   }
 
   /// @inheritdoc IERC20
+  /// @dev Returns the available capacity for the GHO facilitator (bucket capacity - bucket level)
+  /// @dev This is needed for aave-v3-origin's ValidationLogic which checks aToken.totalSupply() >= borrowAmount
   function totalSupply() public view virtual override(IncentivizedERC20, IERC20) returns (uint256) {
-    return 0;
+    (uint256 bucketCapacity, uint256 bucketLevel) = IGhoToken(_underlyingAsset)
+      .getFacilitatorBucket(address(this));
+    return bucketCapacity - bucketLevel;
   }
 
   /// @inheritdoc IAToken
@@ -148,31 +169,61 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
     IGhoToken(_underlyingAsset).mint(target, amount);
   }
 
-  /// @inheritdoc IAToken
-  function handleRepayment(
-    address,
-    address onBehalfOf,
-    uint256 amount
-  ) external virtual override onlyPool {
+  /**
+   * @notice Handles repayment of GHO debt
+   * @dev Called by the GhoVariableDebtToken during burn (repay) to properly handle the interest vs principal.
+   *      In aave-v3-origin, this is called before GHO is transferred to the aToken, so we cannot burn
+   *      the principal immediately. Instead, we track the interest portion and burn principal in
+   *      distributeFeesToTreasury.
+   * @param onBehalfOf The address of the user who's debt is being repaid
+   * @param amount The amount being repaid
+   */
+  function handleRepayment(address, address onBehalfOf, uint256 amount) external virtual {
+    require(
+      msg.sender == address(POOL) || msg.sender == address(_ghoVariableDebtToken),
+      'CALLER_NOT_POOL_OR_DEBT_TOKEN'
+    );
     uint256 balanceFromInterest = _ghoVariableDebtToken.getBalanceFromInterest(onBehalfOf);
     if (amount <= balanceFromInterest) {
+      // All of the repayment is interest - accumulate it for treasury distribution
       _ghoVariableDebtToken.decreaseBalanceFromInterest(onBehalfOf, amount);
+      _accumulatedInterest += amount;
     } else {
+      // Part is interest, part is principal
+      // Accumulate interest for treasury, principal will be burned in distributeFeesToTreasury
       _ghoVariableDebtToken.decreaseBalanceFromInterest(onBehalfOf, balanceFromInterest);
-      IGhoToken(_underlyingAsset).burn(amount - balanceFromInterest);
+      _accumulatedInterest += balanceFromInterest;
+      // Principal (amount - balanceFromInterest) will be burned when distributeFeesToTreasury is called
     }
   }
 
   /// @inheritdoc IGhoFacilitator
+  /// @dev Burns the principal portion of accumulated repayments and transfers only interest to treasury
   function distributeFeesToTreasury() external virtual override {
     uint256 balance = IERC20(_underlyingAsset).balanceOf(address(this));
-    IERC20(_underlyingAsset).transfer(_ghoTreasury, balance);
-    emit FeesDistributedToTreasury(_ghoTreasury, _underlyingAsset, balance);
+    uint256 interestToDistribute = _accumulatedInterest;
+
+    // Reset accumulated interest before external calls
+    _accumulatedInterest = 0;
+
+    if (balance > interestToDistribute) {
+      // Burn the principal portion
+      uint256 principalToBurn = balance - interestToDistribute;
+      IGhoToken(_underlyingAsset).burn(principalToBurn);
+    }
+
+    // Transfer interest to treasury (may be less than interestToDistribute if some was already transferred)
+    uint256 remainingBalance = IERC20(_underlyingAsset).balanceOf(address(this));
+    if (remainingBalance > 0) {
+      IERC20(_underlyingAsset).transfer(_ghoTreasury, remainingBalance);
+    }
+
+    emit FeesDistributedToTreasury(_ghoTreasury, _underlyingAsset, remainingBalance);
   }
 
   /// @inheritdoc IAToken
   function permit(address, address, uint256, uint256, uint8, bytes32, bytes32) external override {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+    revert Errors.OperationNotSupported();
   }
 
   /**
@@ -181,8 +232,8 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
    * @param to The destination address
    * @param amount The amount getting transferred
    */
-  function _transfer(address from, address to, uint128 amount) internal override {
-    revert(Errors.OPERATION_NOT_SUPPORTED);
+  function _transfer(address from, address to, uint120 amount) internal override {
+    revert Errors.OperationNotSupported();
   }
 
   /**
@@ -208,7 +259,7 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
 
   /// @inheritdoc IAToken
   function rescueTokens(address token, address to, uint256 amount) external override onlyPoolAdmin {
-    require(token != _underlyingAsset, Errors.UNDERLYING_CANNOT_BE_RESCUED);
+    require(token != _underlyingAsset, Errors.UnderlyingCannotBeRescued());
     IERC20(token).safeTransfer(to, amount);
   }
 
@@ -230,6 +281,7 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
     require(newGhoTreasury != address(0), 'ZERO_ADDRESS_NOT_VALID');
     address oldGhoTreasury = _ghoTreasury;
     _ghoTreasury = newGhoTreasury;
+    _treasury = newGhoTreasury;
     emit GhoTreasuryUpdated(oldGhoTreasury, newGhoTreasury);
   }
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {IAaveIncentivesController} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 
 import {GhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
@@ -13,7 +12,7 @@ import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 
 contract GhoAaveListingProcedure {
   function _deployGhoATokenImpl(address poolProxy) internal returns (address) {
-    return address(new GhoAToken(IPool(poolProxy)));
+    return address(new GhoAToken(IPool(poolProxy), address(0)));
   }
 
   function _deployGhoOracle() internal returns (address) {
@@ -21,18 +20,9 @@ contract GhoAaveListingProcedure {
   }
 
   function _deployGhoVariableDebtTokenImpl(address poolProxy) internal returns (address) {
-    GhoVariableDebtToken ghoVariableDebtTokenImpl = new GhoVariableDebtToken(IPool(poolProxy));
-    ghoVariableDebtTokenImpl.initialize({
-      initializingPool: IPool(poolProxy),
-      underlyingAsset: address(0),
-      incentivesController: IAaveIncentivesController(address(0)),
-      debtTokenDecimals: 0,
-      debtTokenName: 'GHO_VARIABLE_DEBT_TOKEN_IMPL',
-      debtTokenSymbol: 'GHO_VARIABLE_DEBT_TOKEN_IMPL',
-      params: abi.encode()
-    });
-
-    return address(ghoVariableDebtTokenImpl);
+    // Note: With the new VersionedInitializable, implementation contracts can't be initialized directly.
+    // The implementation will be initialized when deployed behind a proxy.
+    return address(new GhoVariableDebtToken(IPool(poolProxy), address(0)));
   }
 
   function _deployGhoDiscountRateStrategy() internal returns (address) {

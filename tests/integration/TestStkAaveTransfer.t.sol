@@ -81,11 +81,13 @@ contract TestStkAaveTransfer is TestnetProcedures {
     uint256 charlieExpectedBalance = charlieExpectedBalanceNoDiscount - charlieExpectedDiscount;
     uint256 charlieBalanceIncreaseWithDiscount = charlieBalanceIncrease - charlieExpectedDiscount;
 
-    assertEq(ghoVariableDebtToken.balanceOf(charlie), charlieExpectedBalance);
+    // Allow 1 wei rounding difference due to library update
+    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(charlie), charlieExpectedBalance, 1);
 
-    assertEq(
+    assertApproxEqAbs(
       ghoVariableDebtToken.getBalanceFromInterest(charlie),
-      charlieBalanceIncreaseWithDiscount
+      charlieBalanceIncreaseWithDiscount,
+      1
     );
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(bob), 0);
   }

@@ -9,7 +9,7 @@ contract TestUiGhoDataProvider is TestGhoBase {
   UiGhoDataProvider dataProvider;
 
   function setUp() public {
-    dataProvider = new UiGhoDataProvider(IPool(POOL), GHO_TOKEN);
+    dataProvider = new UiGhoDataProvider(IPool(address(POOL)), GHO_TOKEN);
   }
 
   function testGhoReserveData() public view {

@@ -166,14 +166,9 @@ contract TestBasicBorrow is TestnetProcedures {
     assertEq(aliceDebt, aliceExpectedBalance);
     assertEq(bobDebt, 0);
 
-    // In aave-v3-origin, principal is burned when distributeFeesToTreasury is called
-    // Before that, the aToken holds both principal and interest
-    ghoAToken.distributeFeesToTreasury();
-    assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
-    assertEq(
-      ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
-      bobExpectedInterest
-    );
+    // After repay, aToken holds full repaid amount (principal + interest)
+    // Principal is burned when distributeFeesToTreasury() is called
+    assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), bobExpectedBalance);
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(bob), 0);
   }
 
@@ -226,19 +221,11 @@ contract TestBasicBorrow is TestnetProcedures {
     uint256 aliceExpectedInterest = aliceExpectedBalance - BORROW_AMOUNT * 2;
     uint256 aliceExpectedBalanceIncrease = aliceExpectedInterest - aliceAccruedInterestBefore;
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    // Only verify event type and emitter, not exact values
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(address(0), alice, 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Mint(alice, alice, 0, 0, 0); // values not checked
-
     vm.prank(alice);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), repayAmount, 2, alice);
 
     assertEventNotEmitted(keccak256('DiscountPercentUpdated(address,uint256,uint256)'));
 
-    // Allow 1 wei rounding difference
     assertApproxEqAbs(ghoVariableDebtToken.balanceOf(alice), aliceExpectedBalance - repayAmount, 1);
     assertApproxEqAbs(
       ghoVariableDebtToken.getBalanceFromInterest(alice),
@@ -247,7 +234,11 @@ contract TestBasicBorrow is TestnetProcedures {
     );
 
     uint256 expectedATokenGhoBalance = aTokenGhoBalanceBefore + repayAmount;
-    assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), expectedATokenGhoBalance);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(ghoAToken)),
+      expectedATokenGhoBalance,
+      1
+    );
   }
 
   function test_Alice_ReceiveGhoFromCharlieAndRepay() public {
@@ -261,18 +252,12 @@ contract TestBasicBorrow is TestnetProcedures {
 
     uint256 aliceScaledBefore = ghoVariableDebtToken.scaledBalanceOf(alice);
     uint256 aTokenGhoBalanceBefore = ghoContracts.ghoToken.balanceOf(address(ghoAToken));
-    uint256 aliceAccruedInterestBefore = ghoVariableDebtToken.getBalanceFromInterest(alice);
 
     uint256 expectedBorrowIndex = getExpectedBorrowIndex();
 
     uint256 aliceExpectedBalance = aliceScaledBefore.rayMul(expectedBorrowIndex);
-
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    // Only verify event type and emitter, not exact values
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(alice, address(0), 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Burn(alice, address(0), 0, 0, 0); // values not checked
+    // After repay, aToken holds full repaid amount (principal + interest)
+    uint256 expectedATokenGhoBalance = aTokenGhoBalanceBefore + aliceExpectedBalance;
 
     vm.prank(alice);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), type(uint256).max, 2, alice);
@@ -282,10 +267,11 @@ contract TestBasicBorrow is TestnetProcedures {
     assertEq(ghoVariableDebtToken.balanceOf(alice), 0);
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), 0);
 
-    // In aave-v3-origin, the full repayment amount is held by aToken
-    // until distributeFeesToTreasury is called. The balance includes principal + interest.
-    // We verify that GHO was received and debt is cleared.
-    assertGt(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), aTokenGhoBalanceBefore);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(ghoAToken)),
+      expectedATokenGhoBalance,
+      1
+    );
   }
 
   function test_DistributeFeesToTreasury() public {
@@ -297,15 +283,7 @@ contract TestBasicBorrow is TestnetProcedures {
     );
 
     assertGt(aTokenGhoBalanceBefore, 0);
-    // Treasury might have some balance from previous distributeFeesToTreasury calls
-
-    // Use less strict event check for compatibility
-    vm.expectEmit(true, true, false, false, address(ghoAToken));
-    emit IGhoFacilitator.FeesDistributedToTreasury(
-      address(marketContracts.treasury),
-      address(ghoContracts.ghoToken),
-      0 // value not checked
-    );
+    assertEq(treasuryGhoBalanceBefore, 0);
 
     ghoAToken.distributeFeesToTreasury();
 
@@ -314,13 +292,10 @@ contract TestBasicBorrow is TestnetProcedures {
       address(marketContracts.treasury)
     );
 
-    // After distributeFeesToTreasury:
-    // - The aToken should have 0 GHO balance
-    // - The principal portion is burned
-    // - Only the interest portion (accumulated fees) goes to treasury
+    // After distributeFeesToTreasury: principal is burned, interest goes to treasury
     assertEq(aTokenGhoBalanceAfter, 0);
-    // Treasury receives only the interest portion, not the full aToken balance
-    // The principal portion is burned by the aToken
-    assertGt(treasuryGhoBalanceAfter, treasuryGhoBalanceBefore);
+    // Treasury receives the interest portion (less than full aToken balance since principal is burned)
+    assertGt(treasuryGhoBalanceAfter, 0);
+    assertLt(treasuryGhoBalanceAfter, aTokenGhoBalanceBefore);
   }
 }

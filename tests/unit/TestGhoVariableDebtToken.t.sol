@@ -20,7 +20,6 @@ contract TestGhoVariableDebtToken is TestGhoBase {
   }
 
   function testInitialize() public {
-    // Deploy behind proxy for initialization to work
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoVariableDebtToken debtTokenImpl = new GhoVariableDebtToken(IPool(address(POOL)), address(0));
     string memory tokenName = 'Aave Variable Debt GHO';

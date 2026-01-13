@@ -175,7 +175,6 @@ contract TestGhoBase is Test, Constants, Events {
     ACL_MANAGER = new MockAclManager();
     PROVIDER = new MockAddressesProvider(address(ACL_MANAGER));
     MOCK_POOL_DATA_PROVIDER = new MockPoolDataProvider(address(PROVIDER));
-    // Use simplified MockPool that doesn't inherit from VersionedInitializable
     POOL = new MockPool(IPoolAddressesProvider(address(PROVIDER)));
     CONFIGURATOR = new MockConfigurator(IPool(address(POOL)));
     PRICE_ORACLE = new PriceOracle();
@@ -192,7 +191,6 @@ contract TestGhoBase is Test, Constants, Events {
     IPool iPool = IPool(address(POOL));
     WETH = new WETH9Mock('Wrapped Ether', 'WETH', FAUCET);
 
-    // Deploy GhoVariableDebtToken behind proxy
     // Use a separate proxy admin to avoid TransparentUpgradeableProxy admin restriction
     address proxyAdmin = address(0xAD);
     GhoVariableDebtToken ghoDebtTokenImpl = new GhoVariableDebtToken(iPool, address(0));
@@ -221,7 +219,6 @@ contract TestGhoBase is Test, Constants, Events {
     );
     STK_TOKEN = IMockStakedToken(address(stkAave));
 
-    // Deploy GhoAToken behind proxy
     GhoAToken ghoATokenImpl = new GhoAToken(iPool, address(0));
     GHO_ATOKEN = GhoAToken(
       address(
@@ -250,7 +247,6 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
     POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
-    // Deploy GhoReserve behind proxy
     GhoReserve ghoReserveImpl = new GhoReserve(address(GHO_TOKEN));
     GHO_RESERVE = GhoReserve(
       address(
@@ -310,7 +306,6 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_GSM = Gsm(address(gsmProxy));
 
     GHO_GSM.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
-    // Deploy Gsm4626 behind proxy
     Gsm4626 gsm4626Impl = new Gsm4626(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
@@ -542,8 +537,6 @@ contract TestGhoBase is Test, Constants, Events {
     POOL.repay(address(GHO_TOKEN), amount, 2, user);
     vm.stopPrank();
 
-    // In aave-v3-origin, principal is burned when distributeFeesToTreasury is called
-    // Call it to complete the repayment flow
     GHO_ATOKEN.distributeFeesToTreasury();
 
     // Checks

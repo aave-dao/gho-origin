@@ -41,9 +41,7 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
   GhoVariableDebtToken internal _ghoVariableDebtToken;
   address internal _ghoTreasury;
 
-  // Accumulated interest to be distributed to treasury
-  // In aave-v3-origin, handleRepayment is called before GHO is transferred,
-  // so we track the interest portion and burn principal in distributeFeesToTreasury
+  // Accumulated interest to be distributed to treasury; principal is burned in distributeFeesToTreasury
   uint256 internal _accumulatedInterest;
 
   /// @inheritdoc VersionedInitializable
@@ -140,8 +138,6 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
   }
 
   /// @inheritdoc IERC20
-  /// @dev Returns the available capacity for the GHO facilitator (bucket capacity - bucket level)
-  /// @dev This is needed for aave-v3-origin's ValidationLogic which checks aToken.totalSupply() >= borrowAmount
   function totalSupply() public view virtual override(IncentivizedERC20, IERC20) returns (uint256) {
     (uint256 bucketCapacity, uint256 bucketLevel) = IGhoToken(_underlyingAsset)
       .getFacilitatorBucket(address(this));
@@ -169,15 +165,7 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
     IGhoToken(_underlyingAsset).mint(target, amount);
   }
 
-  /**
-   * @notice Handles repayment of GHO debt
-   * @dev Called by the GhoVariableDebtToken during burn (repay) to properly handle the interest vs principal.
-   *      In aave-v3-origin, this is called before GHO is transferred to the aToken, so we cannot burn
-   *      the principal immediately. Instead, we track the interest portion and burn principal in
-   *      distributeFeesToTreasury.
-   * @param onBehalfOf The address of the user who's debt is being repaid
-   * @param amount The amount being repaid
-   */
+  /// @inheritdoc IGhoAToken
   function handleRepayment(address, address onBehalfOf, uint256 amount) external virtual {
     require(
       msg.sender == address(POOL) || msg.sender == address(_ghoVariableDebtToken),
@@ -198,7 +186,6 @@ contract GhoAToken is VersionedInitializable, ScaledBalanceTokenBase, EIP712Base
   }
 
   /// @inheritdoc IGhoFacilitator
-  /// @dev Burns the principal portion of accumulated repayments and transfers only interest to treasury
   function distributeFeesToTreasury() external virtual override {
     uint256 balance = IERC20(_underlyingAsset).balanceOf(address(this));
     uint256 interestToDistribute = _accumulatedInterest;

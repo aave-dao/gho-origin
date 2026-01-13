@@ -14,7 +14,6 @@ contract TestGsmSwapFuzz is TestGhoBase {
   using PercentageMath for uint256;
   using PercentageMath for uint128;
 
-  /// @dev Helper to deploy Gsm behind proxy (required because VersionedInitializable disables direct init)
   function _deployGsmProxy(
     address ghoToken,
     address underlyingToken,

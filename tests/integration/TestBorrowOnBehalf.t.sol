@@ -108,41 +108,32 @@ contract TestBorrowOnBehalf is TestnetProcedures {
     uint256 charlieExpectedBalance = charlieScaledBefore.rayMul(expectedBorrowIndex);
     uint256 aliceExpectedInterest = aliceExpectedBalance - BORROW_AMOUNT;
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(alice, address(0), 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Burn(alice, address(0), 0, 0, 0); // values not checked
-
     vm.prank(bob);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), aliceExpectedBalance, 2, alice);
 
     assertEventNotEmitted(keccak256('DiscountPercentUpdated(address,uint256,uint256)'));
 
     assertEq(ghoContracts.ghoToken.balanceOf(alice), 0);
-    // Allow 1 wei rounding difference
-    assertApproxEqAbs(
-      ghoContracts.ghoToken.balanceOf(bob),
-      BORROW_AMOUNT * 2 - aliceExpectedBalance,
-      1
-    );
+    assertEq(ghoContracts.ghoToken.balanceOf(bob), BORROW_AMOUNT * 2 - aliceExpectedBalance);
     assertEq(ghoContracts.ghoToken.balanceOf(charlie), 0);
 
     assertEq(ghoVariableDebtToken.balanceOf(alice), 0);
     assertEq(ghoVariableDebtToken.balanceOf(bob), 0);
-    // Allow 1 wei rounding difference
     assertApproxEqAbs(ghoVariableDebtToken.balanceOf(charlie), charlieExpectedBalance, 1);
 
-    // In aave-v3-origin, principal is burned when distributeFeesToTreasury is called
-    // Before that, the aToken holds both principal and interest
+    // After repay, aToken holds full repaid amount (principal + interest)
+    assertApproxEqAbs(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), aliceExpectedBalance, 1);
+
+    assertEq(ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)), 0);
+    assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), 0);
+
+    // Distribute fees: burns principal, sends interest to treasury
     ghoAToken.distributeFeesToTreasury();
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
-    // Allow 1 wei rounding difference
     assertApproxEqAbs(
       ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
       aliceExpectedInterest,
       1
     );
-    assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), 0);
   }
 }

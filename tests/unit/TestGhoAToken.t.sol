@@ -14,7 +14,6 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testInitialize() public {
-    // Deploy behind proxy for initialization to work
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoAToken aTokenImpl = new GhoAToken(IPool(address(POOL)), address(0));
     string memory tokenName = 'Aave GHO';
@@ -42,7 +41,6 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testInitializePoolRevert() public {
-    // Deploy implementation with POOL, then try to initialize via proxy with wrong pool
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     string memory tokenName = 'Aave GHO';
     string memory tokenSymbol = 'aGHO';
@@ -139,7 +137,6 @@ contract TestGhoAToken is TestGhoBase {
   function testUnauthorizedHandleRepayment() public {
     vm.startPrank(ALICE);
 
-    // handleRepayment now allows both Pool and DebtToken to call it
     vm.expectRevert(bytes('CALLER_NOT_POOL_OR_DEBT_TOKEN'));
     GHO_ATOKEN.handleRepayment(ALICE, ALICE, 0);
   }
@@ -231,8 +228,6 @@ contract TestGhoAToken is TestGhoBase {
   }
 
   function testTotalSupplyReturnsBucketCapacity() public view {
-    // In aave-v3-origin, GhoAToken.totalSupply() returns the facilitator bucket capacity
-    // to satisfy ValidationLogic checks during borrowing
     uint256 supply = GHO_ATOKEN.totalSupply();
     (uint256 bucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
     assertEq(supply, bucketCapacity, 'AToken total supply should equal bucket capacity');

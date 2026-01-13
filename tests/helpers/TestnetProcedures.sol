@@ -277,35 +277,18 @@ contract TestnetProcedures is BatchTestProcedures {
     return address(uint160(uint256(implSlot)));
   }
 
-  /// @notice Set a large virtual underlying balance for GHO to prevent underflow
-  /// @dev GHO is minted on demand and starts with virtualUnderlyingBalance = 0,
-  ///      which causes underflow in DefaultReserveInterestRateStrategyV2 when borrowing.
-  ///      We directly set the virtualUnderlyingBalance in storage to a large value.
+  /// @notice Seed a virtualUnderlyingBalance for GHO to avoid underflow in rate math
   function _mockGhoInterestRate() internal {
-    // Get the reserve data storage slot for GHO
-    // The _reserves mapping is at slot 52 in Pool.sol (after inherited storage)
-    // For a mapping(address => ReserveData), the slot is keccak256(abi.encode(key, slot))
+    // _reserves mapping is at slot 52 in Pool.sol → keccak256(key, 52)
     bytes32 reservesSlot = bytes32(uint256(52));
     bytes32 ghoReserveSlot = keccak256(abi.encode(address(ghoContracts.ghoToken), reservesSlot));
 
-    // In DataTypes.ReserveData, virtualUnderlyingBalance is packed with accruedToTreasury
-    // in slot offset 9 (after configuration, liquidityIndex, currentLiquidityRate, etc.)
-    // ReserveData storage layout:
-    // slot 0: ReserveConfigurationMap configuration (256 bits)
-    // slot 1: liquidityIndex (128 bits) + currentLiquidityRate (128 bits)
-    // slot 2: variableBorrowIndex (128 bits) + currentVariableBorrowRate (128 bits)
-    // slot 3: currentStableBorrowRate (128 bits) + lastUpdateTimestamp (40 bits) + id (16 bits) + ...
-    // slot 4: aTokenAddress
-    // slot 5: stableDebtTokenAddress (deprecated)
-    // slot 6: variableDebtTokenAddress
-    // slot 7: interestRateStrategyAddress (deprecated)
-    // slot 8: accruedToTreasury (128 bits) + virtualUnderlyingBalance (128 bits)
+    // ReserveData slot 8 packs accruedToTreasury (low 128) and virtualUnderlyingBalance (high 128)
     bytes32 virtualBalanceSlot = bytes32(uint256(ghoReserveSlot) + 8);
 
-    // Set a large virtual underlying balance for GHO (e.g., 1e27 = 1 billion GHO)
-    // The accruedToTreasury (lower 128 bits) should remain 0, virtualUnderlyingBalance is upper 128 bits
+    // Write virtualUnderlyingBalance = 1e27 (upper 128 bits), leave accruedToTreasury = 0
     uint256 largeVirtualBalance = uint256(1e27);
-    uint256 packedValue = (largeVirtualBalance << 128); // virtualUnderlyingBalance in upper bits
+    uint256 packedValue = (largeVirtualBalance << 128);
 
     vm.store(address(marketContracts.poolProxy), virtualBalanceSlot, bytes32(packedValue));
   }

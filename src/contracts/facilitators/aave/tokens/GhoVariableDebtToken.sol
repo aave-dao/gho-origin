@@ -169,21 +169,15 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
     uint256 scaledAmount,
     uint256 index
   ) external virtual override onlyPool returns (bool, uint256) {
-    // Cap scaledAmount to the user's actual balance to prevent underflow
-    // This is necessary because the Pool doesn't know about GHO discounts
-    // Read directly from storage to avoid any override issues
     uint256 scaledBalance = _userState[from].balance;
     if (scaledAmount > scaledBalance) {
       scaledAmount = scaledBalance;
     }
 
-    // Convert scaledAmount back to amount for internal processing
     uint256 amount = scaledAmount.rayMul(index);
     _burnScaled(from, address(0), amount, index);
 
-    // In aave-v3-origin, the Pool no longer calls handleRepayment on the aToken.
-    // We call it here to ensure the principal portion of repaid GHO is burned,
-    // keeping only the interest portion in the aToken.
+    // The Pool doesn't call handleRepayment on the aToken; invoke it to burn principal and keep only interest
     if (_ghoAToken != address(0)) {
       IGhoAToken(_ghoAToken).handleRepayment(msg.sender, from, amount);
     }
@@ -470,7 +464,6 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
         index
       );
 
-      // Calculate amount to burn: full balance for full repayment, otherwise amountScaled + discountScaled capped
       uint256 toBurn = previousScaledBalance;
       if (amount < balanceBeforeBurn) {
         toBurn = amountScaled + discountScaled;
@@ -479,7 +472,6 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
       _burn(user, toBurn.toUint120());
     }
 
-    // Refresh discount percent
     _refreshDiscountPercent(
       user,
       uint256(_userState[user].balance).rayMul(index),
@@ -487,7 +479,6 @@ contract GhoVariableDebtToken is DebtTokenBase, ScaledBalanceTokenBase, IGhoVari
       _ghoUserState[user].discountPercent
     );
 
-    // Emit events
     if (balanceIncrease > amount) {
       emit Transfer(address(0), user, balanceIncrease - amount);
       emit Mint(user, user, balanceIncrease - amount, balanceIncrease, index);

@@ -8,7 +8,6 @@ contract TestGsmFullFlow is TestGhoBase {
     OwnableFacilitator facilitator = new OwnableFacilitator(address(this), address(GHO_TOKEN));
     GHO_TOKEN.addFacilitator(address(facilitator), 'OwnableFacilitatorFlow', DEFAULT_CAPACITY);
 
-    // Deploy GhoReserve behind proxy
     GhoReserve reserve;
     {
       address proxyAdmin = makeAddr('PROXY_ADMIN');
@@ -21,7 +20,6 @@ contract TestGsmFullFlow is TestGhoBase {
       reserve = GhoReserve(address(reserveProxy));
     }
 
-    // Deploy Gsm behind proxy
     Gsm gsm;
     {
       Gsm gsmImpl = new Gsm(

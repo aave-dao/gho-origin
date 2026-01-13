@@ -7,7 +7,6 @@ contract TestGsmSwapEdge is TestGhoBase {
   using PercentageMath for uint256;
   using PercentageMath for uint128;
 
-  /// @dev Helper to deploy Gsm behind proxy
   function _deployGsmWithStrategy(
     address underlyingToken,
     address priceStrategy,
@@ -17,7 +16,6 @@ contract TestGsmSwapEdge is TestGhoBase {
       _deployGsmWithStrategyAndAdmin(underlyingToken, priceStrategy, exposureCap, address(this));
   }
 
-  /// @dev Helper to deploy Gsm behind proxy with custom admin
   function _deployGsmWithStrategyAndAdmin(
     address underlyingToken,
     address priceStrategy,

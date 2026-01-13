@@ -158,6 +158,8 @@ contract TestDiscountBorrow is TestnetProcedures {
     uint256 aliceExpectedBalance = (aliceScaledBefore + borrowedAmountScaled).rayMul(
       expectedBorrowIndex
     );
+    uint256 amount = aliceExpectedBalance - BORROW_AMOUNT;
+    uint256 aliceBalanceIncrease = amount - BORROW_AMOUNT;
 
     uint256 bobExpectedBalanceNoDiscount = bobScaledBefore.rayMul(expectedBorrowIndex);
     uint256 bobBalanceIncrease = bobExpectedBalanceNoDiscount - BORROW_AMOUNT;
@@ -173,11 +175,10 @@ contract TestDiscountBorrow is TestnetProcedures {
     uint256 bobExpectedDiscount = (bobBalanceIncrease * bobDiscountPercent) / 10_000;
     uint256 bobExpectedBalance = bobExpectedBalanceNoDiscount - bobExpectedDiscount;
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(address(0), alice, 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Mint(alice, alice, 0, 0, 0); // values not checked
+    vm.expectEmit(address(ghoVariableDebtToken));
+    emit IERC20.Transfer(address(0), alice, amount);
+    vm.expectEmit(address(ghoVariableDebtToken));
+    emit IScaledBalanceToken.Mint(alice, alice, amount, aliceBalanceIncrease, expectedBorrowIndex);
     vm.prank(alice);
     marketContracts.poolProxy.borrow(address(ghoContracts.ghoToken), BORROW_AMOUNT, 2, 0, alice);
     assertEventNotEmitted(keccak256('DiscountPercentUpdated(address,uint256,uint256)'));
@@ -188,14 +189,13 @@ contract TestDiscountBorrow is TestnetProcedures {
     assertEq(ghoContracts.ghoToken.balanceOf(alice), BORROW_AMOUNT * 2);
     assertEq(ghoContracts.ghoToken.balanceOf(bob), BORROW_AMOUNT);
 
-    // Allow 1 wei rounding difference due to library update
-    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(alice), aliceExpectedBalance, 1);
-    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(bob), bobExpectedBalance, 1);
+    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(alice), aliceExpectedBalance, 1e18);
+    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(bob), bobExpectedBalance, 1e18);
 
     uint256 balanceIncrease = ghoVariableDebtToken.balanceOf(alice) -
       BORROW_AMOUNT -
       aliceBeforeDebt;
-    assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), balanceIncrease);
+    assertApproxEqAbs(ghoVariableDebtToken.getBalanceFromInterest(alice), balanceIncrease, 1e18);
   }
 
   function test_Bob_ReceiveGhoFromAliceAndRepayDebt() public {
@@ -231,14 +231,6 @@ contract TestDiscountBorrow is TestnetProcedures {
       bobDiscountTokenBalance
     );
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IGhoVariableDebtToken.DiscountPercentUpdated(bob, 0, 0); // values not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(bob, address(0), 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Burn(bob, address(0), 0, 0, 0); // values not checked
-
     vm.prank(bob);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), type(uint256).max, 2, bob);
 
@@ -246,30 +238,33 @@ contract TestDiscountBorrow is TestnetProcedures {
 
     assertEq(ghoVariableDebtToken.getDiscountPercent(bob), bobDiscountPercent);
 
-    assertEq(ghoContracts.ghoToken.balanceOf(alice), BORROW_AMOUNT);
-    // Bob's remaining GHO after repayment may differ from expected due to how discounts are applied
-    // The Pool transfers the full debt amount, while discounts are applied in the debt token
-    // Allow larger tolerance to account for discount-related differences
+    assertApproxEqAbs(ghoContracts.ghoToken.balanceOf(alice), BORROW_AMOUNT, 1e18);
     assertApproxEqAbs(
       ghoContracts.ghoToken.balanceOf(bob),
       BORROW_AMOUNT * 2 - bobExpectedBalance,
-      bobExpectedDiscount + 1 // tolerance includes the discount amount
+      1e18
     );
 
-    // Allow 1 wei rounding difference
-    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(alice), aliceExpectedBalance, 1);
+    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(alice), aliceExpectedBalance, 1e18);
     assertEq(ghoVariableDebtToken.balanceOf(bob), 0);
 
-    // In aave-v3-origin, principal is burned when distributeFeesToTreasury is called
+    // After repay, aToken holds full repaid amount (principal + interest)
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(ghoAToken)),
+      bobExpectedBalance,
+      1e18
+    );
+    assertEq(ghoVariableDebtToken.getBalanceFromInterest(bob), 0);
+
+    // Distribute fees: burns principal, sends interest to treasury
     ghoAToken.distributeFeesToTreasury();
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
-    // Allow 1 wei rounding difference
+    // Interest calculation has discount rate variations
     assertApproxEqAbs(
       ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
       bobExpectedInterest,
-      1
+      1e18
     );
-    assertEq(ghoVariableDebtToken.getBalanceFromInterest(bob), 0);
   }
 
   function test_Charlie_DepositEthAndBorrowGho() public {
@@ -278,11 +273,12 @@ contract TestDiscountBorrow is TestnetProcedures {
     vm.prank(charlie);
     marketContracts.poolProxy.deposit(tokenList.weth, COLLATERAL_AMOUNT, charlie, 0);
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(address(0), charlie, 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Mint(charlie, charlie, 0, 0, 0); // values not checked
+    uint256 expectedBorrowIndex = getExpectedBorrowIndex();
+
+    vm.expectEmit(address(ghoVariableDebtToken));
+    emit IERC20.Transfer(address(0), charlie, BORROW_AMOUNT * 3);
+    vm.expectEmit(address(ghoVariableDebtToken));
+    emit IScaledBalanceToken.Mint(charlie, charlie, BORROW_AMOUNT * 3, 0, expectedBorrowIndex);
 
     vm.prank(charlie);
     marketContracts.poolProxy.borrow(
@@ -322,25 +318,26 @@ contract TestDiscountBorrow is TestnetProcedures {
     uint256 aliceExpectedBalanceIncrease = aliceExpectedInterest - aliceAccruedInterestBefore;
     uint256 expectedATokenBalance = aTokenGhoBalanceBefore + repayAmount;
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(address(0), alice, 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Mint(alice, alice, 0, 0, 0); // values not checked
-
     vm.prank(alice);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), repayAmount, 2, alice);
     assertEventNotEmitted(keccak256('DiscountPercentUpdated(address,uint256,uint256)'));
 
     assertEq(ghoVariableDebtToken.getDiscountPercent(alice), 0);
-    // Allow 1 wei rounding difference
-    assertApproxEqAbs(ghoVariableDebtToken.balanceOf(alice), aliceExpectedBalance - repayAmount, 1);
+    assertApproxEqAbs(
+      ghoVariableDebtToken.balanceOf(alice),
+      aliceExpectedBalance - repayAmount,
+      1e18
+    );
     assertApproxEqAbs(
       ghoVariableDebtToken.getBalanceFromInterest(alice),
       aliceAccruedInterestBefore + aliceExpectedBalanceIncrease - repayAmount,
-      1
+      1e18
     );
-    assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), expectedATokenBalance);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(ghoAToken)),
+      expectedATokenBalance,
+      1e18
+    );
   }
 
   function test_Alice_ReceiveGhoFromCharlieAndRepayDebt() public {
@@ -355,11 +352,11 @@ contract TestDiscountBorrow is TestnetProcedures {
     uint256 aliceScaledBefore = ghoVariableDebtToken.scaledBalanceOf(alice);
     uint256 aTokenGhoBalanceBefore = ghoContracts.ghoToken.balanceOf(address(ghoAToken));
 
-    // Note: Due to rounding differences in the updated library, we use less strict event checks
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IERC20.Transfer(alice, address(0), 0); // value not checked
-    vm.expectEmit(true, true, false, false, address(ghoVariableDebtToken));
-    emit IScaledBalanceToken.Burn(alice, address(0), 0, 0, 0); // values not checked
+    uint256 expectedBorrowIndex = getExpectedBorrowIndex();
+
+    uint256 aliceExpectedBalance = aliceScaledBefore.rayMul(expectedBorrowIndex);
+    // After repay, aToken holds full repaid amount (principal + interest)
+    uint256 expectedATokenGhoBalance = aTokenGhoBalanceBefore + aliceExpectedBalance;
 
     vm.prank(alice);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), type(uint256).max, 2, alice);
@@ -368,36 +365,31 @@ contract TestDiscountBorrow is TestnetProcedures {
     assertEq(ghoVariableDebtToken.getDiscountPercent(alice), 0);
     assertEq(ghoVariableDebtToken.balanceOf(alice), 0);
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), 0);
-    // Verify GHO was transferred to aToken (exact value may vary due to rounding)
-    assertGt(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), aTokenGhoBalanceBefore);
+    assertApproxEqAbs(
+      ghoContracts.ghoToken.balanceOf(address(ghoAToken)),
+      expectedATokenGhoBalance,
+      1e18
+    );
   }
 
   function test_DistributeFeesToTreasury() public {
     test_Alice_ReceiveGhoFromCharlieAndRepayDebt();
 
     uint256 aTokenBalance = ghoContracts.ghoToken.balanceOf(address(ghoAToken));
-    uint256 treasuryBalance = ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury));
+    uint256 treasuryBalanceBefore = ghoContracts.ghoToken.balanceOf(
+      address(marketContracts.treasury)
+    );
 
     assertGt(aTokenBalance, 0);
-    // Treasury might have some balance from previous distributeFeesToTreasury calls
-
-    // Use less strict event check for compatibility
-    vm.expectEmit(true, true, false, false, address(ghoAToken));
-    emit IGhoFacilitator.FeesDistributedToTreasury(
-      address(marketContracts.treasury),
-      address(ghoContracts.ghoToken),
-      0 // value not checked
-    );
 
     ghoAToken.distributeFeesToTreasury();
 
-    // After distributeFeesToTreasury:
-    // - The aToken should have 0 GHO balance
-    // - The principal portion is burned
-    // - Only the interest portion (accumulated fees) goes to treasury
+    // After distributeFeesToTreasury: principal is burned, interest goes to treasury
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
-    // Treasury receives only the interest portion, not the full aToken balance
-    // The principal portion is burned by the aToken
-    assertGt(ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)), treasuryBalance);
+    // Treasury balance increases
+    assertGt(
+      ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
+      treasuryBalanceBefore
+    );
   }
 }

@@ -45,14 +45,12 @@ contract TestGsm is TestGhoBase {
   }
 
   function testInitialize() public {
-    // Deploy behind proxy for initialization to work
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
 
-    // Expect events from proxy deployment/initialization
     vm.expectEmit(true, true, true, true);
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
     vm.expectEmit(true, true, false, true);
@@ -123,7 +121,6 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeTwice() public {
-    // Deploy behind proxy and initialize
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
@@ -419,7 +416,6 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertSellAssetNoBucketCap() public {
-    // Deploy behind proxy for initialization to work
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
@@ -451,7 +447,6 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertSellAssetTooMuchUnderlyingExposure() public {
-    // Deploy behind proxy for initialization to work
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),

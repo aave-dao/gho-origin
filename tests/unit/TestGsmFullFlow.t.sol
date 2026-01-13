@@ -5,8 +5,8 @@ import './TestGhoBase.t.sol';
 
 contract TestGsmFullFlow is TestGhoBase {
   function testGsmFull() public {
-    OwnableFacilitator facilitator = new OwnableFacilitator(address(this), address(GHO_TOKEN));
-    GHO_TOKEN.addFacilitator(address(facilitator), 'OwnableFacilitatorFlow', DEFAULT_CAPACITY);
+    GhoDirectFacilitator facilitator = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
+    GHO_TOKEN.addFacilitator(address(facilitator), 'GhoDirectFacilitatorFlow', DEFAULT_CAPACITY);
 
     GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
     reserve.initialize(address(this));

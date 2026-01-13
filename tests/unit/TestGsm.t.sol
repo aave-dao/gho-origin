@@ -1311,7 +1311,7 @@ contract TestGsm is TestGhoBase {
     assertTrue(usedGho > 0, 'Unexpected usedGho amount');
 
     vm.expectRevert('FACILITATOR_BUCKET_LEVEL_NOT_ZERO');
-    GHO_TOKEN.removeFacilitator(address(OWNABLE_FACILITATOR));
+    GHO_TOKEN.removeFacilitator(address(GHO_DIRECT_FACILITATOR));
 
     ghoFaucet(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), DEFAULT_GSM_GHO_AMOUNT);
     vm.startPrank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));

@@ -2,27 +2,28 @@
 pragma solidity ^0.8.0;
 
 import './TestGhoBase.t.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
-contract TestOwnableFacilitator is TestGhoBase {
+contract TestGhoDirectFacilitator is TestGhoBase {
   function testConstructor() public {
-    OwnableFacilitator facilitator = new OwnableFacilitator(address(this), address(GHO_TOKEN));
+    GhoDirectFacilitator facilitator = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
     assertEq(facilitator.GHO_TOKEN(), address(GHO_TOKEN));
-    assertEq(facilitator.owner(), address(this));
+    assertTrue(facilitator.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
+    assertTrue(facilitator.hasRole(MINTER_ROLE, address(this)));
+    assertTrue(facilitator.hasRole(BURNER_ROLE, address(this)));
   }
 
-  function testRevertConstructorInvalidOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
-    new OwnableFacilitator(address(0), address(GHO_TOKEN));
+  function testRevertConstructorInvalidAdmin() public {
+    vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
+    new GhoDirectFacilitator(address(0), address(GHO_TOKEN));
   }
 
   function testRevertConstructorInvalidGhoToken() public {
     vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
-    new OwnableFacilitator(address(this), address(0));
+    new GhoDirectFacilitator(address(this), address(0));
   }
 
   function testMint() public {
-    OwnableFacilitator facilitator = _deployFacilitator();
+    GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 amount = 50_000_000 ether;
     uint256 ghoBalanceBefore = GHO_TOKEN.balanceOf(address(this));
     (uint256 capacity, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));
@@ -41,10 +42,19 @@ contract TestOwnableFacilitator is TestGhoBase {
     assertEq(amount, ghoBalanceAfter);
   }
 
-  function testMintFizz(uint256 amount) public {
+  function testRevertMintNoRole() public {
+    GhoDirectFacilitator facilitator = _deployFacilitator();
+    uint256 amount = 50_000_000 ether;
+
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(MINTER_ROLE, ALICE));
+    vm.prank(ALICE);
+    facilitator.mint(address(this), amount);
+  }
+
+  function testMintFuzz(uint256 amount) public {
     vm.assume(amount > 0 && amount <= DEFAULT_CAPACITY);
 
-    OwnableFacilitator facilitator = _deployFacilitator();
+    GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 ghoBalanceBefore = GHO_TOKEN.balanceOf(address(this));
     (uint256 capacity, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));
 
@@ -63,13 +73,13 @@ contract TestOwnableFacilitator is TestGhoBase {
   }
 
   function testRevertMintIfMintIsTooHigh() public {
-    OwnableFacilitator facilitator = _deployFacilitator();
+    GhoDirectFacilitator facilitator = _deployFacilitator();
     vm.expectRevert('FACILITATOR_BUCKET_CAPACITY_EXCEEDED');
     facilitator.mint(address(this), DEFAULT_CAPACITY + 1);
   }
 
   function testBurn() public {
-    OwnableFacilitator facilitator = _deployFacilitator();
+    GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 amount = 50_000_000 ether;
     uint256 ghoBalanceBefore = GHO_TOKEN.balanceOf(address(this));
     (uint256 capacity, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));
@@ -101,7 +111,7 @@ contract TestOwnableFacilitator is TestGhoBase {
   function testBurnFuzz(uint256 amount) public {
     vm.assume(amount > 1 && amount <= DEFAULT_CAPACITY);
 
-    OwnableFacilitator facilitator = _deployFacilitator();
+    GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 ghoBalanceBefore = GHO_TOKEN.balanceOf(address(this));
     (uint256 capacity, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));
 
@@ -129,13 +139,22 @@ contract TestOwnableFacilitator is TestGhoBase {
     assertApproxEqAbs(amount / 2, ghoBalanceAfter, 1);
   }
 
+  function testRevertBurnNoRole() public {
+    GhoDirectFacilitator facilitator = _deployFacilitator();
+    uint256 amount = 50_000_000 ether;
+
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(BURNER_ROLE, ALICE));
+    vm.prank(ALICE);
+    facilitator.burn(amount);
+  }
+
   function testRevertBurnIfNoBalance() public {
     vm.expectRevert();
-    OWNABLE_FACILITATOR.burn(1);
+    GHO_DIRECT_FACILITATOR.burn(1);
   }
 
   function testOffboardFacilitator() public {
-    OwnableFacilitator facilitator = _deployFacilitator();
+    GhoDirectFacilitator facilitator = _deployFacilitator();
     (uint256 capacity, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));
 
     assertEq(capacity, DEFAULT_CAPACITY);
@@ -151,9 +170,9 @@ contract TestOwnableFacilitator is TestGhoBase {
     assertEq(level, 0);
   }
 
-  function _deployFacilitator() internal returns (OwnableFacilitator) {
-    OwnableFacilitator facilitator = new OwnableFacilitator(address(this), address(GHO_TOKEN));
-    GHO_TOKEN.addFacilitator(address(facilitator), 'OwnableFacilitatorTest', DEFAULT_CAPACITY);
+  function _deployFacilitator() internal returns (GhoDirectFacilitator) {
+    GhoDirectFacilitator facilitator = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
+    GHO_TOKEN.addFacilitator(address(facilitator), 'GhoDirectFacilitatorTest', DEFAULT_CAPACITY);
 
     return facilitator;
   }

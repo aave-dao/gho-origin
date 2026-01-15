@@ -7,9 +7,7 @@ import {Vm} from 'forge-std/Vm.sol';
 
 // dependencies
 import {Address} from 'openzeppelin-contracts/contracts/utils/Address.sol';
-import {
-  AutomationCompatibleInterface
-} from 'src/contracts/dependencies/chainlink/AutomationCompatibleInterface.sol';
+import {AutomationCompatibleInterface} from 'src/contracts/dependencies/chainlink/AutomationCompatibleInterface.sol';
 
 // helpers
 import {Constants} from '../helpers/Constants.sol';
@@ -22,9 +20,7 @@ import {EIP712Types} from '../helpers/EIP712Types.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {Errors} from 'aave-v3-origin/contracts/protocol/libraries/helpers/Errors.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
-import {
-  SafeCast
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
 // mocks
@@ -37,61 +33,35 @@ import {MockAddressesProvider} from '../mocks/MockAddressesProvider.sol';
 import {MockERC4626} from '../mocks/MockERC4626.sol';
 import {MockUpgradeable} from '../mocks/MockUpgradeable.sol';
 import {PriceOracle} from 'aave-v3-origin/contracts/mocks/oracle/PriceOracle.sol';
-import {
-  TransparentUpgradeableProxy
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {TestnetERC20} from 'aave-v3-origin/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 import {MockStakedToken} from '../mocks/MockStakedToken.sol';
 
 // interfaces
-import {
-  IAaveIncentivesController
-} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
+import {IAaveIncentivesController} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
 import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
-import {
-  IERC20
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {
-  IERC3156FlashBorrower
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
-import {
-  IERC3156FlashLender
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
-import {
-  IERC4626
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
+import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {IERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
-import {
-  IPoolAddressesProvider
-} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
+import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IMockStakedToken} from '../mocks/MockStakedToken/interfaces/IMockStakedToken.sol';
-import {
-  IDefaultInterestRateStrategyV2
-} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
+import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 
 // non-GHO contracts
-import {
-  AdminUpgradeabilityProxy
-} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
+import {AdminUpgradeabilityProxy} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
 import {ERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/ERC20.sol';
-import {
-  ReserveConfiguration
-} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import {
-  TransparentUpgradeableProxy
-} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
+import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 
-import {
-  DefaultReserveInterestRateStrategyV2
-} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
+import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 
 // GHO contracts
-import {
-  GhoDiscountRateStrategy
-} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
+import {GhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
 import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
@@ -103,43 +73,25 @@ import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
 import {Gsm4626} from 'src/contracts/facilitators/gsm/Gsm4626.sol';
-import {
-  FixedPriceStrategy
-} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
-import {
-  FixedPriceStrategy4626
-} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy4626.sol';
-import {
-  IGsmFeeStrategy
-} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
+import {FixedPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
+import {FixedPriceStrategy4626} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy4626.sol';
+import {IGsmFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
 import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategy.sol';
 import {SampleLiquidator} from 'src/contracts/facilitators/gsm/misc/SampleLiquidator.sol';
 import {SampleSwapFreezer} from 'src/contracts/facilitators/gsm/misc/SampleSwapFreezer.sol';
 import {GsmRegistry} from 'src/contracts/facilitators/gsm/misc/GsmRegistry.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import {GhoGsmSteward} from 'src/contracts/misc/GhoGsmSteward.sol';
-import {
-  FixedFeeStrategyFactory
-} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
+import {FixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
 import {OwnableFacilitator} from 'src/contracts/facilitators/gsm/OwnableFacilitator.sol';
-import {
-  OracleSwapFreezerBase
-} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
-import {
-  ChainlinkOracleSwapFreezer
-} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
-import {
-  GelatoOracleSwapFreezer
-} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
-import {
-  IGelatoOracleSwapFreezer
-} from 'src/contracts/facilitators/gsm/swapFreezer/interfaces/IGelatoOracleSwapFreezer.sol';
+import {OracleSwapFreezerBase} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
+import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
+import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
+import {IGelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/interfaces/IGelatoOracleSwapFreezer.sol';
 
 // CCIP contracts
-import {
-  MockUpgradeableLockReleaseTokenPool
-} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
+import {MockUpgradeableLockReleaseTokenPool} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 import {IGhoCcipSteward} from 'src/contracts/misc/interfaces/IGhoCcipSteward.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';

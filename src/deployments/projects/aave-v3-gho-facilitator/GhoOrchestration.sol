@@ -2,13 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {MarketReport} from 'aave-v3-origin/deployments/interfaces/IMarketReportTypes.sol';
-import {
-  GhoFlashMinterBatch
-} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoFlashMinterBatch.sol';
+import {GhoFlashMinterBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoFlashMinterBatch.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
-import {
-  GhoTokenBatch
-} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol';
+import {GhoTokenBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol';
 
 library GhoOrchestration {
   function deployGho(

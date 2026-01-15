@@ -2,9 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
-import {
-  IPoolAddressesProvider
-} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
+import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 
 /**

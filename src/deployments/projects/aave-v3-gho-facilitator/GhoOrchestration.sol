@@ -2,10 +2,13 @@
 pragma solidity ^0.8.10;
 
 import {MarketReport} from 'aave-v3-origin/deployments/interfaces/IMarketReportTypes.sol';
-import {GhoAaveListingBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoAaveListingBatch.sol';
-import {GhoFlashMinterBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoFlashMinterBatch.sol';
+import {
+  GhoFlashMinterBatch
+} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoFlashMinterBatch.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
-import {GhoTokenBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol';
+import {
+  GhoTokenBatch
+} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol';
 
 library GhoOrchestration {
   function deployGho(
@@ -16,9 +19,10 @@ library GhoOrchestration {
     GhoTokenBatch ghoTokenBatch = new GhoTokenBatch(deployer);
     GhoReportTypes.GhoTokenReport memory ghoTokenReport = ghoTokenBatch.getGhoTokenReport();
 
-    GhoAaveListingBatch ghoAaveListingBatch = new GhoAaveListingBatch(ghoTokenReport, marketReport);
-    GhoReportTypes.GhoAaveListingReport memory ghoAaveListingReport = ghoAaveListingBatch
-      .getGhoAaveListingReport();
+    // Note: GhoAaveListingBatch removed as the old Aave integration is no longer supported
+    // Creating empty GhoAaveListingReport for backwards compatibility
+    GhoReportTypes.GhoAaveListingReport memory ghoAaveListingReport = GhoReportTypes
+      .GhoAaveListingReport({ghoOracle: address(0), ghoDiscountRateStrategy: address(0)});
 
     GhoFlashMinterBatch ghoFlashMinterBatch = new GhoFlashMinterBatch(
       flashMinterFee,

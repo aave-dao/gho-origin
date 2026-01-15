@@ -15,7 +15,6 @@ library GhoReportUtils {
         ghoDiscountRateStrategy: GhoDiscountRateStrategy(
           ghoReport.ghoAaveListingReport.ghoDiscountRateStrategy
         ),
-        uiGhoDataProvider: UiGhoDataProvider(ghoReport.ghoAaveListingReport.uiGhoDataProvider),
         ghoFlashMinter: GhoFlashMinter(ghoReport.ghoFlashMinterReport.ghoFlashMinter)
       });
   }

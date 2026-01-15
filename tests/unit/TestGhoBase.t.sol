@@ -7,7 +7,9 @@ import {Vm} from 'forge-std/Vm.sol';
 
 // dependencies
 import {Address} from 'openzeppelin-contracts/contracts/utils/Address.sol';
-import {AutomationCompatibleInterface} from 'src/contracts/dependencies/chainlink/AutomationCompatibleInterface.sol';
+import {
+  AutomationCompatibleInterface
+} from 'src/contracts/dependencies/chainlink/AutomationCompatibleInterface.sol';
 
 // helpers
 import {Constants} from '../helpers/Constants.sol';
@@ -20,7 +22,9 @@ import {EIP712Types} from '../helpers/EIP712Types.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {Errors} from 'aave-v3-origin/contracts/protocol/libraries/helpers/Errors.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
-import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {
+  SafeCast
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
 // mocks
@@ -33,70 +37,109 @@ import {MockAddressesProvider} from '../mocks/MockAddressesProvider.sol';
 import {MockERC4626} from '../mocks/MockERC4626.sol';
 import {MockUpgradeable} from '../mocks/MockUpgradeable.sol';
 import {PriceOracle} from 'aave-v3-origin/contracts/mocks/oracle/PriceOracle.sol';
-import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import {IInitializableDebtToken} from 'aave-v3-origin/contracts/interfaces/IInitializableDebtToken.sol';
-import {IInitializableAToken} from 'aave-v3-origin/contracts/interfaces/IInitializableAToken.sol';
+import {
+  TransparentUpgradeableProxy
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {TestnetERC20} from 'aave-v3-origin/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 import {MockStakedToken} from '../mocks/MockStakedToken.sol';
 
 // interfaces
-import {IAaveIncentivesController} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
+import {
+  IAaveIncentivesController
+} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
 import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
-import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
-import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
-import {IERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {
+  IERC20
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {
+  IERC3156FlashBorrower
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
+import {
+  IERC3156FlashLender
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {
+  IERC4626
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
-import {IGhoVariableDebtTokenTransferHook} from '../mocks/MockStakedToken/interfaces/IGhoVariableDebtTokenTransferHook.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
-import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
+import {
+  IPoolAddressesProvider
+} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IMockStakedToken} from '../mocks/MockStakedToken/interfaces/IMockStakedToken.sol';
-import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
+import {
+  IDefaultInterestRateStrategyV2
+} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 
 // non-GHO contracts
-import {AdminUpgradeabilityProxy} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
+import {
+  AdminUpgradeabilityProxy
+} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
 import {ERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/ERC20.sol';
-import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {
+  ReserveConfiguration
+} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
+import {
+  TransparentUpgradeableProxy
+} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 
-import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
+import {
+  DefaultReserveInterestRateStrategyV2
+} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 
 // GHO contracts
-import {GhoAToken} from 'src/contracts/facilitators/aave/tokens/GhoAToken.sol';
-import {GhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
+import {
+  GhoDiscountRateStrategy
+} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
 import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
 import {GhoOracle} from 'src/contracts/facilitators/aave/oracle/GhoOracle.sol';
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
-import {GhoVariableDebtToken} from 'src/contracts/facilitators/aave/tokens/GhoVariableDebtToken.sol';
 
 // GSM contracts
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
 import {Gsm4626} from 'src/contracts/facilitators/gsm/Gsm4626.sol';
-import {FixedPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
-import {FixedPriceStrategy4626} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy4626.sol';
-import {IGsmFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
+import {
+  FixedPriceStrategy
+} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
+import {
+  FixedPriceStrategy4626
+} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy4626.sol';
+import {
+  IGsmFeeStrategy
+} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
 import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategy.sol';
 import {SampleLiquidator} from 'src/contracts/facilitators/gsm/misc/SampleLiquidator.sol';
 import {SampleSwapFreezer} from 'src/contracts/facilitators/gsm/misc/SampleSwapFreezer.sol';
 import {GsmRegistry} from 'src/contracts/facilitators/gsm/misc/GsmRegistry.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import {GhoGsmSteward} from 'src/contracts/misc/GhoGsmSteward.sol';
-import {FixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
+import {
+  FixedFeeStrategyFactory
+} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
 import {OwnableFacilitator} from 'src/contracts/facilitators/gsm/OwnableFacilitator.sol';
-import {OracleSwapFreezerBase} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
-import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
-import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
-import {IGelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/interfaces/IGelatoOracleSwapFreezer.sol';
+import {
+  OracleSwapFreezerBase
+} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
+import {
+  ChainlinkOracleSwapFreezer
+} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
+import {
+  GelatoOracleSwapFreezer
+} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
+import {
+  IGelatoOracleSwapFreezer
+} from 'src/contracts/facilitators/gsm/swapFreezer/interfaces/IGelatoOracleSwapFreezer.sol';
 
 // CCIP contracts
-import {MockUpgradeableLockReleaseTokenPool} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
+import {
+  MockUpgradeableLockReleaseTokenPool
+} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 import {IGhoCcipSteward} from 'src/contracts/misc/interfaces/IGhoCcipSteward.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';
@@ -106,20 +149,6 @@ contract TestGhoBase is Test, Constants, Events {
   using WadRayMath for uint256;
   using SafeCast for uint256;
   using PercentageMath for uint256;
-
-  // helper for state tracking
-  struct BorrowState {
-    uint256 supplyBeforeAction;
-    uint256 debtSupplyBeforeAction;
-    uint256 debtScaledSupplyBeforeAction;
-    uint256 balanceBeforeAction;
-    uint256 debtScaledBalanceBeforeAction;
-    uint256 debtBalanceBeforeAction;
-    uint256 userIndexBeforeAction;
-    uint256 userInterestsBeforeAction;
-    uint256 assetIndexBefore;
-    uint256 discountPercent;
-  }
 
   bytes32 public constant PERMIT_TYPEHASH =
     keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
@@ -135,8 +164,6 @@ contract TestGhoBase is Test, Constants, Events {
   MockConfigurator CONFIGURATOR;
   PriceOracle PRICE_ORACLE;
   WETH9Mock WETH;
-  GhoVariableDebtToken GHO_DEBT_TOKEN;
-  GhoAToken GHO_ATOKEN;
   GhoFlashMinter GHO_FLASH_MINTER;
   GhoDiscountRateStrategy GHO_DISCOUNT_STRATEGY;
   MockFlashBorrower FLASH_BORROWER;
@@ -175,6 +202,7 @@ contract TestGhoBase is Test, Constants, Events {
     ACL_MANAGER = new MockAclManager();
     PROVIDER = new MockAddressesProvider(address(ACL_MANAGER));
     MOCK_POOL_DATA_PROVIDER = new MockPoolDataProvider(address(PROVIDER));
+    // Note: Using minimal MockPool after removal of old Aave integration (GhoAToken/GhoVariableDebtToken)
     POOL = new MockPool(IPoolAddressesProvider(address(PROVIDER)));
     CONFIGURATOR = new MockConfigurator(IPool(address(POOL)));
     PRICE_ORACLE = new PriceOracle();
@@ -193,59 +221,11 @@ contract TestGhoBase is Test, Constants, Events {
 
     // Use a separate proxy admin to avoid TransparentUpgradeableProxy admin restriction
     address proxyAdmin = address(0xAD);
-    GhoVariableDebtToken ghoDebtTokenImpl = new GhoVariableDebtToken(iPool, address(0));
-    GHO_DEBT_TOKEN = GhoVariableDebtToken(
-      address(
-        new TransparentUpgradeableProxy(
-          address(ghoDebtTokenImpl),
-          proxyAdmin,
-          abi.encodeWithSelector(
-            IInitializableDebtToken.initialize.selector,
-            iPool,
-            address(GHO_TOKEN),
-            uint8(18),
-            'Aave Variable Debt GHO',
-            'variableDebtGHO',
-            empty
-          )
-        )
-      )
-    );
 
-    MockStakedToken stkAave = new MockStakedToken(
-      IERC20(address(AAVE_TOKEN)),
-      IERC20(address(AAVE_TOKEN)),
-      IGhoVariableDebtTokenTransferHook(address(GHO_DEBT_TOKEN))
-    );
-    STK_TOKEN = IMockStakedToken(address(stkAave));
+    // Note: GhoAToken and GhoVariableDebtToken (old Aave integration) have been removed
+    // STK_TOKEN setup removed as it was only used with the old debt token
 
-    GhoAToken ghoATokenImpl = new GhoAToken(iPool, address(0));
-    GHO_ATOKEN = GhoAToken(
-      address(
-        new TransparentUpgradeableProxy(
-          address(ghoATokenImpl),
-          proxyAdmin,
-          abi.encodeWithSelector(
-            IInitializableAToken.initialize.selector,
-            iPool,
-            address(GHO_TOKEN),
-            uint8(18),
-            'Aave GHO',
-            'aGHO',
-            empty
-          )
-        )
-      )
-    );
-
-    GHO_ATOKEN.updateGhoTreasury(TREASURY);
-    GHO_DEBT_TOKEN.updateDiscountToken(address(STK_TOKEN));
     GHO_DISCOUNT_STRATEGY = new GhoDiscountRateStrategy();
-    GHO_DEBT_TOKEN.updateDiscountRateStrategy(address(GHO_DISCOUNT_STRATEGY));
-    GHO_DEBT_TOKEN.setAToken(address(GHO_ATOKEN));
-    GHO_ATOKEN.setVariableDebtToken(address(GHO_DEBT_TOKEN));
-    GHO_TOKEN.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
-    POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
     GhoReserve ghoReserveImpl = new GhoReserve(address(GHO_TOKEN));
     GHO_RESERVE = GhoReserve(
@@ -403,262 +383,8 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.mint(to, amount);
   }
 
-  function borrowAction(address user, uint256 amount) public {
-    borrowActionOnBehalf(user, user, amount);
-  }
-
-  function borrowActionOnBehalf(address caller, address onBehalfOf, uint256 amount) public {
-    BorrowState memory bs;
-    bs.supplyBeforeAction = GHO_TOKEN.totalSupply();
-    bs.debtSupplyBeforeAction = GHO_DEBT_TOKEN.totalSupply();
-    bs.debtScaledSupplyBeforeAction = GHO_DEBT_TOKEN.scaledTotalSupply();
-    bs.balanceBeforeAction = GHO_TOKEN.balanceOf(onBehalfOf);
-    bs.debtScaledBalanceBeforeAction = GHO_DEBT_TOKEN.scaledBalanceOf(onBehalfOf);
-    bs.debtBalanceBeforeAction = GHO_DEBT_TOKEN.balanceOf(onBehalfOf);
-    bs.userIndexBeforeAction = GHO_DEBT_TOKEN.getPreviousIndex(onBehalfOf);
-    bs.userInterestsBeforeAction = GHO_DEBT_TOKEN.getBalanceFromInterest(onBehalfOf);
-    bs.assetIndexBefore = POOL.getReserveNormalizedVariableDebt(address(GHO_TOKEN));
-    bs.discountPercent = GHO_DEBT_TOKEN.getDiscountPercent(onBehalfOf);
-
-    if (bs.userIndexBeforeAction == 0) {
-      bs.userIndexBeforeAction = 1e27;
-    }
-
-    (uint256 computedInterest, uint256 discountScaled, ) = DebtUtils.computeDebt(
-      bs.userIndexBeforeAction,
-      bs.assetIndexBefore,
-      bs.debtScaledBalanceBeforeAction,
-      bs.userInterestsBeforeAction,
-      bs.discountPercent
-    );
-    uint256 newDiscountRate = GHO_DISCOUNT_STRATEGY.calculateDiscountRate(
-      (bs.debtScaledBalanceBeforeAction - discountScaled).rayMul(bs.assetIndexBefore) + amount,
-      IERC20(address(STK_TOKEN)).balanceOf(onBehalfOf)
-    );
-
-    if (newDiscountRate != bs.discountPercent) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit DiscountPercentUpdated(onBehalfOf, bs.discountPercent, newDiscountRate);
-    }
-
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Transfer(address(0), onBehalfOf, amount + computedInterest);
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Mint(caller, onBehalfOf, amount + computedInterest, computedInterest, bs.assetIndexBefore);
-
-    // Action
-    vm.prank(caller);
-    POOL.borrow(address(GHO_TOKEN), amount, 2, 0, onBehalfOf);
-
-    // Checks
-    assertEq(
-      GHO_TOKEN.balanceOf(onBehalfOf),
-      bs.balanceBeforeAction + amount,
-      'Gho amount does not match borrow'
-    );
-    assertEq(GHO_DEBT_TOKEN.getDiscountPercent(onBehalfOf), newDiscountRate);
-    assertEq(
-      GHO_TOKEN.totalSupply(),
-      bs.supplyBeforeAction + amount,
-      'Gho total supply does not match borrow'
-    );
-
-    assertEq(
-      GHO_DEBT_TOKEN.scaledBalanceOf(onBehalfOf),
-      bs.debtScaledBalanceBeforeAction + amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token balance does not match borrow'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.scaledTotalSupply(),
-      bs.debtScaledSupplyBeforeAction + amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token Supply does not match borrow'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.getBalanceFromInterest(onBehalfOf),
-      bs.userInterestsBeforeAction + computedInterest,
-      'Gho debt interests does not match borrow'
-    );
-  }
-
-  function repayAction(address user, uint256 amount) public {
-    BorrowState memory bs;
-    bs.supplyBeforeAction = GHO_TOKEN.totalSupply();
-    bs.debtSupplyBeforeAction = GHO_DEBT_TOKEN.totalSupply();
-    bs.debtScaledSupplyBeforeAction = GHO_DEBT_TOKEN.scaledTotalSupply();
-    bs.balanceBeforeAction = GHO_TOKEN.balanceOf(user);
-    bs.debtScaledBalanceBeforeAction = GHO_DEBT_TOKEN.scaledBalanceOf(user);
-    bs.debtBalanceBeforeAction = GHO_DEBT_TOKEN.balanceOf(user);
-    bs.userIndexBeforeAction = GHO_DEBT_TOKEN.getPreviousIndex(user);
-    bs.userInterestsBeforeAction = GHO_DEBT_TOKEN.getBalanceFromInterest(user);
-    bs.assetIndexBefore = POOL.getReserveNormalizedVariableDebt(address(GHO_TOKEN));
-    bs.discountPercent = GHO_DEBT_TOKEN.getDiscountPercent(user);
-    uint256 expectedDebt = 0;
-    uint256 expectedBurnOffset = 0;
-
-    if (bs.userIndexBeforeAction == 0) {
-      bs.userIndexBeforeAction = 1e27;
-    }
-
-    (uint256 computedInterest, uint256 discountScaled, ) = DebtUtils.computeDebt(
-      bs.userIndexBeforeAction,
-      bs.assetIndexBefore,
-      bs.debtScaledBalanceBeforeAction,
-      bs.userInterestsBeforeAction,
-      bs.discountPercent
-    );
-    uint256 newDiscountRate = GHO_DISCOUNT_STRATEGY.calculateDiscountRate(
-      (bs.debtScaledBalanceBeforeAction - discountScaled).rayMul(bs.assetIndexBefore) - amount,
-      IERC20(address(STK_TOKEN)).balanceOf(user)
-    );
-
-    if (amount <= (bs.userInterestsBeforeAction + computedInterest)) {
-      expectedDebt = bs.userInterestsBeforeAction + computedInterest - amount;
-    } else {
-      expectedBurnOffset = amount - bs.userInterestsBeforeAction + computedInterest;
-    }
-
-    // Action
-    vm.startPrank(user);
-    GHO_TOKEN.approve(address(POOL), amount);
-
-    if (newDiscountRate != bs.discountPercent) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit DiscountPercentUpdated(user, bs.discountPercent, newDiscountRate);
-    }
-
-    if (computedInterest > amount) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit Transfer(address(0), user, computedInterest - amount);
-    } else {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit Transfer(user, address(0), amount - computedInterest);
-    }
-
-    POOL.repay(address(GHO_TOKEN), amount, 2, user);
-    vm.stopPrank();
-
-    GHO_ATOKEN.distributeFeesToTreasury();
-
-    // Checks
-    assertEq(
-      GHO_TOKEN.balanceOf(user),
-      bs.balanceBeforeAction - amount,
-      'Gho amount does not match repay'
-    );
-    assertEq(GHO_DEBT_TOKEN.getDiscountPercent(user), newDiscountRate);
-    if (expectedBurnOffset != 0) {
-      assertEq(
-        GHO_TOKEN.totalSupply(),
-        bs.supplyBeforeAction - amount + computedInterest + bs.userInterestsBeforeAction,
-        'Gho total supply does not match repay b'
-      );
-    } else {
-      assertEq(
-        GHO_TOKEN.totalSupply(),
-        bs.supplyBeforeAction,
-        'Gho total supply does not match repay a'
-      );
-    }
-
-    assertEq(
-      GHO_DEBT_TOKEN.scaledBalanceOf(user),
-      bs.debtScaledBalanceBeforeAction - amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token balance does not match repay'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.scaledTotalSupply(),
-      bs.debtScaledSupplyBeforeAction - amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token Supply does not match repay'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.getBalanceFromInterest(user),
-      expectedDebt,
-      'Gho debt interests does not match repay'
-    );
-  }
-
-  function mintAndStakeDiscountToken(address user, uint256 amount) public {
-    vm.prank(FAUCET);
-    AAVE_TOKEN.mint(user, amount);
-
-    vm.startPrank(user);
-    AAVE_TOKEN.approve(address(STK_TOKEN), amount);
-    STK_TOKEN.stake(user, amount);
-    vm.stopPrank();
-  }
-
-  function rebalanceDiscountAction(address user) public {
-    BorrowState memory bs;
-    bs.supplyBeforeAction = GHO_TOKEN.totalSupply();
-    bs.debtSupplyBeforeAction = GHO_DEBT_TOKEN.totalSupply();
-    bs.debtScaledSupplyBeforeAction = GHO_DEBT_TOKEN.scaledTotalSupply();
-    bs.balanceBeforeAction = GHO_TOKEN.balanceOf(user);
-    bs.debtScaledBalanceBeforeAction = GHO_DEBT_TOKEN.scaledBalanceOf(user);
-    bs.debtBalanceBeforeAction = GHO_DEBT_TOKEN.balanceOf(user);
-    bs.userIndexBeforeAction = GHO_DEBT_TOKEN.getPreviousIndex(user);
-    bs.userInterestsBeforeAction = GHO_DEBT_TOKEN.getBalanceFromInterest(user);
-    bs.assetIndexBefore = POOL.getReserveNormalizedVariableDebt(address(GHO_TOKEN));
-    bs.discountPercent = GHO_DEBT_TOKEN.getDiscountPercent(user);
-
-    if (bs.userIndexBeforeAction == 0) {
-      bs.userIndexBeforeAction = 1e27;
-    }
-
-    (uint256 computedInterest, uint256 discountScaled, ) = DebtUtils.computeDebt(
-      bs.userIndexBeforeAction,
-      bs.assetIndexBefore,
-      bs.debtScaledBalanceBeforeAction,
-      bs.userInterestsBeforeAction,
-      bs.discountPercent
-    );
-    uint256 newDiscountRate = GHO_DISCOUNT_STRATEGY.calculateDiscountRate(
-      (bs.debtScaledBalanceBeforeAction - discountScaled).rayMul(bs.assetIndexBefore),
-      IERC20(address(STK_TOKEN)).balanceOf(user)
-    );
-
-    if (newDiscountRate != bs.discountPercent) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit DiscountPercentUpdated(user, bs.discountPercent, newDiscountRate);
-    }
-
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Transfer(address(0), user, computedInterest);
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Mint(address(0), user, computedInterest, computedInterest, bs.assetIndexBefore);
-
-    // Action
-    vm.prank(user);
-    GHO_DEBT_TOKEN.rebalanceUserDiscountPercent(user);
-
-    // Checks
-    assertEq(
-      GHO_TOKEN.balanceOf(user),
-      bs.balanceBeforeAction,
-      'Gho amount does not match rebalance'
-    );
-    assertEq(GHO_DEBT_TOKEN.getDiscountPercent(user), newDiscountRate);
-    assertEq(
-      GHO_TOKEN.totalSupply(),
-      bs.supplyBeforeAction,
-      'Gho total supply does not match rebalance'
-    );
-
-    assertEq(
-      GHO_DEBT_TOKEN.scaledBalanceOf(user),
-      bs.debtScaledBalanceBeforeAction - discountScaled,
-      'Gho debt token balance does not match rebalance'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.scaledTotalSupply(),
-      bs.debtScaledSupplyBeforeAction - discountScaled,
-      'Gho debt token Supply does not match borrow'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.getBalanceFromInterest(user),
-      bs.userInterestsBeforeAction + computedInterest,
-      'Gho debt interests does not match borrow'
-    );
-  }
+  // Note: borrowAction, repayAction, mintAndStakeDiscountToken, and rebalanceDiscountAction
+  // helper functions have been removed as they were only used for the old Aave integration tests
 
   /// Helper function to sell asset in the GSM
   function _sellAsset(

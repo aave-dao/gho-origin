@@ -3,9 +3,15 @@ pragma solidity ^0.8.0;
 
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
-import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
-import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
+import {
+  ReserveConfiguration
+} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
+import {
+  DefaultReserveInterestRateStrategyV2
+} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
+import {
+  IDefaultInterestRateStrategyV2
+} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 import {MockPool} from './MockPool.sol';
 
 contract MockConfigurator {
@@ -38,7 +44,7 @@ contract MockConfigurator {
   ) external {
     DataTypes.ReserveDataLegacy memory reserve = _pool.getReserveData(asset);
     address oldRateStrategyAddress = reserve.interestRateStrategyAddress;
-    // Actually update the strategy in the mock pool
+    // Update the strategy in the mock pool
     MockPool(address(_pool)).setReserveInterestRateStrategyAddress(asset, newRateStrategyAddress);
     emit ReserveInterestRateStrategyChanged(asset, oldRateStrategyAddress, newRateStrategyAddress);
   }

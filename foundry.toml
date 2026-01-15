@@ -12,7 +12,6 @@ solc_version = '0.8.27'
 bytecode_hash = 'none'
 extra_output_files = ['metadata']
 ignored_warnings_from = [
-    'src/contracts/facilitators/aave/tokens/GhoAToken.sol',
     'src/contracts/facilitators/aave/interestStrategy/ZeroDiscountRateStrategy.sol',
     'lib/aave-v3-origin/src/contracts/treasury/RevenueSplitter.sol',
     'lib/aave-v3-origin/src/contracts/dependencies/openzeppelin/ReentrancyGuard.sol',

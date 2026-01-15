@@ -54,7 +54,7 @@ contract TestGhoToken is TestGhoBase {
     assertEq(facilitatorList.length, 4, 'Unexpected number of facilitators');
     assertEq(
       facilitatorList[0],
-      address(OWNABLE_FACILITATOR),
+      address(GHO_DIRECT_FACILITATOR),
       'Unexpected address for mock facilitator 1'
     );
     assertEq(
@@ -162,7 +162,7 @@ contract TestGhoToken is TestGhoBase {
     assertEq(facilitatorList.length, 3, 'Unexpected number of facilitators');
     assertEq(
       facilitatorList[0],
-      address(OWNABLE_FACILITATOR),
+      address(GHO_DIRECT_FACILITATOR),
       'Unexpected address for facilitator 0'
     );
   }

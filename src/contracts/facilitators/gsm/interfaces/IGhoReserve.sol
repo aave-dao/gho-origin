@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IAccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/IAccessControl.sol';
+
 /**
  * @title IGhoReserve
  * @author Aave/TokenLogic
  * @notice Defines the behaviour of a GhoReserve
  */
-interface IGhoReserve {
+interface IGhoReserve is IAccessControl {
   /**
    * @dev Struct data representing GHO usage.
    * @param limit The maximum amount of GHO that can be used
@@ -98,6 +100,24 @@ interface IGhoReserve {
    * @param limit The maximum amount of GHO that can be used
    */
   function setLimit(address entity, uint256 limit) external;
+
+  /**
+   * @notice Returns the identifier of the ManageEntity Role
+   * @return The bytes32 id hash of the ManageEntity role
+   */
+  function ENTITY_MANAGER_ROLE() external pure returns (bytes32);
+
+  /**
+   * @notice Returns the identifier of the SetLimit Role
+   * @return The bytes32 id hash of the SetLimit role
+   */
+  function LIMIT_MANAGER_ROLE() external pure returns (bytes32);
+
+  /**
+   * @notice Returns the identifier of the Transfer Role
+   * @return The bytes32 id hash of the Transfer role
+   */
+  function TRANSFER_ROLE() external pure returns (bytes32);
 
   /**
    * @notice Returns the address of the GHO token

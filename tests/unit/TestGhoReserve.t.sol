@@ -8,7 +8,6 @@ contract TestGhoReserve is TestGhoBase {
   function testConstructor() public {
     GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
     assertEq(reserve.GHO_TOKEN(), address(GHO_TOKEN));
-    assertEq(reserve.owner(), address(this));
   }
 
   function testRevertConstructorInvalidGhoToken() public {
@@ -21,10 +20,6 @@ contract TestGhoReserve is TestGhoBase {
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
 
-    // Expect events from proxy deployment/initialization
-    vm.expectEmit(true, true, true, true);
-    emit OwnershipTransferred(address(0), address(this));
-
     TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
       address(reserveImpl),
       proxyAdmin,
@@ -32,7 +27,11 @@ contract TestGhoReserve is TestGhoBase {
     );
     GhoReserve reserve = GhoReserve(address(reserveProxy));
 
-    assertEq(reserve.owner(), address(this));
+    // After initialization, all roles should be granted to the initializer
+    assertTrue(reserve.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
+    assertTrue(reserve.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+    assertTrue(reserve.hasRole(LIMIT_MANAGER_ROLE, address(this)));
+    assertTrue(reserve.hasRole(TRANSFER_ROLE, address(this)));
   }
 
   function testRevertInitializeInvalidZeroOwner() public {
@@ -166,15 +165,21 @@ contract TestGhoReserve is TestGhoBase {
     address alice = makeAddr('alice');
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
     emit EntityAdded(alice);
-    GHO_RESERVE.addEntity(address(alice));
+    GHO_RESERVE.addEntity(alice);
 
     // Set already contains two entities from constructor
     assertEq(GHO_RESERVE.totalEntities(), entitiesCount + 1);
 
     vm.expectRevert('ENTITY_ALREADY_EXISTS');
-    GHO_RESERVE.addEntity(address(alice));
+    GHO_RESERVE.addEntity(alice);
 
     assertEq(GHO_RESERVE.totalEntities(), entitiesCount + 1);
+  }
+
+  function testRevertAddEntityNoRole() public {
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
+    vm.prank(ALICE);
+    GHO_RESERVE.addEntity(ALICE);
   }
 
   function testRemoveEntity() public {
@@ -235,6 +240,12 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.removeEntity(alice);
   }
 
+  function testRevertRemoveEntityNoRole() public {
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
+    vm.prank(ALICE);
+    GHO_RESERVE.removeEntity(ALICE);
+  }
+
   function testSetLimit() public {
     address alice = makeAddr('alice');
     uint256 capacity = 100_000 ether;
@@ -259,6 +270,12 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.setLimit(newEntity, value + 1);
   }
 
+  function testRevertSetLimitNoRole() public {
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(LIMIT_MANAGER_ROLE, ALICE));
+    vm.prank(ALICE);
+    GHO_RESERVE.setLimit(ALICE, 1_000_000 ether);
+  }
+
   function testTransfer() public {
     GhoReserve reserve = _deployReserve();
     address facilitator = makeAddr('facilitator');
@@ -278,10 +295,8 @@ contract TestGhoReserve is TestGhoBase {
     address facilitator = makeAddr('facilitator');
     uint256 amount = 1_000 ether;
 
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(GHO_TOKEN))
-    );
-    vm.prank(address(GHO_TOKEN));
+    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(TRANSFER_ROLE, ALICE));
+    vm.prank(ALICE);
     reserve.transfer(facilitator, amount);
   }
 

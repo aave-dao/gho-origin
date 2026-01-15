@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ICreditDelegationToken} from 'aave-v3-origin/contracts/interfaces/ICreditDelegationToken.sol';
+import {
+  ICreditDelegationToken
+} from 'aave-v3-origin/contracts/interfaces/ICreditDelegationToken.sol';
 import {IScaledBalanceToken} from 'aave-v3-origin/contracts/interfaces/IScaledBalanceToken.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
@@ -108,6 +110,17 @@ contract TestBorrowOnBehalf is TestnetProcedures {
     uint256 charlieExpectedBalance = charlieScaledBefore.rayMul(expectedBorrowIndex);
     uint256 aliceExpectedInterest = aliceExpectedBalance - BORROW_AMOUNT;
 
+    vm.expectEmit(address(ghoVariableDebtToken));
+    emit IERC20.Transfer(alice, address(0), BORROW_AMOUNT);
+    vm.expectEmit(address(ghoVariableDebtToken));
+    emit IScaledBalanceToken.Burn(
+      alice,
+      address(0),
+      BORROW_AMOUNT,
+      aliceExpectedInterest,
+      expectedBorrowIndex
+    );
+
     vm.prank(bob);
     marketContracts.poolProxy.repay(address(ghoContracts.ghoToken), aliceExpectedBalance, 2, alice);
 
@@ -121,8 +134,8 @@ contract TestBorrowOnBehalf is TestnetProcedures {
     assertEq(ghoVariableDebtToken.balanceOf(bob), 0);
     assertApproxEqAbs(ghoVariableDebtToken.balanceOf(charlie), charlieExpectedBalance, 1);
 
-    // After repay, aToken holds full repaid amount (principal + interest)
-    assertApproxEqAbs(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), aliceExpectedBalance, 1);
+    // After repay, aToken holds full repaid amount until distributeFeesToTreasury is called
+    assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), aliceExpectedBalance);
 
     assertEq(ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)), 0);
     assertEq(ghoVariableDebtToken.getBalanceFromInterest(alice), 0);
@@ -130,10 +143,9 @@ contract TestBorrowOnBehalf is TestnetProcedures {
     // Distribute fees: burns principal, sends interest to treasury
     ghoAToken.distributeFeesToTreasury();
     assertEq(ghoContracts.ghoToken.balanceOf(address(ghoAToken)), 0);
-    assertApproxEqAbs(
+    assertEq(
       ghoContracts.ghoToken.balanceOf(address(marketContracts.treasury)),
-      aliceExpectedInterest,
-      1
+      aliceExpectedInterest
     );
   }
 }

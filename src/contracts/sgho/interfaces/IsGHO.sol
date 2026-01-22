@@ -100,13 +100,6 @@ interface IsGho {
   function MAX_SAFE_RATE() external view returns (uint16);
 
   /**
-   * @notice Returns the role identifier for the Funds Admin.
-   * @dev This role has permissions to manage funds, such as rescuing tokens.
-   * @return The keccak256 hash of "FUNDS_ADMIN_ROLE".
-   */
-  function FUNDS_ADMIN_ROLE() external view returns (bytes32);
-
-  /**
    * @notice Returns the role identifier for the Pause Guardian.
    * @dev This role has permissions to pause/unpause sGho.
    * @return The keccak256 hash of "PAUSE_GUARDIAN_ROLE".

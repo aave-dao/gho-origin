@@ -142,8 +142,20 @@ contract TestGsmUpgrade is TestSGhoBase {
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
   }
 
-  function test_getter_FUNDS_ADMIN_ROLE() external view {
-    assertEq(sgho.FUNDS_ADMIN_ROLE(), bytes32('FUNDS_ADMIN'), 'FUNDS_ADMIN_ROLE should match hash');
+  function test_getter_PAUSE_GUARDIAN_ROLE() external view {
+    assertEq(
+      sgho.PAUSE_GUARDIAN_ROLE(),
+      bytes32('PAUSE_GUARDIAN_ROLE'),
+      'PAUSE_GUARDIAN_ROLE should match hash'
+    );
+  }
+
+  function test_getter_TOKEN_RESCUER_ROLE() external view {
+    assertEq(
+      sgho.TOKEN_RESCUER_ROLE(),
+      bytes32('TOKEN_RESCUER_ROLE'),
+      'TOKEN_RESCUER_ROLE should match hash'
+    );
   }
 
   function test_getter_YIELD_MANAGER_ROLE() external view {

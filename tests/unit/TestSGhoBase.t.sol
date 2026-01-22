@@ -79,7 +79,6 @@ contract TestSGhoBase is TestnetProcedures {
     );
 
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yManager);
-    sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
     sgho.grantRole(sgho.TOKEN_RESCUER_ROLE(), fundsAdmin);
 
     deal(address(user1), 10 ether);

@@ -71,7 +71,7 @@ contract TestSGhoPrecision is TestnetProcedures {
 
     vm.startPrank(admin);
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yieldManager);
-    sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
+    sgho.grantRole(sgho.TOKEN_RESCUER_ROLE(), fundsAdmin);
     vm.stopPrank();
 
     // Setup initial balances

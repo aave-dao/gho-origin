@@ -67,9 +67,6 @@ contract sGho is
   uint16 public constant MAX_SAFE_RATE = 50_00;
 
   /// @inheritdoc IsGho
-  bytes32 public constant FUNDS_ADMIN_ROLE = keccak256('FUNDS_ADMIN_ROLE');
-
-  /// @inheritdoc IsGho
   bytes32 public constant PAUSE_GUARDIAN_ROLE = keccak256('PAUSE_GUARDIAN_ROLE');
 
   /// @inheritdoc IsGho

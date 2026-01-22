@@ -72,7 +72,7 @@ newYieldIndex = oldYieldIndex * growthFactor / RAY;
 
 - **DEFAULT_ADMIN_ROLE**: Can grant/revoke other roles
 - **YIELD_MANAGER_ROLE**: Can set target rate and supply cap
-- **FUNDS_ADMIN_ROLE**: Can rescue non-GHO tokens in emergencies
+- **TOKEN_RESCUER_ROLE**: Can rescue non-GHO tokens in emergencies
 - **PAUSE_GUARDIAN_ROLE**: Can pause and unpause the contract
 
 ### Role Management
@@ -88,7 +88,7 @@ sgho.setSupplyCap(1000000e18); // 1M GHO
 sgho.pause();
 sgho.unpause();
 
-// Rescue tokens (FUNDS_ADMIN_ROLE only)
+// Rescue tokens (TOKEN_RESCUER_ROLE only)
 sgho.emergencyTokenTransfer(tokenAddress, recipient, amount);
 ```
 

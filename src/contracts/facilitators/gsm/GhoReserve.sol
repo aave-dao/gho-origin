@@ -60,6 +60,7 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
 
   /// @inheritdoc IGhoReserve
   function use(uint256 amount) external {
+    require(amount > 0, 'INVALID_AMOUNT');
     GhoUsage storage entity = _ghoUsage[msg.sender];
     require(entity.limit >= entity.used + amount, 'LIMIT_EXCEEDED');
 
@@ -70,6 +71,7 @@ contract GhoReserve is AccessControl, VersionedInitializable, IGhoReserve {
 
   /// @inheritdoc IGhoReserve
   function restore(uint256 amount) external {
+    require(amount > 0, 'INVALID_AMOUNT');
     _ghoUsage[msg.sender].used -= amount.toUint128();
     IERC20(GHO_TOKEN).transferFrom(msg.sender, address(this), amount);
     emit GhoRestored(msg.sender, amount);

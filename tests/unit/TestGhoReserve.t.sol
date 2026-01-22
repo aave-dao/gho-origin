@@ -87,6 +87,11 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.use(1_000 ether);
   }
 
+  function testUseAmountIsZero() public {
+    vm.expectRevert('INVALID_AMOUNT');
+    GHO_RESERVE.use(0);
+  }
+
   function testRevertRestoreNoWithdrawnAmount() public {
     GHO_RESERVE.addEntity(address(this));
     GHO_RESERVE.setLimit(address(this), 10_000 ether);
@@ -137,8 +142,13 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRestoreNotEntity() public {
-    vm.expectRevert('LIMIT_EXCEEDED');
-    GHO_RESERVE.use(1_000 ether);
+    vm.expectRevert(stdError.arithmeticError);
+    GHO_RESERVE.restore(1_000 ether);
+  }
+
+  function testRestoreAmountIsZero() public {
+    vm.expectRevert('INVALID_AMOUNT');
+    GHO_RESERVE.restore(0);
   }
 
   function testAddEntity() public {

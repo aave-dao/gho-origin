@@ -64,7 +64,7 @@ contract TestSGhoPrecision is TestnetProcedures {
       ''
     );
 
-    sgho = sGho(payable(address(proxy)));
+    sgho = sGho(address(proxy));
 
     // Initialize sGho
     sgho.initialize(address(gho), SUPPLY_CAP, admin);

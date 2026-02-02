@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import './TestSGhoBase.t.sol';
 
-contract TestGsmUpgrade is TestSGhoBase {
+contract TestSGhoInitialization is TestSGhoBase {
   function test_constructor() external view {
     assertEq(sgho.GHO(), address(gho), 'GHO address mismatch');
     assertEq(sgho.DOMAIN_SEPARATOR(), DOMAIN_SEPARATOR_sGho, 'Domain separator mismatch');
@@ -36,8 +36,8 @@ contract TestGsmUpgrade is TestSGhoBase {
     bytes32 mask = ~bytes32(uint256(0xff));
     bytes32 expectedStorageSlot = secondHash & mask;
 
-    // The expected value should be: 0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800
-    bytes32 expectedValue = 0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
+    // The expected value should be: 0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400
+    bytes32 expectedValue = 0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400;
 
     assertEq(expectedStorageSlot, expectedValue, 'Storage slot calculation is incorrect');
 
@@ -57,17 +57,15 @@ contract TestGsmUpgrade is TestSGhoBase {
     // Deploy a new sGho instance
     address impl = address(new sGho());
     sGho newSgho = sGho(
-      payable(
-        address(
-          new TransparentUpgradeableProxy(
-            impl,
-            address(this),
-            abi.encodeWithSelector(
-              sGho.initialize.selector,
-              address(gho),
-              SUPPLY_CAP,
-              address(this) // executor
-            )
+      address(
+        new TransparentUpgradeableProxy(
+          impl,
+          address(this),
+          abi.encodeWithSelector(
+            sGho.initialize.selector,
+            address(gho),
+            SUPPLY_CAP,
+            address(this) // executor
           )
         )
       )
@@ -91,7 +89,7 @@ contract TestGsmUpgrade is TestSGhoBase {
       )
     );
 
-    sGho newSgho = sGho(payable(address(proxy)));
+    sGho newSgho = sGho(address(proxy));
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
@@ -145,7 +143,7 @@ contract TestGsmUpgrade is TestSGhoBase {
   function test_getter_PAUSE_GUARDIAN_ROLE() external view {
     assertEq(
       sgho.PAUSE_GUARDIAN_ROLE(),
-      bytes32('PAUSE_GUARDIAN_ROLE'),
+      keccak256('PAUSE_GUARDIAN_ROLE'),
       'PAUSE_GUARDIAN_ROLE should match hash'
     );
   }
@@ -153,7 +151,7 @@ contract TestGsmUpgrade is TestSGhoBase {
   function test_getter_TOKEN_RESCUER_ROLE() external view {
     assertEq(
       sgho.TOKEN_RESCUER_ROLE(),
-      bytes32('TOKEN_RESCUER_ROLE'),
+      keccak256('TOKEN_RESCUER_ROLE'),
       'TOKEN_RESCUER_ROLE should match hash'
     );
   }
@@ -161,7 +159,7 @@ contract TestGsmUpgrade is TestSGhoBase {
   function test_getter_YIELD_MANAGER_ROLE() external view {
     assertEq(
       sgho.YIELD_MANAGER_ROLE(),
-      bytes32('YIELD_MANAGER'),
+      keccak256('YIELD_MANAGER_ROLE'),
       'YIELD_MANAGER_ROLE should match hash'
     );
   }

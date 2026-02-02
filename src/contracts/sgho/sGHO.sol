@@ -95,9 +95,9 @@ contract sGho is
   ) public payable initializer {
     if (gho == address(0) || executor == address(0)) revert ZeroAddressNotAllowed();
 
-    __ERC20_init('sGHO', 'sGHO');
+    __ERC20_init('sGho', 'sGho');
     __ERC4626_init(IERC20(gho));
-    __ERC20Permit_init('sGHO');
+    __ERC20Permit_init('sGho');
     __AccessControl_init();
     __Pausable_init();
     _grantRole(DEFAULT_ADMIN_ROLE, executor);

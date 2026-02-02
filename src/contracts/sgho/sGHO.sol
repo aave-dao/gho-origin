@@ -50,9 +50,9 @@ contract sGho is
     uint96 ratePerSecond; // 12 bytes - cached rate per second for gas efficiency
   }
 
-  // keccak256(abi.encode(uint256(keccak256("gho.storage.sGHO")) - 1)) & ~bytes32(uint256(0xff))
+  // keccak256(abi.encode(uint256(keccak256("gho.storage.sGho")) - 1)) & ~bytes32(uint256(0xff))
   bytes32 private constant sGhoStorageLocation =
-    0xfdf74a24098989caa4d9d232df283137a30d85fb47ad37b31478f919573b9800;
+    0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400;
 
   /**
    * @dev Returns the sGhoParameters storage location

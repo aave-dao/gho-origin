@@ -54,7 +54,7 @@ interface IsGho {
    * The yield index is updated before the deposit to ensure correct share calculation.
    * @param assets The amount of GHO to deposit.
    * @param receiver The address that will receive the sGHO shares.
-   * @param deadline Must be a timestamp in the future.
+   * @param deadline Maximum timestamp at which intent can be executed/signature is valid (must be in the future)
    * @param sig A `secp256k1` signature params from `msgSender()`.
    * @return The amount of sGHO shares minted.
    */
@@ -88,6 +88,7 @@ interface IsGho {
   /**
    * @notice Sets the supply cap for the vault.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
+   * @dev Supply cap is in asset terms.
    * @param newSupplyCap The new supply cap.
    */
   function setSupplyCap(uint160 newSupplyCap) external;
@@ -135,12 +136,13 @@ interface IsGho {
   /**
    * @notice Returns the current rate per second for yield generation.
    * @dev The rate is expressed in basis points (1% = 100).
-   * @return The rate per second multiplied by 10^27.
+   * @return The rate per second multiplied in RAY.
    */
   function ratePerSecond() external view returns (uint96);
 
   /**
    * @notice Returns the total supply cap of the vault.
+   * @dev Supply cap is in asset terms.
    * @return The total supply cap.
    */
   function supplyCap() external view returns (uint160);
@@ -154,7 +156,7 @@ interface IsGho {
 
   /**
    * @notice Returns the current yield index, representing the accumulated yield.
-   * @dev This index is used to calculate the value of sGHO in terms of GHO.
+   * @dev This index is used to calculate the value of sGHO in terms of GHO. Index scale is in RAY.
    * @return The current yield index.
    */
   function yieldIndex() external view returns (uint176);

@@ -13,50 +13,42 @@ contract TestSGhoPause is TestSGhoBase {
     sgho.grantRole(sgho.PAUSE_GUARDIAN_ROLE(), pauseGuardian);
 
     // Pause the contract
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.pause();
-    vm.stopPrank();
 
     // Try to deposit while paused
-    vm.startPrank(user1);
+    vm.prank(user1);
     vm.expectRevert(
       abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxDeposit.selector, user1, 100 ether, 0)
     );
     sgho.deposit(100 ether, user1);
-    vm.stopPrank();
 
     // Unpause the contract
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.unpause();
-    vm.stopPrank();
 
     // Deposit successfully
-    vm.startPrank(user1);
+    vm.prank(user1);
     uint256 shares = sgho.deposit(100 ether, user1);
     assertEq(shares, 100 ether);
-    vm.stopPrank();
 
     // Pause again
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.pause();
-    vm.stopPrank();
 
     // Try to withdraw while paused
-    vm.startPrank(user1);
+    vm.prank(user1);
     vm.expectRevert(
       abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxWithdraw.selector, user1, 50 ether, 0)
     );
     sgho.withdraw(50 ether, user1, user1);
-    vm.stopPrank();
 
     // Unpause and withdraw
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.unpause();
-    vm.stopPrank();
 
-    vm.startPrank(user1);
+    vm.prank(user1);
     sgho.withdraw(50 ether, user1, user1);
-    vm.stopPrank();
 
     assertEq(
       sgho.convertToAssets(sgho.balanceOf(user1)),
@@ -75,9 +67,8 @@ contract TestSGhoPause is TestSGhoBase {
     deal(address(mockToken), address(sgho), rescueAmount, true);
 
     // Pause the contract
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.pause();
-    vm.stopPrank();
 
     // Verify contract is paused
     assertTrue(sgho.paused(), 'Contract should be paused');
@@ -116,16 +107,14 @@ contract TestSGhoPause is TestSGhoBase {
     vm.stopPrank();
 
     // Test 5: Unpause and verify everything works normally
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.unpause();
-    vm.stopPrank();
 
     assertFalse(sgho.paused(), 'Contract should be unpaused');
 
     // User operations should work again
-    vm.startPrank(user1);
+    vm.prank(user1);
     sgho.deposit(100 ether, user1);
-    vm.stopPrank();
   }
 
   function test_pausability_max_functions_return_zero_when_paused() external {
@@ -133,9 +122,8 @@ contract TestSGhoPause is TestSGhoBase {
     sgho.grantRole(sgho.PAUSE_GUARDIAN_ROLE(), pauseGuardian);
 
     // First deposit some amount to have a balance
-    vm.startPrank(user1);
+    vm.prank(user1);
     sgho.deposit(100 ether, user1);
-    vm.stopPrank();
 
     // Verify max functions return non-zero values when unpaused
     assertTrue(sgho.maxDeposit(user2) > 0, 'maxDeposit should be > 0 when unpaused');
@@ -144,9 +132,8 @@ contract TestSGhoPause is TestSGhoBase {
     assertTrue(sgho.maxRedeem(user1) > 0, 'maxRedeem should be > 0 when unpaused');
 
     // Pause the contract
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.pause();
-    vm.stopPrank();
 
     // Verify contract is paused
     assertTrue(sgho.paused(), 'Contract should be paused');
@@ -158,9 +145,8 @@ contract TestSGhoPause is TestSGhoBase {
     assertEq(sgho.maxRedeem(user1), 0, 'maxRedeem should return 0 when paused');
 
     // Unpause the contract
-    vm.startPrank(pauseGuardian);
+    vm.prank(pauseGuardian);
     sgho.unpause();
-    vm.stopPrank();
 
     // Verify contract is unpaused
     assertFalse(sgho.paused(), 'Contract should be unpaused');

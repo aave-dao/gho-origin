@@ -431,4 +431,72 @@ contract TestSGhoERC4626 is TestSGhoBase {
     );
     vm.stopPrank();
   }
+
+  // ========================================
+  // SUPPLY CAP & LIMITS TESTS
+  // ========================================
+
+  function test_revert_deposit_exceedsCap() external {
+    vm.startPrank(user1);
+    uint256 amount = SUPPLY_CAP + 1;
+    vm.expectRevert(
+      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxDeposit.selector, user1, amount, SUPPLY_CAP)
+    );
+    sgho.deposit(amount, user1);
+    vm.stopPrank();
+  }
+
+  function test_revert_mint_exceedsCap() external {
+    vm.startPrank(user1);
+    uint256 shares = sgho.convertToShares(SUPPLY_CAP) + 1;
+    uint256 maxShares = sgho.maxMint(user1);
+    vm.expectRevert(
+      abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxMint.selector, user1, shares, maxShares)
+    );
+    sgho.mint(shares, user1);
+    vm.stopPrank();
+  }
+
+  function test_deposit_atCap() external {
+    vm.startPrank(user1);
+    sgho.deposit(SUPPLY_CAP, user1);
+    assertEq(sgho.totalAssets(), SUPPLY_CAP, 'Total assets should equal supply cap');
+    // The contract balance will be the supply cap plus the 1 GHO donated in setUp
+    assertEq(
+      gho.balanceOf(address(sgho)),
+      SUPPLY_CAP + 1 ether,
+      'Contract balance should be supply cap + initial donation'
+    );
+    vm.stopPrank();
+  }
+
+  function test_maxDeposit_atCap() external {
+    vm.startPrank(user1);
+    sgho.deposit(SUPPLY_CAP, user1);
+    vm.stopPrank();
+
+    // Max deposit should be 0 when at cap
+    assertEq(sgho.maxDeposit(user2), 0, 'maxDeposit should be 0 when at supply cap');
+    assertEq(sgho.maxMint(user2), 0, 'maxMint should be 0 when at supply cap');
+  }
+
+  function test_maxDeposit_partialCap() external {
+    vm.startPrank(user1);
+    uint256 depositAmount = SUPPLY_CAP / 2;
+    sgho.deposit(depositAmount, user1);
+    vm.stopPrank();
+
+    // Max deposit should be remaining capacity
+    assertEq(
+      sgho.maxDeposit(user2),
+      SUPPLY_CAP - depositAmount,
+      'maxDeposit should be remaining capacity'
+    );
+    uint256 expectedMaxMint = sgho.convertToShares(SUPPLY_CAP - depositAmount);
+    assertEq(
+      sgho.maxMint(user2),
+      expectedMaxMint,
+      'maxMint should be remaining capacity in shares'
+    );
+  }
 }

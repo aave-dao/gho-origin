@@ -49,12 +49,11 @@ contract TestSGhoBase is TestnetProcedures {
     initTestEnvironment(false); // Use TestnetProcedures setup
 
     // Users
-    user1PrivateKey = 0xB0B;
-    user1 = vm.addr(user1PrivateKey);
-    user2 = vm.addr(0xCAFE);
-    Admin = vm.addr(0x1234); // proxy admin address
-    yManager = vm.addr(0xDEAD); // Yield manager address
-    fundsAdmin = vm.addr(0xA11D); // Funds admin address
+    (user1, user1PrivateKey) = makeAddrAndKey('user1');
+    user2 = makeAddr('0xCAFE');
+    Admin = makeAddr('0x1234'); // proxy admin address
+    yManager = makeAddr('0xDEAD'); // Yield manager address
+    fundsAdmin = makeAddr('0xA11D'); // Funds admin address
 
     // Deploy Mocks & sGho
     gho = new TestnetERC20('Mock GHO', 'GHO', 18, poolAdmin);
@@ -62,17 +61,15 @@ contract TestSGhoBase is TestnetProcedures {
     // Deploy sGho implementation and proxy
     address sghoImpl = address(new sGho());
     sgho = sGho(
-      payable(
-        address(
-          new TransparentUpgradeableProxy(
-            sghoImpl,
-            Admin,
-            abi.encodeWithSelector(
-              sGho.initialize.selector,
-              address(gho),
-              SUPPLY_CAP,
-              address(this) // executor
-            )
+      address(
+        new TransparentUpgradeableProxy(
+          sghoImpl,
+          Admin,
+          abi.encodeWithSelector(
+            sGho.initialize.selector,
+            address(gho),
+            SUPPLY_CAP,
+            address(this) // executor
           )
         )
       )
@@ -120,8 +117,8 @@ contract TestSGhoBase is TestnetProcedures {
     // Convert targetRate from basis points to ray
     uint256 annualRateRay = (uint256(targetRate) * RAY) / 10000;
     // Calculate the rate per second (new contract logic)
-    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
-    uint256 ratePerSecondNormalized = ratePerSecond / RAY;
+    uint256 ratePerSecondRay = (annualRateRay * RAY) / 365 days;
+    uint256 ratePerSecondNormalized = ratePerSecondRay / RAY;
     // Calculate accumulated rate and growth factor
     uint256 accumulatedRate = ratePerSecondNormalized * timeSinceLastUpdate;
     uint256 growthFactor = RAY + accumulatedRate;
@@ -136,12 +133,11 @@ contract TestSGhoBase is TestnetProcedures {
     uint256 deadline,
     uint256 privateKey
   ) internal view returns (uint8 v, bytes32 r, bytes32 s) {
-    bytes32 PERMIT_TYPEHASH = keccak256(
-      'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+    bytes32 structHash = vm.eip712HashStruct(
+      'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)',
+      abi.encode(owner, spender, value, nonce, deadline)
     );
-    bytes32 structHash = keccak256(
-      abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline)
-    );
+
     bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
     return vm.sign(privateKey, hash);
   }

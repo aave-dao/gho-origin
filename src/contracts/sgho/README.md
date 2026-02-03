@@ -72,7 +72,7 @@ newYieldIndex = oldYieldIndex * growthFactor / RAY;
 
 - **DEFAULT_ADMIN_ROLE**: Can grant/revoke other roles
 - **YIELD_MANAGER_ROLE**: Can set target rate and supply cap
-- **FUNDS_ADMIN_ROLE**: Can rescue non-GHO tokens in emergencies
+- **TOKEN_RESCUER_ROLE**: Can rescue non-GHO tokens in emergencies
 - **PAUSE_GUARDIAN_ROLE**: Can pause and unpause the contract
 
 ### Role Management
@@ -88,7 +88,7 @@ sgho.setSupplyCap(1000000e18); // 1M GHO
 sgho.pause();
 sgho.unpause();
 
-// Rescue tokens (FUNDS_ADMIN_ROLE only)
+// Rescue tokens (TOKEN_RESCUER_ROLE only)
 sgho.emergencyTokenTransfer(tokenAddress, recipient, amount);
 ```
 
@@ -295,7 +295,7 @@ sGHO uses high-precision arithmetic to ensure accurate yield calculations and pr
 
 For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the detailed precision analysis document:
 
-**[Precision Analysis](./docs/precision_analysis/PRECISION.md)**
+**[Precision Analysis](./docs/sgho-precision-analysis/precision.md)**
 
 This document covers:
 

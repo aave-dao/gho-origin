@@ -2,15 +2,14 @@
 
 pragma solidity ^0.8.19;
 
-import {stdStorage, StdStorage} from 'forge-std/Test.sol';
 import {TestnetProcedures, TestnetERC20} from 'lib/aave-v3-origin/tests/utils/TestnetProcedures.sol';
-import {sGHO} from '../../src/contracts/sgho/sGHO.sol';
+import {sGho} from '../../src/contracts/sgho/sGHO.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 
 /**
  * @title sGhoPrecisionTest
- * @notice Tests precision loss in sGHO yield index calculations using actual compiled contract
+ * @notice Tests precision loss in sGho yield index calculations using actual compiled contract
  * @dev This test suite measures the difference between contract calculations and exact mathematical results
  *
  * Test Categories:
@@ -20,7 +19,7 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
  * 4. Edge Case Tests - Validate behavior with extreme values
  * 5. Actual Measurement Tests - Output real precision loss values for analysis
  */
-contract sGhoPrecisionTest is TestnetProcedures {
+contract TestSGhoPrecision is TestnetProcedures {
   using Math for uint256;
 
   // Constants for precision calculations
@@ -28,8 +27,8 @@ contract sGhoPrecisionTest is TestnetProcedures {
   uint256 private constant SECONDS_IN_YEAR = 365 days;
 
   // Contracts
-  sGHO internal sgho;
-  sGHO internal sghoImpl;
+  sGho internal sgho;
+  sGho internal sghoImpl;
   TestnetERC20 internal gho;
 
   // Users
@@ -55,8 +54,8 @@ contract sGhoPrecisionTest is TestnetProcedures {
     // Deploy GHO token
     gho = new TestnetERC20('GHO', 'GHO', 18, address(this));
 
-    // Deploy sGHO implementation
-    sghoImpl = new sGHO();
+    // Deploy sGho implementation
+    sghoImpl = new sGho();
 
     // Deploy proxy
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
@@ -65,14 +64,14 @@ contract sGhoPrecisionTest is TestnetProcedures {
       ''
     );
 
-    sgho = sGHO(payable(address(proxy)));
+    sgho = sGho(address(proxy));
 
-    // Initialize sGHO
+    // Initialize sGho
     sgho.initialize(address(gho), SUPPLY_CAP, admin);
 
     vm.startPrank(admin);
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yieldManager);
-    sgho.grantRole(sgho.FUNDS_ADMIN_ROLE(), fundsAdmin);
+    sgho.grantRole(sgho.TOKEN_RESCUER_ROLE(), fundsAdmin);
     vm.stopPrank();
 
     // Setup initial balances
@@ -121,9 +120,11 @@ contract sGhoPrecisionTest is TestnetProcedures {
   }
 
   function test_ratePerSecond_zero_rate() public {
+    // Set target rate to 0
     vm.prank(yieldManager);
     sgho.setTargetRate(0);
 
+    // Rate per second should be 0
     uint96 ratePerSecond = sgho.ratePerSecond();
     assertEq(ratePerSecond, 0, 'Rate per second should be 0 for zero rate');
   }

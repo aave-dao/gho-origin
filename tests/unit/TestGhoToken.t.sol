@@ -55,7 +55,7 @@ contract TestGhoToken is TestGhoBase {
     assertEq(facilitatorList[0], address(GHO_ATOKEN), 'Unexpected address for mock facilitator 1');
     assertEq(
       facilitatorList[1],
-      address(GHO_DIRECT_FACILITATOR),
+      address(OWNABLE_FACILITATOR),
       'Unexpected address for mock facilitator 2'
     );
     assertEq(

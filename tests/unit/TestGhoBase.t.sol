@@ -86,7 +86,7 @@ import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import {GhoGsmSteward} from 'src/contracts/misc/GhoGsmSteward.sol';
 import {FixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
-import {GhoDirectFacilitator} from 'src/contracts/facilitators/gsm/GhoDirectFacilitator.sol';
+import {OwnableFacilitator} from 'src/contracts/facilitators/gsm/OwnableFacilitator.sol';
 import {OracleSwapFreezerBase} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
 import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
 import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
@@ -156,7 +156,7 @@ contract TestGhoBase is Test, Constants, Events {
   MockUpgradeableLockReleaseTokenPool GHO_TOKEN_POOL;
 
   GhoReserve GHO_RESERVE;
-  GhoDirectFacilitator GHO_DIRECT_FACILITATOR;
+  OwnableFacilitator OWNABLE_FACILITATOR;
 
   constructor() {
     setupGho();
@@ -226,11 +226,11 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_RESERVE = new GhoReserve(address(GHO_TOKEN));
     GHO_RESERVE.initialize(address(this));
 
-    GHO_DIRECT_FACILITATOR = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
-    // Give GhoDirectFacilitator twice the default capacity to fully fund two GSMs
+    OWNABLE_FACILITATOR = new OwnableFacilitator(address(this), address(GHO_TOKEN));
+    // Give OwnableFacilitator twice the default capacity to fully fund two GSMs
     GHO_TOKEN.addFacilitator(
-      address(GHO_DIRECT_FACILITATOR),
-      'GhoDirectFacilitator',
+      address(OWNABLE_FACILITATOR),
+      'OwnableFacilitator',
       DEFAULT_CAPACITY * 2
     );
 
@@ -292,7 +292,7 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_RESERVE.setLimit(address(GHO_GSM_4626), DEFAULT_CAPACITY);
 
     // Mint twice default capacity for both GSMs to be fully funded
-    GHO_DIRECT_FACILITATOR.mint(address(GHO_RESERVE), DEFAULT_CAPACITY * 2);
+    OWNABLE_FACILITATOR.mint(address(GHO_RESERVE), DEFAULT_CAPACITY * 2);
 
     GHO_GSM_FIXED_FEE_STRATEGY = new FixedFeeStrategy(DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
     GHO_GSM.updateFeeStrategy(address(GHO_GSM_FIXED_FEE_STRATEGY));

@@ -16,8 +16,8 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
 
-import {IsGho} from '../../src/contracts/sgho/interfaces/IsGHO.sol';
-import {sGho} from '../../src/contracts/sgho/sGHO.sol';
+import {IsGho} from '../../src/contracts/sgho/interfaces/IsGho.sol';
+import {sGho} from '../../src/contracts/sgho/sGho.sol';
 
 contract TestSGhoBase is TestnetProcedures {
   using stdStorage for StdStorage;

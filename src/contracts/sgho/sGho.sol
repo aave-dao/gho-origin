@@ -16,7 +16,7 @@ import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/
 import {RescuableACL} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableACL.sol';
 import {RescuableBase, IRescuableBase} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableBase.sol';
 
-import {IsGho} from './interfaces/IsGHO.sol';
+import {IsGho} from './interfaces/IsGho.sol';
 
 /**
  * @title sGHO Token

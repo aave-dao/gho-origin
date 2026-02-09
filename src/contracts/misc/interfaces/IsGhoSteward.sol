@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IsGho} from '../../sgho/interfaces/IsGHO.sol';
+import {IsGho} from '../../sgho/interfaces/IsGho.sol';
 
 interface IsGhoSteward {
   /**

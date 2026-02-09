@@ -6,7 +6,7 @@ import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/Strings.sol';
 
-import {sGho, IsGho} from 'src/contracts/sgho/sGHO.sol';
+import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
 
 contract sGhoStewardTest is TestSGhoBase {

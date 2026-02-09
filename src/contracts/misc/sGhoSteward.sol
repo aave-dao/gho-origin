@@ -5,7 +5,7 @@ import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/c
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
 import {IsGhoSteward} from './interfaces/IsGhoSteward.sol';
-import {IsGho} from '../sgho/interfaces/IsGHO.sol';
+import {IsGho} from '../sgho/interfaces/IsGho.sol';
 
 /**
  * @title sGhoSteward

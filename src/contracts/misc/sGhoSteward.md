@@ -10,9 +10,9 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 - Allows updating of `targetRate` and `supplyCap` of `sGHO` through this contract.
 - Implements the `targetRate` formula as a composition of three parameters:
 
-  ```targetRate = AmplificationFactor * FloatRate + FixedRate```
+  `targetRate = AmplificationFactor * FloatRate + FixedRate`
 
-- Supports updating with each rate parameter *individually* or *multiple parameters simultaneously*.
+- Supports updating with each rate parameter _individually_ or _multiple parameters simultaneously_.
 - Integrates **Role-Based Access Control** from OpenZeppelin, enabling secure assignment, modification, and revocation of roles.
 - Provides functions to view the current configuration and pre-calculate the `targetRate` for any given configuration.
 - Enforces a hard cap of `50%` for the computed `targetRate`, reverting the transaction if the changes do not meet the condition.
@@ -23,12 +23,12 @@ The `DEFAULT_ADMIN_ROLE` is set exclusively for governance initially, which has 
 
 In addition to the admin role, there are four specialized manager roles:
 
-|              Role                  |                           Description                            |
-|:-----------------------------------|:-----------------------------------------------------------------|
-|     AMPLIFICATION_MANAGER_ROLE     |          Authorized to update the Amplification Factor.          |
-|       FLOAT_RATE_MANAGER_ROLE      |          Authorized to update the Float Rate.                    |
-|       FIXED_RATE_MANAGER_ROLE      |          Authorized to update the Fixed Rate.                    |
-|       SUPPLY_CAP_MANAGER_ROLE      |          Authorized to update the Supply Cap.                    |
+| Role                       | Description                                    |
+| :------------------------- | :--------------------------------------------- |
+| AMPLIFICATION_MANAGER_ROLE | Authorized to update the Amplification Factor. |
+| FLOAT_RATE_MANAGER_ROLE    | Authorized to update the Float Rate.           |
+| FIXED_RATE_MANAGER_ROLE    | Authorized to update the Fixed Rate.           |
+| SUPPLY_CAP_MANAGER_ROLE    | Authorized to update the Supply Cap.           |
 
 Initially, all roles are assigned to the `ghoCommittee`, a 3-of-4 multisig composed of service providers.
 Over time, **Aave DAO** may choose to delegate or reassign these roles to other addresses as it deems appropriate - for example, allowing oracles to control certain components while councils or other entities manage others.
@@ -40,7 +40,7 @@ As described in the [Aave Governance Forum discussion](https://governance.aave.c
 
 The formula for calculating the `targetRate` applied in `sGHO` is as follows:
 
-```targetRate = AmplificationFactor * FloatRate + FixedRate```
+`targetRate = AmplificationFactor * FloatRate + FixedRate`
 
 All updates occur via the `setRateConfig(newConfig)` function, which takes a `RateConfig` struct as input.
 
@@ -78,7 +78,7 @@ In this case:
 
 If the role checks succeed, the new configuration is applied:
 
-```targetRate = 100_00 * 5_00 / 100_00 + 2_00 = 7_00```.
+`targetRate = 100_00 * 5_00 / 100_00 + 2_00 = 7_00`.
 
 This value is then passed to `sGHO` for update, and all parameters are stored locally.
 
@@ -102,7 +102,7 @@ fixedRate:     50_00   // 50%
 
 Here only the `FIXED_RATE_MANAGER_ROLE` is required, since `fixedRate` is the only modified parameter.
 
-However, during computation: ```targetRate = 0.5 * 4% + 50% = 52%```
+However, during computation: `targetRate = 0.5 * 4% + 50% = 52%`
 
 Because the computed value exceeds the maximum allowed rate of 50%, the transaction reverts.
 
@@ -117,10 +117,10 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 ## Contract Summary
 
 | Function                               | Description                                        | Required Role               |
-|:---------------------------------------|:---------------------------------------------------|:----------------------------|
+| :------------------------------------- | :------------------------------------------------- | :-------------------------- |
 | `setRateConfig(RateConfig newConfig)`  | Updates amplification, float, and fixed rates      | Corresponding Manager Roles |
-| `setSupplyCap(uint160 newCap)`         | Updates the maximum allowed sGHO supply            |  `SUPPLY_CAP_MANAGER_ROLE`  |
-| `getRateConfig()`                      | Returns the current configuration                  |           Public            |
-| `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration |           Public            |
-| `sGHO()`                               | Returns current `sGHO` address                     |           Public            |
-| `MAX_RATE()`                           | Returns max available `targetRate` to install      |           Public            |
+| `setSupplyCap(uint160 newCap)`         | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
+| `getRateConfig()`                      | Returns the current configuration                  | Public                      |
+| `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration | Public                      |
+| `sGHO()`                               | Returns current `sGHO` address                     | Public                      |
+| `MAX_RATE()`                           | Returns max available `targetRate` to install      | Public                      |

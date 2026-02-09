@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
-import 'forge-std/Test.sol';
+import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/Strings.sol';
 
-import {IsGHO} from 'src/contracts/sgho/interfaces/IsGho.sol';
+import {sGho, IsGho} from 'src/contracts/sgho/sGHO.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
 
-import {MockSGho} from '../mocks/MockSGho.sol';
-
-contract sGhoStewardTest is Test {
-  MockSGho public sGho;
+contract sGhoStewardTest is TestSGhoBase {
   sGhoSteward public steward;
 
   address public executor = vm.addr(0x0001);
@@ -27,15 +24,11 @@ contract sGhoStewardTest is Test {
   bytes32 public constant FIXED_RATE_MANAGER_ROLE = keccak256('FIXED_RATE_MANAGER_ROLE');
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
 
-  function setUp() public {
-    sGho = new MockSGho();
-    sGho.initialize(executor);
+  function setUp() public override {
+    super.setUp();
 
-    steward = new sGhoSteward(address(sGho), executor, ghoCommittee);
-
-    vm.prank(executor);
-
-    AccessControl(address(sGho)).grantRole(YIELD_MANAGER_ROLE, address(steward));
+    steward = new sGhoSteward(address(sgho), executor, ghoCommittee);
+    sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
   }
 
   function test_wrongSetUp() public {
@@ -43,10 +36,10 @@ contract sGhoStewardTest is Test {
     new sGhoSteward(address(0), executor, ghoCommittee);
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(address(sGho), address(0), ghoCommittee);
+    new sGhoSteward(address(sgho), address(0), ghoCommittee);
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(address(sGho), executor, address(0));
+    new sGhoSteward(address(sgho), executor, address(0));
   }
 
   function test_initial() public view {
@@ -57,7 +50,7 @@ contract sGhoStewardTest is Test {
     assertTrue(steward.hasRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee));
     assertTrue(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee));
 
-    assertEq(address(steward.sGHO()), address(sGho));
+    assertEq(address(steward.sGHO()), address(sgho));
   }
 
   function test_setRateConfig() public {
@@ -83,7 +76,7 @@ contract sGhoStewardTest is Test {
     assertEq(configAfterUpdate.floatRate, 200);
     assertEq(configAfterUpdate.fixedRate, 200);
 
-    assertEq(sGho.targetRate(), 400);
+    assertEq(sgho.targetRate(), 400);
   }
 
   function test_setRateConfigAmplificationRateOnly() public {
@@ -130,7 +123,7 @@ contract sGhoStewardTest is Test {
     assertEq(configAfterUpdate.floatRate, 2_00);
     assertEq(configAfterUpdate.fixedRate, 2_00);
 
-    assertEq(sGho.targetRate(), 6_00);
+    assertEq(sgho.targetRate(), 6_00);
 
     vm.prank(executor);
 
@@ -192,7 +185,7 @@ contract sGhoStewardTest is Test {
     assertEq(configAfterUpdate.floatRate, 3_00);
     assertEq(configAfterUpdate.fixedRate, 2_00);
 
-    assertEq(sGho.targetRate(), 500);
+    assertEq(sgho.targetRate(), 500);
 
     vm.prank(executor);
 
@@ -254,7 +247,7 @@ contract sGhoStewardTest is Test {
     assertEq(configAfterUpdate.floatRate, 200);
     assertEq(configAfterUpdate.fixedRate, 300);
 
-    assertEq(sGho.targetRate(), 500);
+    assertEq(sgho.targetRate(), 500);
 
     vm.prank(executor);
 
@@ -287,18 +280,18 @@ contract sGhoStewardTest is Test {
       fixedRate: 0
     });
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SameValue.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SameRate.selector));
     steward.setRateConfig(newConfig);
   }
 
   function test_supplyCap() public {
-    uint256 initialSupplyCap = sGho.supplyCap();
-    assertEq(initialSupplyCap, 0);
+    uint256 initialSupplyCap = sgho.supplyCap();
+    assertEq(initialSupplyCap, SUPPLY_CAP);
 
     vm.prank(ghoCommittee);
     steward.setSupplyCap(type(uint160).max);
 
-    uint256 supplyCapAfterUpdate = sGho.supplyCap();
+    uint256 supplyCapAfterUpdate = sgho.supplyCap();
     assertEq(supplyCapAfterUpdate, type(uint160).max);
 
     vm.prank(executor);
@@ -311,17 +304,17 @@ contract sGhoStewardTest is Test {
   }
 
   function test_supplyCapSameValue() public {
-    uint256 initialSupplyCap = sGho.supplyCap();
-    assertEq(initialSupplyCap, 0);
+    uint256 initialSupplyCap = sgho.supplyCap();
+    assertEq(initialSupplyCap, SUPPLY_CAP);
 
     vm.startPrank(ghoCommittee);
 
     steward.setSupplyCap(type(uint160).max);
 
-    uint256 supplyCapAfterUpdate = sGho.supplyCap();
+    uint256 supplyCapAfterUpdate = sgho.supplyCap();
     assertEq(supplyCapAfterUpdate, type(uint160).max);
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SameValue.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SameSupplyCap.selector));
     steward.setSupplyCap(type(uint160).max);
   }
 
@@ -346,8 +339,43 @@ contract sGhoStewardTest is Test {
     assertEq(configAfterUpdate.floatRate, float);
     assertEq(configAfterUpdate.fixedRate, fix);
 
-    assertEq(sGho.targetRate(), target);
+    assertEq(sgho.targetRate(), target);
     assertEq(resultTarget, target);
+  }
+
+  function test_setRateConfigStruct(IsGhoSteward.RateConfig memory fuzzConfig) public {
+    IsGhoSteward.RateConfig memory initialConfig = steward.getRateConfig();
+
+    assertEq(initialConfig.amplification, 0);
+    assertEq(initialConfig.floatRate, 0);
+    assertEq(initialConfig.fixedRate, 0);
+
+    vm.startPrank(ghoCommittee);
+
+    uint256 fuzzTarget = (uint256(fuzzConfig.amplification) * fuzzConfig.floatRate) /
+      1e4 +
+      fuzzConfig.fixedRate;
+
+    if (fuzzTarget < 5e3) {
+      uint16 previewFuzzRate = steward.previewTargetRate(fuzzConfig);
+      assertEq(previewFuzzRate, fuzzTarget);
+
+      steward.setRateConfig(fuzzConfig);
+
+      IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
+
+      assertEq(configAfterUpdate.amplification, fuzzConfig.amplification);
+      assertEq(configAfterUpdate.floatRate, fuzzConfig.floatRate);
+      assertEq(configAfterUpdate.fixedRate, fuzzConfig.fixedRate);
+
+      assertEq(sgho.targetRate(), fuzzTarget);
+    } else {
+      vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
+      steward.previewTargetRate(fuzzConfig);
+
+      vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
+      steward.setRateConfig(fuzzConfig);
+    }
   }
 
   function test_setRateMoreThanMax(uint16 ampl, uint16 float, uint16 fix) public {

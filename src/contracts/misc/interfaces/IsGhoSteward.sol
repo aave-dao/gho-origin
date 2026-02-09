@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IsGHO} from '../../sgho/interfaces/IsGho.sol';
+import {IsGho} from '../../sgho/interfaces/IsGHO.sol';
 
 interface IsGhoSteward {
   /**
-   * @note Formula for the `targetRate` (taking into account integer math) is:
-   *       `targetRate = amplification * floatRate / AMPLIFICATION_DENOMINATOR + fixedRate`,
-   *       where `AMPLIFICATION_DENOMINATOR` is 100_00,
-   *       `amplification`, `floatRate` and `fixedRate` are `uint16`
+   * @notice Formula for the `targetRate` (taking into account integer math) is:
+   *         `targetRate = amplification * floatRate / AMPLIFICATION_DENOMINATOR + fixedRate`,
+   *         where `AMPLIFICATION_DENOMINATOR` is 100_00,
+   *         `amplification`, `floatRate` and `fixedRate` are `uint16`
    */
   struct RateConfig {
     /// @notice Amplification factor
@@ -53,9 +53,14 @@ interface IsGhoSteward {
   error RateTooBig();
 
   /**
-   * @dev Attempted to set the same value, which is already installed.
+   * @dev Attempted to set the same rate, which is already installed.
    */
-  error SameValue();
+  error SameRate();
+
+  /**
+   * @dev Attempted to set the same supplyCap, which is already installed.
+   */
+  error SameSupplyCap();
 
   /**
    * @notice Updates `targetRate` on `sGHO` and `rateConfig` inside the steward using new values.
@@ -101,7 +106,7 @@ interface IsGhoSteward {
   /**
    * @notice Returns `sGHO` address.
    */
-  function sGHO() external view returns (IsGHO);
+  function sGHO() external view returns (IsGho);
 
   /**
    * @notice Returns max available `targetRate` to install.

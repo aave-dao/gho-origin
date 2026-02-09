@@ -5,7 +5,7 @@ import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/c
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
 import {IsGhoSteward} from './interfaces/IsGhoSteward.sol';
-import {IsGHO} from '../sgho/interfaces/IsGho.sol';
+import {IsGho} from '../sgho/interfaces/IsGHO.sol';
 
 /**
  * @title sGhoSteward
@@ -19,7 +19,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   RateConfig internal _rateConfig;
 
   /// @notice sGho contract address
-  IsGHO internal immutable _sGHO;
+  IsGho internal immutable _sGho;
 
   /// @inheritdoc IsGhoSteward
   uint16 public immutable MAX_RATE;
@@ -44,8 +44,8 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       revert ZeroAddress();
     }
 
-    _sGHO = IsGHO(sGho);
-    MAX_RATE = _sGHO.MAX_SAFE_RATE();
+    _sGho = IsGho(sGho);
+    MAX_RATE = _sGho.MAX_SAFE_RATE();
 
     _grantRole(DEFAULT_ADMIN_ROLE, governance);
 
@@ -83,7 +83,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     }
 
     if (!isRateChanged) {
-      revert SameValue();
+      revert SameRate();
     }
 
     return _setRateConfig(rateConfigCopy);
@@ -91,13 +91,13 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function setSupplyCap(uint256 supplyCap) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
-    uint256 currentSupplyCap = _sGHO.supplyCap();
+    uint256 currentSupplyCap = _sGho.supplyCap();
 
     if (currentSupplyCap == supplyCap) {
-      revert SameValue();
+      revert SameSupplyCap();
     }
 
-    _sGHO.setSupplyCap(supplyCap.toUint160());
+    _sGho.setSupplyCap(supplyCap.toUint160());
     emit SupplyCapUpdated(msg.sender, supplyCap);
   }
 
@@ -112,14 +112,14 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   }
 
   /// @inheritdoc IsGhoSteward
-  function sGHO() external view returns (IsGHO) {
-    return _sGHO;
+  function sGHO() external view returns (IsGho) {
+    return _sGho;
   }
 
   function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {
     uint16 targetRate = _checkRateConfig(rateConfig);
 
-    _sGHO.setTargetRate(targetRate);
+    _sGho.setTargetRate(targetRate);
     _rateConfig = rateConfig;
 
     emit RateConfigUpdated(

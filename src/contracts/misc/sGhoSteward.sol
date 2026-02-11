@@ -83,7 +83,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     }
 
     if (!isRateChanged) {
-      revert SameRate();
+      revert RateUnchanged();
     }
 
     return _setRateConfig(rateConfigCopy);
@@ -94,7 +94,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     uint256 currentSupplyCap = _sGho.supplyCap();
 
     if (currentSupplyCap == supplyCap) {
-      revert SameSupplyCap();
+      revert SupplyCapUnchanged();
     }
 
     _sGho.setSupplyCap(supplyCap.toUint160());
@@ -140,7 +140,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       rateConfig_.fixedRate;
 
     if (targetRate > MAX_RATE) {
-      revert RateTooBig();
+      revert MaxRateExceeded();
     }
 
     return targetRate.toUint16();

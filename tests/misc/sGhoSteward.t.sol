@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
+import {console} from 'forge-std/console.sol';
 import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
@@ -44,6 +45,7 @@ contract sGhoStewardTest is TestSGhoBase {
 
   function test_initial() public view {
     assertTrue(steward.hasRole(DEFAULT_ADMIN_ROLE, executor));
+    assertFalse(steward.hasRole(DEFAULT_ADMIN_ROLE, ghoCommittee));
 
     assertTrue(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee));
     assertTrue(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee));
@@ -280,7 +282,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 0
     });
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SameRate.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateUnchanged.selector));
     steward.setRateConfig(newConfig);
   }
 
@@ -303,7 +305,9 @@ contract sGhoStewardTest is TestSGhoBase {
     steward.setSupplyCap(1e18);
   }
 
-  function test_supplyCapSameValue() public {
+  function test_invalidSupplyCap(uint256 newSupplyCap) public {
+    newSupplyCap = bound(newSupplyCap, uint256(type(uint160).max) + 1, type(uint256).max);
+
     uint256 initialSupplyCap = sgho.supplyCap();
     assertEq(initialSupplyCap, SUPPLY_CAP);
 
@@ -314,8 +318,11 @@ contract sGhoStewardTest is TestSGhoBase {
     uint256 supplyCapAfterUpdate = sgho.supplyCap();
     assertEq(supplyCapAfterUpdate, type(uint160).max);
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SameSupplyCap.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SupplyCapUnchanged.selector));
     steward.setSupplyCap(type(uint160).max);
+
+    vm.expectRevert("SafeCast: value doesn't fit in 160 bits");
+    steward.setSupplyCap(newSupplyCap);
   }
 
   function test_previewTargetRate(uint16 ampl, uint16 float, uint16 fix) public {
@@ -356,7 +363,7 @@ contract sGhoStewardTest is TestSGhoBase {
       1e4 +
       fuzzConfig.fixedRate;
 
-    if (fuzzTarget < 5e3) {
+    if (fuzzTarget <= 5e3) {
       uint16 previewFuzzRate = steward.previewTargetRate(fuzzConfig);
       assertEq(previewFuzzRate, fuzzTarget);
 
@@ -370,10 +377,10 @@ contract sGhoStewardTest is TestSGhoBase {
 
       assertEq(sgho.targetRate(), fuzzTarget);
     } else {
-      vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
+      vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
       steward.previewTargetRate(fuzzConfig);
 
-      vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
+      vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
       steward.setRateConfig(fuzzConfig);
     }
   }
@@ -389,10 +396,10 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: fix
     });
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
     steward.previewTargetRate(newConfig);
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateTooBig.selector));
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
     steward.setRateConfig(newConfig);
   }
 

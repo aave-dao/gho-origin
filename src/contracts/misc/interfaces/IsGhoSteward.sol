@@ -22,7 +22,7 @@ interface IsGhoSteward {
   /**
    * @notice Event is emitted whenever the `rateConfig` is updated.
    * @param caller Message sender, who initiated the update
-   * @param targetRate Target rate installed in `sGHO` after update
+   * @param targetRate Target rate set in `sGHO` after update
    * @param amplification Amplification factor used to calculate `targetRate`
    * @param floatRate Float rate used to calculate `targetRate`
    * @param fixedRate Fixed rate used to calculate `targetRate`
@@ -38,7 +38,7 @@ interface IsGhoSteward {
   /**
    * @notice Event is emitted whenever the `supplyCap` is updated.
    * @param caller Message sender, who initiated the update
-   * @param supplyCap Supply Cap installed in `sGHO` after update
+   * @param supplyCap Supply Cap set in `sGHO` after update
    */
   event SupplyCapUpdated(address indexed caller, uint256 supplyCap);
 
@@ -50,17 +50,17 @@ interface IsGhoSteward {
   /**
    * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
    */
-  error RateTooBig();
+  error MaxRateExceeded();
 
   /**
-   * @dev Attempted to set the same rate, which is already installed.
+   * @dev Attempted to set the same rate, which is already set.
    */
-  error SameRate();
+  error RateUnchanged();
 
   /**
-   * @dev Attempted to set the same supplyCap, which is already installed.
+   * @dev Attempted to set the same supplyCap, which is already set.
    */
-  error SameSupplyCap();
+  error SupplyCapUnchanged();
 
   /**
    * @notice Updates `targetRate` on `sGHO` and `rateConfig` inside the steward using new values.
@@ -84,7 +84,7 @@ interface IsGhoSteward {
 
   /**
    * @notice Updates `supplyCap` on `sGHO`.
-   * @dev Could be updated to any `uint160` value.
+   * @dev Could be updated to any `uint160` value, reverts otherwise.
    * Only callable by `SUPPLY_CAP_MANAGER_ROLE`.
    * @param supplyCap_ New `supplyCap` to set.
    */
@@ -104,7 +104,7 @@ interface IsGhoSteward {
   function getRateConfig() external view returns (RateConfig memory);
 
   /**
-   * @notice Returns `sGHO` address.
+   * @notice Returns `sGHO` address, wrapped in interface.
    */
   function sGHO() external view returns (IsGho);
 

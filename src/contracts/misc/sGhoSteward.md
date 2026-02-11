@@ -10,12 +10,12 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 - Allows updating of `targetRate` and `supplyCap` of `sGHO` through this contract.
 - Implements the `targetRate` formula as a composition of three parameters:
 
-  `targetRate = AmplificationFactor * FloatRate + FixedRate`
+  `targetRate = AmplificationFactor / AMPLIFICATION_DENOMINATOR * FloatRate + FixedRate`
 
 - Supports updating with each rate parameter _individually_ or _multiple parameters simultaneously_.
 - Integrates **Role-Based Access Control** from OpenZeppelin, enabling secure assignment, modification, and revocation of roles.
 - Provides functions to view the current configuration and pre-calculate the `targetRate` for any given configuration.
-- Enforces a hard cap of `50%` for the computed `targetRate`, reverting the transaction if the changes do not meet the condition.
+- Enforces a hard cap of `MAX_SAFE_RATE` installed in `sGho` for the computed `targetRate`, reverting the transaction if the changes do not meet the condition.
 
 ## Access Control
 
@@ -61,7 +61,7 @@ fixedRate:     2_00    // 2%
 ```
 
 Current `targetRate` is calculated as `50_00 * 4_00 / 100_00 + 2_00 = 4_00`. `4_00` refers to 4%.
-`10_000` is `AMPLIFICATION_FACTOR`, which is constant. Every parameter has `uint16` type with max value up to `65_535`.
+`100_00` is `AMPLIFICATION_FACTOR`, which is constant. Every parameter has `uint16` type with max value up to `65_535`.
 
 New configuration (input to `setRateConfig(...)`):
 
@@ -119,8 +119,8 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 | Function                               | Description                                        | Required Role               |
 | :------------------------------------- | :------------------------------------------------- | :-------------------------- |
 | `setRateConfig(RateConfig newConfig)`  | Updates amplification, float, and fixed rates      | Corresponding Manager Roles |
-| `setSupplyCap(uint160 newCap)`         | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
-| `getRateConfig()`                      | Returns the current configuration                  | Public                      |
+| `setSupplyCap(uint256 newSupplyCap)`         | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
+| `getRateConfig()`                      | Returns the current rate configuration                  | Public                      |
 | `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration | Public                      |
 | `sGHO()`                               | Returns current `sGHO` address                     | Public                      |
 | `MAX_RATE()`                           | Returns max available `targetRate` to install      | Public                      |

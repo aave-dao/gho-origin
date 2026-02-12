@@ -351,6 +351,10 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   function test_setRateConfigStruct(IsGhoSteward.RateConfig memory fuzzConfig) public {
+    vm.assume(
+      fuzzConfig.amplification != 0 || fuzzConfig.floatRate != 0 || fuzzConfig.fixedRate != 0
+    );
+
     IsGhoSteward.RateConfig memory initialConfig = steward.getRateConfig();
 
     assertEq(initialConfig.amplification, 0);

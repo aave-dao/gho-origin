@@ -119,8 +119,8 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 | Function                               | Description                                        | Required Role               |
 | :------------------------------------- | :------------------------------------------------- | :-------------------------- |
 | `setRateConfig(RateConfig newConfig)`  | Updates amplification, float, and fixed rates      | Corresponding Manager Roles |
-| `setSupplyCap(uint256 newSupplyCap)`         | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
-| `getRateConfig()`                      | Returns the current rate configuration                  | Public                      |
+| `setSupplyCap(uint256 newSupplyCap)`   | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
+| `getRateConfig()`                      | Returns the current rate configuration             | Public                      |
 | `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration | Public                      |
 | `sGHO()`                               | Returns current `sGHO` address                     | Public                      |
 | `MAX_RATE()`                           | Returns max available `targetRate` to install      | Public                      |

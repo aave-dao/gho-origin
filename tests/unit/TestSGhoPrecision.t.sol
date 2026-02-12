@@ -3,7 +3,7 @@
 pragma solidity ^0.8.19;
 
 import {TestnetProcedures, TestnetERC20} from 'lib/aave-v3-origin/tests/utils/TestnetProcedures.sol';
-import {sGho} from '../../src/contracts/sgho/sGHO.sol';
+import {sGho} from '../../src/contracts/sgho/sGho.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 

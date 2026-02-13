@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
-import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {IERC20Permit} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol';
 import {IERC20Metadata} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
-import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
-import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
-import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
-import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
-import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
+import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
-import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
-import {RescuableACL} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableACL.sol';
-import {RescuableBase, IRescuableBase} from 'lib/aave-v3-origin/lib/solidity-utils/src/contracts/utils/RescuableBase.sol';
 
-import {IsGho} from './interfaces/IsGho.sol';
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
+import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
+import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
+import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
+import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
+import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
+
+import {RescuableACL} from 'solidity-utils/contracts/utils/RescuableACL.sol';
+import {RescuableBase, IRescuableBase} from 'solidity-utils/contracts/utils/RescuableBase.sol';
+
+import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 
 /**
  * @title sGHO Token
@@ -86,22 +88,22 @@ contract sGho is
    * @notice Initializer for the sGHO vault.
    * @param gho Address of the underlying GHO token.
    * @param initialSupplyCap The total supply cap for the vault.
-   * @param executor The address that will be granted the DEFAULT_ADMIN_ROLE.
+   * @param owner The address that will be granted the DEFAULT_ADMIN_ROLE.
    */
   function initialize(
     address gho,
     uint160 initialSupplyCap,
-    address executor
+    address owner
   ) public payable initializer {
-    if (gho == address(0) || executor == address(0)) revert ZeroAddressNotAllowed();
+    if (gho == address(0) || owner == address(0)) revert ZeroAddressNotAllowed();
 
     __ERC20_init('sGho', 'sGho');
     __ERC4626_init(IERC20(gho));
     __ERC20Permit_init('sGho');
     __AccessControl_init();
     __Pausable_init();
-    _grantRole(DEFAULT_ADMIN_ROLE, executor);
-    _grantRole(PAUSE_GUARDIAN_ROLE, executor);
+    _grantRole(DEFAULT_ADMIN_ROLE, owner);
+    _grantRole(PAUSE_GUARDIAN_ROLE, owner);
 
     sGhoStorage storage $ = _getSGhoStorage();
     $.supplyCap = initialSupplyCap;

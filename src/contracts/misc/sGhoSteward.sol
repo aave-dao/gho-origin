@@ -4,8 +4,8 @@ pragma solidity ^0.8.10;
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
-import {IsGhoSteward} from './interfaces/IsGhoSteward.sol';
-import {IsGho} from '../sgho/interfaces/IsGho.sol';
+import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
+import {IsGhoSteward} from 'src/contracts/misc/interfaces/IsGhoSteward.sol';
 
 /**
  * @title sGhoSteward
@@ -14,15 +14,6 @@ import {IsGho} from '../sgho/interfaces/IsGho.sol';
  */
 contract sGhoSteward is AccessControl, IsGhoSteward {
   using SafeCast for uint256;
-
-  /// @notice Current rate parameters
-  RateConfig internal _rateConfig;
-
-  /// @notice sGho contract address
-  IsGho internal immutable _sGho;
-
-  /// @inheritdoc IsGhoSteward
-  uint16 public immutable MAX_RATE;
 
   /// @inheritdoc IsGhoSteward
   uint16 public constant AMPLIFICATION_DENOMINATOR = 100_00;
@@ -39,21 +30,30 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   /// @inheritdoc IsGhoSteward
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
 
-  constructor(address sGho, address governance, address ghoCommittee) {
-    if (sGho == address(0) || governance == address(0) || ghoCommittee == address(0)) {
+  /// @notice sGho contract address
+  IsGho internal immutable _sGho;
+
+  /// @inheritdoc IsGhoSteward
+  uint16 public immutable MAX_RATE;
+
+  /// @notice Current rate parameters
+  RateConfig internal _rateConfig;
+
+  constructor(address owner, address riskCouncil, address sGho) {
+    if (owner == address(0) || riskCouncil == address(0) || sGho == address(0)) {
       revert ZeroAddress();
     }
 
     _sGho = IsGho(sGho);
     MAX_RATE = _sGho.MAX_SAFE_RATE();
 
-    _grantRole(DEFAULT_ADMIN_ROLE, governance);
+    _grantRole(DEFAULT_ADMIN_ROLE, riskCouncil);
 
-    // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `ghoCommittee`
-    _grantRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee);
-    _grantRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee);
-    _grantRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee);
-    _grantRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee);
+    // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `owner`
+    _grantRole(AMPLIFICATION_MANAGER_ROLE, owner);
+    _grantRole(FLOAT_RATE_MANAGER_ROLE, owner);
+    _grantRole(FIXED_RATE_MANAGER_ROLE, owner);
+    _grantRole(SUPPLY_CAP_MANAGER_ROLE, owner);
   }
 
   /// @inheritdoc IsGhoSteward
@@ -103,7 +103,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function previewTargetRate(RateConfig calldata rateConfig) external view returns (uint16) {
-    return _checkRateConfig(rateConfig);
+    return _computeRateConfig(rateConfig);
   }
 
   /// @inheritdoc IsGhoSteward
@@ -117,7 +117,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   }
 
   function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {
-    uint16 targetRate = _checkRateConfig(rateConfig);
+    uint16 targetRate = _computeRateConfig(rateConfig);
 
     _sGho.setTargetRate(targetRate);
     _rateConfig = rateConfig;
@@ -133,11 +133,11 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     return targetRate;
   }
 
-  function _checkRateConfig(RateConfig memory rateConfig_) internal view returns (uint16) {
+  function _computeRateConfig(RateConfig memory rateConfig) internal view returns (uint16) {
     // In order to avoid overflow we cast to uint256, and check result later
-    uint256 targetRate = (uint256(rateConfig_.amplification) * rateConfig_.floatRate) /
+    uint256 targetRate = (uint256(rateConfig.amplification) * rateConfig.floatRate) /
       AMPLIFICATION_DENOMINATOR +
-      rateConfig_.fixedRate;
+      rateConfig.fixedRate;
 
     if (targetRate > MAX_RATE) {
       revert MaxRateExceeded();

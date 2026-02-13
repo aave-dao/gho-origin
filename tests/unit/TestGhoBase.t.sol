@@ -148,7 +148,6 @@ contract TestGhoBase is Test, Constants, Events {
   }
 
   function setupGho() public {
-    bytes memory empty;
     ACL_MANAGER = new MockAclManager();
     PROVIDER = new MockAddressesProvider(address(ACL_MANAGER));
     MOCK_POOL_DATA_PROVIDER = new MockPoolDataProvider(address(PROVIDER));
@@ -166,7 +165,6 @@ contract TestGhoBase is Test, Constants, Events {
     AAVE_TOKEN = new TestnetERC20('AAVE', 'AAVE', 18, FAUCET);
     USDX_TOKEN = new TestnetERC20('USD Coin', 'USDX', 6, FAUCET);
     USDX_4626_TOKEN = new MockERC4626('USD Coin 4626', '4626', address(USDX_TOKEN));
-    IPool iPool = IPool(address(POOL));
     WETH = new WETH9Mock('Wrapped Ether', 'WETH', FAUCET);
 
     // Use a separate proxy admin to avoid TransparentUpgradeableProxy admin restriction
@@ -331,21 +329,30 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.mint(to, amount);
   }
 
-  /// Helper function to deploy a GSM proxy
   function _deployGsmProxy(
     address underlyingToken,
     address priceStrategy,
     uint128 exposureCap
   ) internal returns (Gsm) {
-    return _deployGsmProxyWithAdmin(underlyingToken, priceStrategy, exposureCap, address(this));
+    return _deployGsmProxy(underlyingToken, priceStrategy, exposureCap, address(this));
   }
 
-  /// Helper function to deploy a GSM proxy with specified admin
-  function _deployGsmProxyWithAdmin(
+  function _deployGsmProxy(
     address underlyingToken,
     address priceStrategy,
     uint128 exposureCap,
     address admin
+  ) internal returns (Gsm) {
+    return
+      _deployGsmProxy(underlyingToken, priceStrategy, exposureCap, admin, address(GHO_RESERVE));
+  }
+
+  function _deployGsmProxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap,
+    address admin,
+    address reserve
   ) internal returns (Gsm) {
     Gsm gsmImpl = new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
     AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
@@ -356,10 +363,30 @@ contract TestGhoBase is Test, Constants, Events {
         admin,
         TREASURY,
         exposureCap,
-        address(GHO_RESERVE)
+        reserve
       )
     );
     return Gsm(address(gsmProxy));
+  }
+
+  function _deployGsm4626Proxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap
+  ) internal returns (Gsm4626) {
+    Gsm4626 gsmImpl = new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(this),
+        TREASURY,
+        exposureCap,
+        address(GHO_RESERVE)
+      )
+    );
+    return Gsm4626(address(gsmProxy));
   }
 
   /// Helper function to sell asset in the GSM

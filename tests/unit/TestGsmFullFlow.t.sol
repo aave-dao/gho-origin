@@ -20,26 +20,13 @@ contract TestGsmFullFlow is TestGhoBase {
       reserve = GhoReserve(address(reserveProxy));
     }
 
-    Gsm gsm;
-    {
-      Gsm gsmImpl = new Gsm(
-        address(GHO_TOKEN),
-        address(USDX_TOKEN),
-        address(GHO_GSM_FIXED_PRICE_STRATEGY)
-      );
-      AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-        address(gsmImpl),
-        SHORT_EXECUTOR,
-        abi.encodeWithSignature(
-          'initialize(address,address,uint128,address)',
-          address(this),
-          TREASURY,
-          DEFAULT_GSM_USDX_EXPOSURE,
-          address(reserve)
-        )
-      );
-      gsm = Gsm(address(gsmProxy));
-    }
+    Gsm gsm = _deployGsmProxy(
+      address(USDX_TOKEN),
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      DEFAULT_GSM_USDX_EXPOSURE,
+      address(this),
+      address(reserve)
+    );
 
     reserve.addEntity(address(gsm));
     reserve.setLimit(address(gsm), 5_000_000 ether);

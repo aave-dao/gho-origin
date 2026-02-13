@@ -45,12 +45,6 @@ contract TestGsm is TestGhoBase {
   }
 
   function testInitialize() public {
-    Gsm gsmImpl = new Gsm(
-      address(GHO_TOKEN),
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
-    );
-
     vm.expectEmit(true, true, true, true);
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
     vm.expectEmit(true, true, false, true);
@@ -58,24 +52,16 @@ contract TestGsm is TestGhoBase {
     vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
 
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
-      SHORT_EXECUTOR,
-      abi.encodeWithSignature(
-        'initialize(address,address,uint128,address)',
-        address(this),
-        TREASURY,
-        DEFAULT_GSM_USDX_EXPOSURE,
-        address(GHO_RESERVE)
-      )
+    Gsm gsm = _deployGsmProxy(
+      address(USDX_TOKEN),
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      DEFAULT_GSM_USDX_EXPOSURE
     );
-    Gsm gsm = Gsm(address(gsmProxy));
 
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
   }
 
   function testRevertInitializeZeroAdmin() public {
-    // Deploy implementation and try to initialize via proxy with zero admin
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
@@ -98,7 +84,6 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeZeroGhoReserve() public {
-    // Deploy implementation and try to initialize via proxy with zero GhoReserve
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
@@ -121,25 +106,12 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeTwice() public {
-    Gsm gsmImpl = new Gsm(
-      address(GHO_TOKEN),
+    Gsm gsm = _deployGsmProxy(
       address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      DEFAULT_GSM_USDX_EXPOSURE
     );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
-      SHORT_EXECUTOR,
-      abi.encodeWithSignature(
-        'initialize(address,address,uint128,address)',
-        address(this),
-        TREASURY,
-        DEFAULT_GSM_USDX_EXPOSURE,
-        address(GHO_RESERVE)
-      )
-    );
-    Gsm gsm = Gsm(address(gsmProxy));
 
-    // Try to initialize again - should fail
     vm.expectRevert('Contract instance has already been initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
@@ -416,23 +388,11 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertSellAssetNoBucketCap() public {
-    Gsm gsmImpl = new Gsm(
-      address(GHO_TOKEN),
+    Gsm gsm = _deployGsmProxy(
       address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      DEFAULT_GSM_USDX_EXPOSURE
     );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
-      SHORT_EXECUTOR,
-      abi.encodeWithSignature(
-        'initialize(address,address,uint128,address)',
-        address(this),
-        TREASURY,
-        DEFAULT_GSM_USDX_EXPOSURE,
-        address(GHO_RESERVE)
-      )
-    );
-    Gsm gsm = Gsm(address(gsmProxy));
     GHO_RESERVE.addEntity(address(gsm));
     uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
 
@@ -447,23 +407,11 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertSellAssetTooMuchUnderlyingExposure() public {
-    Gsm gsmImpl = new Gsm(
-      address(GHO_TOKEN),
+    Gsm gsm = _deployGsmProxy(
       address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      uint128(DEFAULT_GSM_USDX_EXPOSURE - 1)
     );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsmImpl),
-      SHORT_EXECUTOR,
-      abi.encodeWithSignature(
-        'initialize(address,address,uint128,address)',
-        address(this),
-        TREASURY,
-        uint128(DEFAULT_GSM_USDX_EXPOSURE - 1),
-        address(GHO_RESERVE)
-      )
-    );
-    Gsm gsm = Gsm(address(gsmProxy));
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Exposure Cap', DEFAULT_CAPACITY);
 
     vm.prank(FAUCET);
@@ -1143,7 +1091,6 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeTreasuryZeroAddress() public {
-    // Deploy implementation and try to initialize via proxy with zero treasury
     Gsm gsmImpl = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),

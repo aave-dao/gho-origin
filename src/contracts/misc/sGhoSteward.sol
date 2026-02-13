@@ -30,11 +30,11 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   /// @inheritdoc IsGhoSteward
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
 
-  /// @notice sGho contract address
-  IsGho internal immutable _sGho;
-
   /// @inheritdoc IsGhoSteward
   uint16 public immutable MAX_RATE;
+
+  /// @notice sGho contract address
+  IsGho internal immutable _sGho;
 
   /// @notice Current rate parameters
   RateConfig internal _rateConfig;

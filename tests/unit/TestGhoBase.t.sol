@@ -61,7 +61,6 @@ import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppel
 import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 
 // GHO contracts
-import {GhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
 import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
@@ -117,7 +116,6 @@ contract TestGhoBase is Test, Constants, Events {
   PriceOracle PRICE_ORACLE;
   WETH9Mock WETH;
   GhoFlashMinter GHO_FLASH_MINTER;
-  GhoDiscountRateStrategy GHO_DISCOUNT_STRATEGY;
   MockFlashBorrower FLASH_BORROWER;
   Gsm GHO_GSM;
   Gsm4626 GHO_GSM_4626;
@@ -176,8 +174,6 @@ contract TestGhoBase is Test, Constants, Events {
 
     // Note: GhoAToken and GhoVariableDebtToken (old Aave integration) have been removed
     // STK_TOKEN setup removed as it was only used with the old debt token
-
-    GHO_DISCOUNT_STRATEGY = new GhoDiscountRateStrategy();
 
     GhoReserve ghoReserveImpl = new GhoReserve(address(GHO_TOKEN));
     GHO_RESERVE = GhoReserve(
@@ -335,8 +331,36 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.mint(to, amount);
   }
 
-  // Note: borrowAction, repayAction, mintAndStakeDiscountToken, and rebalanceDiscountAction
-  // helper functions have been removed as they were only used for the old Aave integration tests
+  /// Helper function to deploy a GSM proxy
+  function _deployGsmProxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap
+  ) internal returns (Gsm) {
+    return _deployGsmProxyWithAdmin(underlyingToken, priceStrategy, exposureCap, address(this));
+  }
+
+  /// Helper function to deploy a GSM proxy with specified admin
+  function _deployGsmProxyWithAdmin(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap,
+    address admin
+  ) internal returns (Gsm) {
+    Gsm gsmImpl = new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        admin,
+        TREASURY,
+        exposureCap,
+        address(GHO_RESERVE)
+      )
+    );
+    return Gsm(address(gsmProxy));
+  }
 
   /// Helper function to sell asset in the GSM
   function _sellAsset(

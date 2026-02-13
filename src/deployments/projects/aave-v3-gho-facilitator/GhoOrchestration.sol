@@ -5,6 +5,7 @@ import {MarketReport} from 'aave-v3-origin/deployments/interfaces/IMarketReportT
 import {GhoFlashMinterBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoFlashMinterBatch.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
 import {GhoTokenBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol';
+import {GhoOracle} from 'src/contracts/facilitators/aave/oracle/GhoOracle.sol';
 
 library GhoOrchestration {
   function deployGho(
@@ -14,11 +15,7 @@ library GhoOrchestration {
   ) internal returns (GhoReportTypes.GhoReport memory ghoReport) {
     GhoTokenBatch ghoTokenBatch = new GhoTokenBatch(deployer);
     GhoReportTypes.GhoTokenReport memory ghoTokenReport = ghoTokenBatch.getGhoTokenReport();
-
-    // Note: GhoAaveListingBatch removed as the old Aave integration is no longer supported
-    // Creating empty GhoAaveListingReport for backwards compatibility
-    GhoReportTypes.GhoAaveListingReport memory ghoAaveListingReport = GhoReportTypes
-      .GhoAaveListingReport({ghoOracle: address(0), ghoDiscountRateStrategy: address(0)});
+    GhoOracle ghoOracle = new GhoOracle();
 
     GhoFlashMinterBatch ghoFlashMinterBatch = new GhoFlashMinterBatch(
       flashMinterFee,
@@ -30,8 +27,8 @@ library GhoOrchestration {
 
     ghoReport = GhoReportTypes.GhoReport({
       ghoTokenReport: ghoTokenReport,
-      ghoAaveListingReport: ghoAaveListingReport,
-      ghoFlashMinterReport: ghoFlashMinterReport
+      ghoFlashMinterReport: ghoFlashMinterReport,
+      ghoOracle: address(ghoOracle)
     });
 
     return ghoReport;

@@ -11,10 +11,7 @@ library GhoReportUtils {
       GhoReportTypes.GhoContracts({
         ghoToken: GhoToken(ghoReport.ghoTokenReport.ghoToken),
         upgradeableGhoToken: UpgradeableGhoToken(ghoReport.ghoTokenReport.upgradeableGhoToken),
-        ghoOracle: GhoOracle(ghoReport.ghoAaveListingReport.ghoOracle),
-        ghoDiscountRateStrategy: GhoDiscountRateStrategy(
-          ghoReport.ghoAaveListingReport.ghoDiscountRateStrategy
-        ),
+        ghoOracle: GhoOracle(ghoReport.ghoOracle),
         ghoFlashMinter: GhoFlashMinter(ghoReport.ghoFlashMinterReport.ghoFlashMinter)
       });
   }

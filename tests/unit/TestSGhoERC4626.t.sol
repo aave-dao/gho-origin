@@ -111,7 +111,6 @@ contract TestSGhoERC4626 is TestSGhoBase {
     // Initial deposit
     vm.startPrank(user1);
     uint256 sharesDeposited = sgho.deposit(depositAmount, user1);
-    vm.assume(redeemShares <= sharesDeposited);
     redeemShares = uint256(bound(redeemShares, 1, sharesDeposited));
 
     // Preview
@@ -316,6 +315,7 @@ contract TestSGhoERC4626 is TestSGhoBase {
   }
 
   function test_4626_maxTypeDeposit() external {
+    assertLt(sgho.supplyCap(), type(uint256).max, 'Supply cap should be less than max uint256');
     vm.startPrank(user1);
     // Try to deposit max uint256 - should revert due to supply cap
     vm.expectRevert(
@@ -331,6 +331,7 @@ contract TestSGhoERC4626 is TestSGhoBase {
   }
 
   function test_4626_maxTypeMint() external {
+    assertLt(sgho.supplyCap(), type(uint256).max, 'Supply cap should be less than max uint256');
     vm.startPrank(user1);
     // Try to mint max uint256 shares - should revert due to supply cap
     uint256 maxShares = sgho.convertToShares(SUPPLY_CAP);

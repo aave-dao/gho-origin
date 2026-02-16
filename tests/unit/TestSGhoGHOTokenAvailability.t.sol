@@ -95,6 +95,7 @@ contract TestSGhoGHOTokenAvailability is TestSGhoBase {
       user1Shares - sharesBurned,
       'User should have the remaining shares'
     );
+    assertGt(sgho.balanceOf(user1), 0, 'User should still have shares');
     assertEq(gho.balanceOf(address(sgho)), 0, 'Contract should have no GHO left');
     vm.stopPrank();
   }
@@ -135,7 +136,12 @@ contract TestSGhoGHOTokenAvailability is TestSGhoBase {
       'User should receive the actual GHO balance'
     );
     assertApproxEqAbs(gho.balanceOf(address(sgho)), 0, 2, 'Contract should have no GHO left');
-    assertEq(sgho.balanceOf(user1), user1Shares - maxRedeem, 'User should have no shares left');
+    assertEq(
+      sgho.balanceOf(user1),
+      user1Shares - maxRedeem,
+      'User shares should have decreased by the maximum possible'
+    );
+    assertGt(sgho.balanceOf(user1), 0, 'User should still have shares');
     vm.stopPrank();
   }
 

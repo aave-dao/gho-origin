@@ -109,7 +109,7 @@ interface IsGhoSteward {
   function sGHO() external view returns (IsGho);
 
   /**
-   * @notice Returns max available `targetRate` to install.
+   * @notice Returns the max `targetRate` that can be set.
    */
   function MAX_RATE() external view returns (uint16);
 

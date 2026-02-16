@@ -8,14 +8,14 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 ## Key features
 
 - Allows updating of `targetRate` and `supplyCap` of `sGHO` through this contract.
-- Implements the `targetRate` formula as a composition of three parameters:
+- Implements the `targetRate` formula as a composition of three parameters (with `AMPLIFICATION_DENOMINATOR` fixed at 100_00):
 
   `targetRate = AmplificationFactor / AMPLIFICATION_DENOMINATOR * FloatRate + FixedRate`
 
 - Supports updating with each rate parameter _individually_ or _multiple parameters simultaneously_.
 - Integrates **Role-Based Access Control** from OpenZeppelin, enabling secure assignment, modification, and revocation of roles.
 - Provides functions to view the current configuration and pre-calculate the `targetRate` for any given configuration.
-- Enforces a hard cap of `MAX_SAFE_RATE` installed in `sGho` for the computed `targetRate`, reverting the transaction if the changes do not meet the condition.
+- Enforces a hard cap of `MAX_SAFE_RATE` in `sGho` for the computed `targetRate`, reverting the transaction if the changes do not meet the condition.
 
 ## Access Control
 
@@ -123,4 +123,4 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 | `getRateConfig()`                      | Returns the current rate configuration             | Public                      |
 | `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration | Public                      |
 | `sGHO()`                               | Returns current `sGHO` address                     | Public                      |
-| `MAX_RATE()`                           | Returns max available `targetRate` to install      | Public                      |
+| `MAX_RATE()`                           | Returns max available `targetRate` that can be set | Public                      |

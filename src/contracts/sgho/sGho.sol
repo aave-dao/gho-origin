@@ -151,7 +151,7 @@ contract sGho is
     sGhoStorage storage $ = _getSGhoStorage();
     // Update the yield index before changing the rate to ensure proper accrual
     if (newRate > MAX_SAFE_RATE) {
-      revert RateMustBeLessThanMaxRate();
+      revert MaxRateExceeded();
     }
     _updateYieldIndex();
     $.targetRate = newRate;
@@ -350,7 +350,7 @@ contract sGho is
       uint176 newYieldIndex = _getCurrentYieldIndex();
       $.yieldIndex = newYieldIndex;
       $.lastUpdate = uint64(block.timestamp);
-      emit ExchangeRateUpdate(block.timestamp, newYieldIndex);
+      emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
     }
   }
 }

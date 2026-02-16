@@ -103,8 +103,7 @@ The contract includes a pausability mechanism that allows authorized accounts to
 - `withdraw()` - User withdrawals are blocked
 - `redeem()` - User redemptions are blocked
 - `depositWithPermit()` - Permit-based deposits are blocked
-- `transfer()` - Token transfers are blocked
-- `transferFrom()` - Token transfers are blocked
+- `transfer()` - `transfer()` / `transferFrom()` - Token transfers are blocked
 
 **Functions NOT Affected by Pause:**
 

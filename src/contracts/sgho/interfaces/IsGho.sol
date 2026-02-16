@@ -9,7 +9,7 @@ interface IsGho {
   /**
    * @notice Thrown if the target rate is set to a value greater than the max rate.
    */
-  error RateMustBeLessThanMaxRate();
+  error MaxRateExceeded();
 
   /**
    * @notice Thrown when a zero address is provided for a critical parameter during initialization.
@@ -27,7 +27,7 @@ interface IsGho {
    * @param timestamp The timestamp of the update.
    * @param currentRate The current yield index.
    */
-  event ExchangeRateUpdate(uint256 timestamp, uint256 currentRate);
+  event ExchangeRateUpdated(uint256 timestamp, uint256 currentRate);
 
   /**
    * @notice Emitted when the supply cap is updated.

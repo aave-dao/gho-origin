@@ -572,7 +572,7 @@ contract TestSGhoYield is TestSGhoBase {
   // EVENT TESTS
   // ========================================
 
-  function test_ExchangeRateUpdateEvent_basic() external {
+  function test_ExchangeRateUpdatedEvent_basic() external {
     // Set a target rate to ensure yield accrual
     vm.startPrank(yManager);
     sgho.setTargetRate(1000); // 10% APR
@@ -589,7 +589,7 @@ contract TestSGhoYield is TestSGhoBase {
     // Trigger yield update by depositing - should emit event
     vm.startPrank(user1);
     vm.expectEmit(true, true, true, true, address(sgho));
-    emit IsGho.ExchangeRateUpdate(block.timestamp, emulatedYieldIndex);
+    emit IsGho.ExchangeRateUpdated(block.timestamp, emulatedYieldIndex);
     sgho.deposit(100 ether, user1);
     vm.stopPrank();
 

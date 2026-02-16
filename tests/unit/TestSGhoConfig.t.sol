@@ -20,7 +20,7 @@ contract TestSGhoConfig is TestSGhoBase {
   function test_revert_setTargetRate_exceedsMaxRate() external {
     vm.startPrank(yManager);
     uint16 newRate = MAX_SAFE_RATE + 1;
-    vm.expectRevert(IsGho.RateMustBeLessThanMaxRate.selector);
+    vm.expectRevert(IsGho.MaxRateExceeded.selector);
     sgho.setTargetRate(newRate);
     vm.stopPrank();
   }
@@ -70,7 +70,7 @@ contract TestSGhoConfig is TestSGhoBase {
   function test_revert_setTargetRate_rateGreaterThanMaxRate() external {
     uint16 newRate = 5001; // 50.01% APR
     vm.startPrank(yManager);
-    vm.expectRevert(IsGho.RateMustBeLessThanMaxRate.selector);
+    vm.expectRevert(IsGho.MaxRateExceeded.selector);
     sgho.setTargetRate(newRate);
     vm.stopPrank();
   }

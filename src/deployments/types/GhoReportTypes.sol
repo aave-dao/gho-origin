@@ -16,6 +16,10 @@ library GhoReportTypes {
     address ghoFlashMinter;
   }
 
+  struct GhoAaveListingReport {
+    address ghoOracle;
+  }
+
   struct GhoStewardReport {
     address ghoAaveSteward;
     address ghoBucketSteward;
@@ -25,8 +29,8 @@ library GhoReportTypes {
 
   struct GhoReport {
     GhoTokenReport ghoTokenReport;
+    GhoAaveListingReport ghoAaveListingReport;
     GhoFlashMinterReport ghoFlashMinterReport;
-    address ghoOracle;
   }
 
   struct GhoContracts {

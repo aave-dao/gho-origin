@@ -47,7 +47,7 @@ contract TestGhoDeployment is BatchTestProcedures {
     assertNotEq(ghoReport.ghoTokenReport.ghoToken, address(0), 'ghoToken');
     assertNotEq(ghoReport.ghoTokenReport.upgradeableGhoToken, address(0), 'upgradeableGhoToken');
 
-    assertNotEq(ghoReport.ghoOracle, address(0), 'ghoOracle');
+    assertNotEq(ghoReport.ghoAaveListingReport.ghoOracle, address(0), 'ghoOracle');
 
     assertNotEq(ghoReport.ghoFlashMinterReport.ghoFlashMinter, address(0), 'ghoFlashMinter');
 

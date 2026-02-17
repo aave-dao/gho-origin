@@ -55,7 +55,7 @@ contract AaveV3GhoTestListing is AaveV3Payload {
     AAVE_ADDRESS = address(new TestnetERC20('AAVE', 'AAVE', 18, erc20Owner));
 
     GHO_ADDRESS = ghoReport.ghoTokenReport.ghoToken;
-    GHO_PRICE_FEED = ghoReport.ghoOracle;
+    GHO_PRICE_FEED = ghoReport.ghoAaveListingReport.ghoOracle;
 
     ATOKEN_IMPLEMENTATION = marketReport.aToken;
     VARIABLE_DEBT_TOKEN_IMPLEMENTATION = marketReport.variableDebtToken;

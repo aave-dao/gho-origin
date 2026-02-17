@@ -2,10 +2,10 @@
 pragma solidity ^0.8.10;
 
 import {MarketReport} from 'aave-v3-origin/deployments/interfaces/IMarketReportTypes.sol';
+import {GhoAaveListingBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoAaveListingBatch.sol';
 import {GhoFlashMinterBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoFlashMinterBatch.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
 import {GhoTokenBatch} from 'src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol';
-import {GhoOracle} from 'src/contracts/facilitators/aave/oracle/GhoOracle.sol';
 
 library GhoOrchestration {
   function deployGho(
@@ -15,7 +15,10 @@ library GhoOrchestration {
   ) internal returns (GhoReportTypes.GhoReport memory ghoReport) {
     GhoTokenBatch ghoTokenBatch = new GhoTokenBatch(deployer);
     GhoReportTypes.GhoTokenReport memory ghoTokenReport = ghoTokenBatch.getGhoTokenReport();
-    GhoOracle ghoOracle = new GhoOracle();
+
+    GhoAaveListingBatch ghoAaveListingBatch = new GhoAaveListingBatch();
+    GhoReportTypes.GhoAaveListingReport memory ghoAaveListingReport = ghoAaveListingBatch
+      .getGhoAaveListingReport();
 
     GhoFlashMinterBatch ghoFlashMinterBatch = new GhoFlashMinterBatch(
       flashMinterFee,
@@ -27,8 +30,8 @@ library GhoOrchestration {
 
     ghoReport = GhoReportTypes.GhoReport({
       ghoTokenReport: ghoTokenReport,
-      ghoFlashMinterReport: ghoFlashMinterReport,
-      ghoOracle: address(ghoOracle)
+      ghoAaveListingReport: ghoAaveListingReport,
+      ghoFlashMinterReport: ghoFlashMinterReport
     });
 
     return ghoReport;

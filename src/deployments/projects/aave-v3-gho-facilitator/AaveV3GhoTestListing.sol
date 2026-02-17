@@ -64,55 +64,13 @@ contract AaveV3GhoTestListing is AaveV3Payload {
     CONFIGURATOR = IPoolConfigurator(marketReport.poolConfiguratorProxy);
   }
 
-  function _preExecute() internal override {
-    IEngine.InterestRateInputData memory rateParams = IEngine.InterestRateInputData({
-      optimalUsageRatio: 1_00,
-      baseVariableBorrowRate: 20,
-      variableRateSlope1: 0,
-      variableRateSlope2: 0
-    });
-    ConfiguratorInputTypes.InitReserveInput[]
-      memory reserves = new ConfiguratorInputTypes.InitReserveInput[](1);
-    reserves[0] = ConfiguratorInputTypes.InitReserveInput({
-      aTokenImpl: ATOKEN_IMPLEMENTATION,
-      variableDebtTokenImpl: VARIABLE_DEBT_TOKEN_IMPLEMENTATION,
-      underlyingAsset: GHO_ADDRESS,
-      aTokenName: 'Aave Ethereum GHO',
-      aTokenSymbol: 'aEthGHO',
-      variableDebtTokenName: 'Aave Variable Debt Ethereum GHO',
-      variableDebtTokenSymbol: 'variableDebtEthGHO',
-      params: bytes(''),
-      interestRateData: abi.encode(rateParams)
-    });
-    CONFIGURATOR.initReserves(reserves);
-  }
-
-  function priceFeedsUpdates() public view override returns (IEngine.PriceFeedUpdate[] memory) {
-    IEngine.PriceFeedUpdate[] memory feeds = new IEngine.PriceFeedUpdate[](1);
-    feeds[0] = IEngine.PriceFeedUpdate({asset: GHO_ADDRESS, priceFeed: GHO_PRICE_FEED});
-    return feeds;
-  }
-
-  function borrowsUpdates() public view override returns (IEngine.BorrowUpdate[] memory) {
-    IEngine.BorrowUpdate[] memory borrows = new IEngine.BorrowUpdate[](1);
-    borrows[0] = IEngine.BorrowUpdate({
-      asset: GHO_ADDRESS,
-      enabledToBorrow: EngineFlags.ENABLED,
-      borrowableInIsolation: EngineFlags.DISABLED,
-      withSiloedBorrowing: EngineFlags.DISABLED,
-      flashloanable: EngineFlags.DISABLED,
-      reserveFactor: 10_00
-    });
-    return borrows;
-  }
-
   function newListingsCustom()
     public
     view
     override
     returns (IEngine.ListingWithCustomImpl[] memory)
   {
-    IEngine.ListingWithCustomImpl[] memory listingsCustom = new IEngine.ListingWithCustomImpl[](3);
+    IEngine.ListingWithCustomImpl[] memory listingsCustom = new IEngine.ListingWithCustomImpl[](4);
 
     IEngine.InterestRateInputData memory rateParams = IEngine.InterestRateInputData({
       optimalUsageRatio: 45_00,
@@ -184,6 +142,31 @@ contract AaveV3GhoTestListing is AaveV3Payload {
         ltv: 82_50,
         liqThreshold: 86_00,
         liqBonus: 5_00,
+        reserveFactor: 10_00,
+        supplyCap: 0,
+        borrowCap: 0,
+        debtCeiling: 0,
+        liqProtocolFee: 10_00
+      }),
+      IEngine.TokenImplementations({
+        aToken: ATOKEN_IMPLEMENTATION,
+        vToken: VARIABLE_DEBT_TOKEN_IMPLEMENTATION
+      })
+    );
+
+    listingsCustom[3] = IEngine.ListingWithCustomImpl(
+      IEngine.Listing({
+        asset: GHO_ADDRESS,
+        assetSymbol: 'GHO',
+        priceFeed: GHO_PRICE_FEED,
+        rateStrategyParams: rateParams,
+        enabledToBorrow: EngineFlags.ENABLED,
+        borrowableInIsolation: EngineFlags.DISABLED,
+        withSiloedBorrowing: EngineFlags.DISABLED,
+        flashloanable: EngineFlags.DISABLED,
+        ltv: 0,
+        liqThreshold: 0,
+        liqBonus: 0,
         reserveFactor: 10_00,
         supplyCap: 0,
         borrowCap: 0,

@@ -12,12 +12,12 @@ library GhoReportTypes {
     address upgradeableGhoToken;
   }
 
-  struct GhoFlashMinterReport {
-    address ghoFlashMinter;
-  }
-
   struct GhoAaveListingReport {
     address ghoOracle;
+  }
+
+  struct GhoFlashMinterReport {
+    address ghoFlashMinter;
   }
 
   struct GhoStewardReport {

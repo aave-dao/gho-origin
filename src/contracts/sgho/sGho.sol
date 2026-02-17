@@ -39,7 +39,7 @@ contract sGho is
   using Math for uint256;
   using SafeCast for uint256;
 
-  // RAY is used for high-precision mathematical operations to avoid rounding errors
+  /// @dev RAY is used for high-precision mathematical operations to avoid rounding errors
   uint176 private constant RAY = 1e27;
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
@@ -56,9 +56,6 @@ contract sGho is
   bytes32 private constant sGhoStorageLocation =
     0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400;
 
-  /**
-   * @dev Returns the sGhoParameters storage location
-   */
   function _getSGhoStorage() private pure returns (sGhoStorage storage $) {
     assembly {
       $.slot := sGhoStorageLocation

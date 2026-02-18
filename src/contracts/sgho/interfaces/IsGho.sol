@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 /**
- * @title IsGho Interface
- * @notice Interface for the sGHO contract, which is an ERC4626 vault for GHO tokens.
+ * @title IsGho
+ * @notice Interface for sGHO
  */
 interface IsGho {
   /**
@@ -17,20 +17,20 @@ interface IsGho {
   error ZeroAddressNotAllowed();
 
   /**
-   * @notice Emitted when the target rate is updated.
+   * @dev Emitted when the target rate is updated.
    * @param newRate The new target rate.
    */
   event TargetRateUpdated(uint256 newRate);
 
   /**
-   * @notice Emitted when the timestamp and yield index are updated.
+   * @dev Emitted when the timestamp and yield index are updated.
    * @param timestamp The timestamp of the update.
    * @param currentRate The current yield index.
    */
   event ExchangeRateUpdated(uint256 timestamp, uint256 currentRate);
 
   /**
-   * @notice Emitted when the supply cap is updated.
+   * @dev Emitted when the supply cap is updated.
    * @param newSupplyCap The new supply cap.
    */
   event SupplyCapUpdated(uint256 newSupplyCap);

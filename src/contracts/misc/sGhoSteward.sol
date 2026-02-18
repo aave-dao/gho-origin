@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
-
 import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 import {IsGhoSteward} from 'src/contracts/misc/interfaces/IsGhoSteward.sol';
 

@@ -7,17 +7,14 @@ import {IERC20Metadata} from 'openzeppelin-contracts/contracts/token/ERC20/exten
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
-
 import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
 import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';
 import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
 import {ERC20Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol';
 import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
-
 import {RescuableACL} from 'solidity-utils/contracts/utils/RescuableACL.sol';
 import {RescuableBase, IRescuableBase} from 'solidity-utils/contracts/utils/RescuableBase.sol';
-
 import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 
 /**
@@ -128,7 +125,6 @@ contract sGho is
         sig.s
       )
     {} catch {}
-
     return deposit(assets, receiver);
   }
 
@@ -259,7 +255,8 @@ contract sGho is
   }
 
   /**
-   * @dev Overrides ERC20._update
+   * @dev Override `ERC20._update`
+   * @dev Can only be called when the contract is not paused.
    * @param from Address to deduct tokens from
    * @param to Address to accrue tokens to
    * @param value Amount of tokens to move
@@ -270,8 +267,7 @@ contract sGho is
   }
 
   /**
-   * @notice Override _checkRescueGuardian to check for TOKEN_RESCUER_ROLE role
-   * @dev This function reverts if the caller doesn't have the TOKEN_RESCUER_ROLE role
+   * @dev Override to check the sender has `TOKEN_RESCUER_ROLE` role
    */
   function _checkRescueGuardian() internal view override {
     if (!hasRole(TOKEN_RESCUER_ROLE, _msgSender())) {

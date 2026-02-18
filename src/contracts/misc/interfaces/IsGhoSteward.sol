@@ -24,7 +24,7 @@ interface IsGhoSteward {
   }
 
   /**
-   * @notice Event is emitted whenever the `rateConfig` is updated.
+   * @dev Event is emitted whenever the `rateConfig` is updated.
    * @param caller Message sender, who initiated the update
    * @param targetRate Target rate set in `sGHO` after update
    * @param amplification Amplification factor used to calculate `targetRate`
@@ -40,7 +40,7 @@ interface IsGhoSteward {
   );
 
   /**
-   * @notice Event is emitted whenever the `supplyCap` is updated.
+   * @dev Event is emitted whenever the `supplyCap` is updated.
    * @param caller Message sender, who initiated the update
    * @param supplyCap Supply Cap set in `sGHO` after update
    */

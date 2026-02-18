@@ -3,6 +3,10 @@ pragma solidity ^0.8.0;
 
 import {IsGho} from '../../sgho/interfaces/IsGho.sol';
 
+/**
+ * @title IsGhoSteward Interface
+ * @notice Interface for the sGHO steward contract, which manages the `targetRate` and `supplyCap` of the sGHO contract.
+ */
 interface IsGhoSteward {
   /**
    * @notice Formula for the `targetRate` (taking into account integer math) is:

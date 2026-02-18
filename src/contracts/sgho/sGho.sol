@@ -22,7 +22,7 @@ import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 
 /**
  * @title sGHO Token
- * @author @kpk
+ * @author Aave
  * @notice sGHO is an ERC4626 vault that allows users to deposit GHO and earn yield.
  * @dev This contract implements the ERC4626 standard for tokenized vaults, where the underlying asset is GHO.
  * It also includes functionalities for yield generation based on a target rate, and administrative roles for managing the contract.
@@ -117,7 +117,6 @@ contract sGho is
     uint256 deadline,
     SignatureParams memory sig
   ) external returns (uint256) {
-    // Use permit to approve the vault to spend the user's GHO tokens
     try
       IERC20Permit(asset()).permit(
         _msgSender(),

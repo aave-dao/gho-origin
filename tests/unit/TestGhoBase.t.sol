@@ -167,11 +167,7 @@ contract TestGhoBase is Test, Constants, Events {
     USDX_4626_TOKEN = new MockERC4626('USD Coin 4626', '4626', address(USDX_TOKEN));
     WETH = new WETH9Mock('Wrapped Ether', 'WETH', FAUCET);
 
-    // Use a separate proxy admin to avoid TransparentUpgradeableProxy admin restriction
     address proxyAdmin = address(0xAD);
-
-    // Note: GhoAToken and GhoVariableDebtToken (old Aave integration) have been removed
-    // STK_TOKEN setup removed as it was only used with the old debt token
 
     GhoReserve ghoReserveImpl = new GhoReserve(address(GHO_TOKEN));
     GHO_RESERVE = GhoReserve(
@@ -219,35 +215,17 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    Gsm gsm = new Gsm(
-      address(GHO_TOKEN),
+    GHO_GSM = _deployGsmProxy(
       address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
-    );
-    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      ''
-    );
-    GHO_GSM = Gsm(address(gsmProxy));
-
-    GHO_GSM.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
-    Gsm4626 gsm4626Impl = new Gsm4626(
-      address(GHO_TOKEN),
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
-    );
-    AdminUpgradeabilityProxy gsm4626Proxy = new AdminUpgradeabilityProxy(
-      address(gsm4626Impl),
-      SHORT_EXECUTOR,
-      ''
-    );
-    GHO_GSM_4626 = Gsm4626(address(gsm4626Proxy));
-    GHO_GSM_4626.initialize(
-      address(this),
-      TREASURY,
+      address(GHO_GSM_FIXED_PRICE_STRATEGY),
       DEFAULT_GSM_USDX_EXPOSURE,
-      address(GHO_RESERVE)
+      address(this)
+    );
+
+    GHO_GSM_4626 = _deployGsm4626Proxy(
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      DEFAULT_GSM_USDX_EXPOSURE
     );
 
     GHO_RESERVE.addEntity(address(GHO_GSM));

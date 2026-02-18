@@ -6,8 +6,7 @@ import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolA
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 
 /**
- * @dev Minimal MockPool for testing purposes after removal of GhoAToken/GhoVariableDebtToken
- * Only implements the bare minimum methods needed for remaining tests
+ * @dev Minimal MockPool for testing purposes
  */
 contract MockPool {
   IPoolAddressesProvider public immutable ADDRESSES_PROVIDER;
@@ -44,7 +43,7 @@ contract MockPool {
     _configurations[asset] = configuration;
   }
 
-  function getReserveInterestRateStrategyAddress(address asset) external view returns (address) {
+  function getReserveInterestRateStrategyAddress(address asset) public view returns (address) {
     return _reserves[asset].interestRateStrategyAddress;
   }
 

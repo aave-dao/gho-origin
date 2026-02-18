@@ -205,10 +205,6 @@ contract TestnetProcedures is BatchTestProcedures {
       FLASH_MINTER_CAPACITY
     );
 
-    // Prevent underflow in the default interest rate strategy for GHO by
-    // seeding a large virtual underlying balance on the reserve.
-    _mockGhoInterestRate();
-
     vm.stopPrank();
   }
 
@@ -238,21 +234,5 @@ contract TestnetProcedures is BatchTestProcedures {
   function getProxyImplementationAddress(address proxy) internal view returns (address) {
     bytes32 implSlot = vm.load(proxy, ERC1967_IMPLEMENTATION_SLOT);
     return address(uint160(uint256(implSlot)));
-  }
-
-  /// @notice Seed a virtualUnderlyingBalance for GHO to avoid underflow in rate math
-  function _mockGhoInterestRate() internal {
-    // _reserves mapping is at slot 52 in Pool.sol → keccak256(key, 52)
-    bytes32 reservesSlot = bytes32(uint256(52));
-    bytes32 ghoReserveSlot = keccak256(abi.encode(address(ghoContracts.ghoToken), reservesSlot));
-
-    // ReserveData slot 8 packs accruedToTreasury (low 128) and virtualUnderlyingBalance (high 128)
-    bytes32 virtualBalanceSlot = bytes32(uint256(ghoReserveSlot) + 8);
-
-    // Write virtualUnderlyingBalance = 1e27 (upper 128 bits), leave accruedToTreasury = 0
-    uint256 largeVirtualBalance = uint256(1e27);
-    uint256 packedValue = (largeVirtualBalance << 128);
-
-    vm.store(address(marketContracts.poolProxy), virtualBalanceSlot, bytes32(packedValue));
   }
 }

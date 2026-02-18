@@ -16,7 +16,6 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testInitialize() public {
-    // Deploy implementation and initialize via proxy
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
 
@@ -27,7 +26,6 @@ contract TestGhoReserve is TestGhoBase {
     );
     GhoReserve reserve = GhoReserve(address(reserveProxy));
 
-    // After initialization, all roles should be granted to the initializer
     assertTrue(reserve.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
     assertTrue(reserve.hasRole(ENTITY_MANAGER_ROLE, address(this)));
     assertTrue(reserve.hasRole(LIMIT_MANAGER_ROLE, address(this)));
@@ -35,7 +33,6 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertInitializeInvalidZeroOwner() public {
-    // Deploy implementation and try to initialize via proxy with zero address
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
 

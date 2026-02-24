@@ -18,7 +18,6 @@ import {EIP712Types} from '../helpers/EIP712Types.sol';
 
 // generic libs
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
-import {Errors} from 'aave-v3-origin/contracts/protocol/libraries/helpers/Errors.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
@@ -33,19 +32,15 @@ import {MockAddressesProvider} from '../mocks/MockAddressesProvider.sol';
 import {MockERC4626} from '../mocks/MockERC4626.sol';
 import {MockUpgradeable} from '../mocks/MockUpgradeable.sol';
 import {PriceOracle} from 'aave-v3-origin/contracts/mocks/oracle/PriceOracle.sol';
-import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {TestnetERC20} from 'aave-v3-origin/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 import {MockStakedToken} from '../mocks/MockStakedToken.sol';
 
 // interfaces
-import {IAaveIncentivesController} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
-import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
 import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
 import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
-import {IERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
@@ -62,9 +57,8 @@ import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/mis
 
 // GHO contracts
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
-import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
-import {GhoOracle} from 'src/contracts/facilitators/aave/oracle/GhoOracle.sol';
+import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
 
@@ -92,7 +86,6 @@ import {IGelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreez
 // CCIP contracts
 import {MockUpgradeableLockReleaseTokenPool} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
-import {IGhoCcipSteward} from 'src/contracts/misc/interfaces/IGhoCcipSteward.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';
 import {GhoBucketSteward} from 'src/contracts/misc/GhoBucketSteward.sol';
 

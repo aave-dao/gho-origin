@@ -1,72 +1,62 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AugustusRegistryMock} from 'aave-v3-origin-tests/mocks/AugustusRegistryMock.sol';
-import {WETH9} from 'aave-v3-origin/contracts/dependencies/weth/WETH9.sol';
-import {MarketReport, Roles, MarketConfig, DeployFlags} from 'aave-v3-origin/deployments/interfaces/IMarketReportTypes.sol';
-import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
-import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
-import {BatchTestProcedures} from '../helpers/BatchTestProcedures.sol';
+import {Test} from "forge-std/Test.sol";
 
-contract TestGhoDeployment is BatchTestProcedures {
-  MarketReport internal marketReport;
-  GhoReportTypes.GhoReport internal ghoReport;
+import {GhoFlashMinter} from "src/contracts/facilitators/flashMinter/GhoFlashMinter.sol";
+import {GhoOrchestration} from "src/deployments/projects/aave-v3-gho-facilitator/GhoOrchestration.sol";
+import {GhoReportTypes} from "src/deployments/types/GhoReportTypes.sol";
 
-  Roles internal roles;
-  MarketConfig internal config;
-  DeployFlags internal flags;
+contract TestGhoDeployment is Test {
+    address internal ghoAdmin;
+    address internal treasury;
+    address internal poolAddressesProvider;
+    GhoReportTypes.GhoReport internal ghoReport;
 
-  uint256 public constant FLASH_MINTER_FEE = 100;
+    uint256 public constant FLASH_MINTER_FEE = 100;
 
-  function setUp() public {
-    poolAdmin = makeAddr('poolAdmin');
+    function setUp() public {
+        ghoAdmin = makeAddr("ghoAdmin");
 
-    MarketReport memory deployedContracts;
-    (roles, config, flags, deployedContracts) = _getMarketInput(poolAdmin);
+        treasury = makeAddr("treasury");
+        poolAddressesProvider = makeAddr("poolAddressesProvider");
+        address aclManager = makeAddr("aclManager");
 
-    config.networkBaseTokenPriceInUsdProxyAggregator = makeAddr('ethUsdOracle');
-    config.marketReferenceCurrencyPriceInUsdProxyAggregator = makeAddr('ethUsdOracle');
-    config.paraswapAugustusRegistry = address(new AugustusRegistryMock());
-    config.wrappedNativeToken = address(new WETH9());
+        vm.mockCall(poolAddressesProvider, abi.encodeWithSignature("getACLManager()"), abi.encode(aclManager));
 
-    (marketReport, ghoReport) = deployAaveV3AndGhoTestnet(
-      roles.marketOwner,
-      roles,
-      config,
-      flags,
-      deployedContracts,
-      FLASH_MINTER_FEE
-    );
-  }
+        ghoReport = _deployGhoTestnet(ghoAdmin, FLASH_MINTER_FEE, treasury, poolAddressesProvider);
+    }
 
-  function test_AaveV3Deployment() public view {
-    checkFullReport(config, flags, marketReport);
-  }
+    function test_GhoDeployment() public view {
+        assertNotEq(ghoReport.ghoTokenReport.ghoToken, address(0), "ghoToken");
+        assertNotEq(ghoReport.ghoTokenReport.upgradeableGhoToken, address(0), "upgradeableGhoToken");
+        assertNotEq(ghoReport.ghoTokenReport.ghoOracle, address(0), "ghoOracle");
 
-  function test_GhoDeployment() public view {
-    assertNotEq(ghoReport.ghoTokenReport.ghoToken, address(0), 'ghoToken');
-    assertNotEq(ghoReport.ghoTokenReport.upgradeableGhoToken, address(0), 'upgradeableGhoToken');
+        assertNotEq(ghoReport.ghoFlashMinterReport.ghoFlashMinter, address(0), "ghoFlashMinter");
 
-    assertNotEq(ghoReport.ghoAaveListingReport.ghoOracle, address(0), 'ghoOracle');
+        GhoFlashMinter ghoFlashMinter = GhoFlashMinter(ghoReport.ghoFlashMinterReport.ghoFlashMinter);
+        assertEq(
+            address(ghoFlashMinter.GHO_TOKEN()),
+            ghoReport.ghoTokenReport.ghoToken,
+            "GHO_TOKEN in FlashMinter does not match ghoToken address"
+        );
+        assertEq(ghoFlashMinter.getFee(), FLASH_MINTER_FEE, "Unexpected Fee in FlashMinter");
+        assertEq(ghoFlashMinter.getGhoTreasury(), treasury, "Treasury in FlashMinter does not match treasury address");
+        assertEq(
+            address(ghoFlashMinter.ADDRESSES_PROVIDER()),
+            poolAddressesProvider,
+            "ADDRESSES_PROVIDER in FlashMinter does not match poolAddressesProvider address"
+        );
+    }
 
-    assertNotEq(ghoReport.ghoFlashMinterReport.ghoFlashMinter, address(0), 'ghoFlashMinter');
-
-    GhoFlashMinter ghoFlashMinter = GhoFlashMinter(ghoReport.ghoFlashMinterReport.ghoFlashMinter);
-    assertEq(
-      address(ghoFlashMinter.GHO_TOKEN()),
-      ghoReport.ghoTokenReport.ghoToken,
-      'GHO_TOKEN in FlashMinter does not match ghoToken address'
-    );
-    assertEq(
-      address(ghoFlashMinter.getGhoTreasury()),
-      marketReport.treasury,
-      'Treasury in FlashMinter does not match marketReport.treasury'
-    );
-    assertEq(ghoFlashMinter.getFee(), FLASH_MINTER_FEE, 'Unexpected Fee in FlashMinter');
-    assertEq(
-      address(ghoFlashMinter.ADDRESSES_PROVIDER()),
-      marketReport.poolAddressesProvider,
-      'PoolAddressesProvider in FlashMinter does not match marketReport.poolAddressesProvider'
-    );
-  }
+    function _deployGhoTestnet(
+        address deployer,
+        uint256 flashMinterFee,
+        address treasury_,
+        address poolAddressesProvider_
+    ) internal returns (GhoReportTypes.GhoReport memory ghoReport_) {
+        vm.startPrank(deployer);
+        ghoReport_ = GhoOrchestration.deployGho(deployer, flashMinterFee, treasury_, poolAddressesProvider_);
+        vm.stopPrank();
+    }
 }

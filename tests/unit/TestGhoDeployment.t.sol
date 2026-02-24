@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import {Test} from 'forge-std/Test.sol';
-
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
 import {GhoOrchestration} from 'src/deployments/projects/aave-v3-gho-facilitator/GhoOrchestration.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
@@ -17,7 +16,6 @@ contract TestGhoDeployment is Test {
 
   function setUp() public {
     ghoAdmin = makeAddr('ghoAdmin');
-
     treasury = makeAddr('treasury');
     poolAddressesProvider = makeAddr('poolAddressesProvider');
     address aclManager = makeAddr('aclManager');
@@ -35,7 +33,6 @@ contract TestGhoDeployment is Test {
     assertNotEq(ghoReport.ghoTokenReport.ghoToken, address(0), 'ghoToken');
     assertNotEq(ghoReport.ghoTokenReport.upgradeableGhoToken, address(0), 'upgradeableGhoToken');
     assertNotEq(ghoReport.ghoTokenReport.ghoOracle, address(0), 'ghoOracle');
-
     assertNotEq(ghoReport.ghoFlashMinterReport.ghoFlashMinter, address(0), 'ghoFlashMinter');
 
     GhoFlashMinter ghoFlashMinter = GhoFlashMinter(ghoReport.ghoFlashMinterReport.ghoFlashMinter);

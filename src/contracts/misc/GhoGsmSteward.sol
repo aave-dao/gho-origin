@@ -16,7 +16,7 @@ import {RiskCouncilControlled} from 'src/contracts/misc/RiskCouncilControlled.so
  */
 contract GhoGsmSteward is RiskCouncilControlled, IGhoGsmSteward {
   /// @inheritdoc IGhoGsmSteward
-  uint256 public constant GSM_FEE_RATE_CHANGE_MAX = 0.005e4; // 0.50%
+  uint256 public constant GSM_FEE_RATE_CHANGE_MAX = 0.0050e4; // 0.50%
 
   /// @inheritdoc IGhoGsmSteward
   uint256 public constant MINIMUM_DELAY = 1 days;

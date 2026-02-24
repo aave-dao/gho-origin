@@ -160,18 +160,7 @@ contract TestGhoBase is Test, Constants, Events {
     USDX_4626_TOKEN = new MockERC4626('USD Coin 4626', '4626', address(USDX_TOKEN));
     WETH = new WETH9Mock('Wrapped Ether', 'WETH', FAUCET);
 
-    address proxyAdmin = address(0xAD);
-
-    GhoReserve ghoReserveImpl = new GhoReserve(address(GHO_TOKEN));
-    GHO_RESERVE = GhoReserve(
-      address(
-        new TransparentUpgradeableProxy(
-          address(ghoReserveImpl),
-          proxyAdmin,
-          abi.encodeWithSignature('initialize(address)', address(this))
-        )
-      )
-    );
+    GHO_RESERVE = _deployReserve();
 
     GHO_DIRECT_FACILITATOR = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
     // Give GhoDirectFacilitator twice the default capacity to fully fund two GSMs
@@ -189,11 +178,7 @@ contract TestGhoBase is Test, Constants, Events {
     );
     FLASH_BORROWER = new MockFlashBorrower(IERC3156FlashLender(GHO_FLASH_MINTER));
 
-    GHO_TOKEN.addFacilitator(
-      address(GHO_FLASH_MINTER),
-      'FlashMinter Facilitator',
-      DEFAULT_CAPACITY
-    );
+    GHO_TOKEN.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
     GHO_TOKEN.addFacilitator(address(FLASH_BORROWER), 'Gho Flash Borrower', DEFAULT_CAPACITY);
 
     GHO_GSM_FIXED_PRICE_STRATEGY = new FixedPriceStrategy(
@@ -358,6 +343,25 @@ contract TestGhoBase is Test, Constants, Events {
       )
     );
     return Gsm4626(address(gsmProxy));
+  }
+
+  function _deployReserve() public returns (GhoReserve) {
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+
+    bytes memory ghoReserveInitParams = abi.encodeWithSignature(
+      'initialize(address)',
+      address(this)
+    );
+
+    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
+      address(reserveImpl),
+      proxyAdmin,
+      ghoReserveInitParams
+    );
+
+    return GhoReserve(address(reserveProxy));
   }
 
   /// Helper function to sell asset in the GSM

@@ -2,9 +2,6 @@
 pragma solidity ^0.8.0;
 
 import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
-import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
-import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import './TestGhoBase.t.sol';
 

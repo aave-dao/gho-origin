@@ -38,7 +38,6 @@ contract MockConfigurator {
   ) external {
     DataTypes.ReserveDataLegacy memory reserve = _pool.getReserveData(asset);
     address oldRateStrategyAddress = reserve.interestRateStrategyAddress;
-    // Update the strategy in the mock pool
     MockPool(address(_pool)).setReserveInterestRateStrategyAddress(asset, newRateStrategyAddress);
     emit ReserveInterestRateStrategyChanged(asset, oldRateStrategyAddress, newRateStrategyAddress);
   }

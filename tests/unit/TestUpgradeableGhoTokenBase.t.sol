@@ -35,7 +35,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
     ghoToken.grantRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, address(this));
 
     // Add Aave as Facilitator
-    ghoToken.addFacilitator(address(GHO_FLASH_MINTER), 'FlashMinter Facilitator', DEFAULT_CAPACITY);
+    ghoToken.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
     // Add Faucet ad Facilitator
     ghoToken.addFacilitator(FAUCET, 'Faucet Facilitator', type(uint128).max);
   }
@@ -72,7 +72,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
 
   function testGetFacilitatorData() public view {
     IGhoToken.Facilitator memory data = ghoToken.getFacilitator(address(GHO_FLASH_MINTER));
-    assertEq(data.label, 'FlashMinter Facilitator', 'Unexpected facilitator label');
+    assertEq(data.label, 'Flash Minter', 'Unexpected facilitator label');
     assertEq(data.bucketCapacity, DEFAULT_CAPACITY, 'Unexpected bucket capacity');
     assertEq(data.bucketLevel, 0, 'Unexpected bucket level');
   }
@@ -125,7 +125,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
 
   function testRevertAddExistingFacilitator() public {
     vm.expectRevert('FACILITATOR_ALREADY_EXISTS');
-    ghoToken.addFacilitator(address(GHO_FLASH_MINTER), 'FlashMinter Facilitator', DEFAULT_CAPACITY);
+    ghoToken.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
   }
 
   function testRevertAddFacilitatorNoLabel() public {

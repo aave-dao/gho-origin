@@ -11,7 +11,6 @@ import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataT
 contract MockPool {
   IPoolAddressesProvider public immutable ADDRESSES_PROVIDER;
 
-  // Simple reserve data storage
   mapping(address => DataTypes.ReserveDataLegacy) internal _reserves;
   mapping(address => DataTypes.ReserveConfigurationMap) internal _configurations;
 

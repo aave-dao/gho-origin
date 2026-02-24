@@ -396,23 +396,4 @@ contract TestGhoReserve is TestGhoBase {
 
     assertEq(GHO_RESERVE.totalEntities(), 3);
   }
-
-  function _deployReserve() public returns (GhoReserve) {
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
-
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-
-    bytes memory ghoReserveInitParams = abi.encodeWithSignature(
-      'initialize(address)',
-      address(this)
-    );
-
-    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
-      address(reserveImpl),
-      proxyAdmin,
-      ghoReserveInitParams
-    );
-
-    return GhoReserve(address(reserveProxy));
-  }
 }

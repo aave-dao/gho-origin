@@ -25,7 +25,7 @@ contract TestGhoToken is TestGhoBase {
 
   function testGetFacilitatorData() public view {
     IGhoToken.Facilitator memory data = GHO_TOKEN.getFacilitator(address(GHO_FLASH_MINTER));
-    assertEq(data.label, 'FlashMinter Facilitator', 'Unexpected facilitator label');
+    assertEq(data.label, 'Flash Minter', 'Unexpected facilitator label');
     assertEq(data.bucketCapacity, DEFAULT_CAPACITY, 'Unexpected bucket capacity');
     assertEq(data.bucketLevel, 0, 'Unexpected bucket level');
   }
@@ -91,11 +91,7 @@ contract TestGhoToken is TestGhoBase {
 
   function testRevertAddExistingFacilitator() public {
     vm.expectRevert('FACILITATOR_ALREADY_EXISTS');
-    GHO_TOKEN.addFacilitator(
-      address(GHO_FLASH_MINTER),
-      'FlashMinter Facilitator',
-      DEFAULT_CAPACITY
-    );
+    GHO_TOKEN.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
   }
 
   function testRevertAddFacilitatorNoLabel() public {

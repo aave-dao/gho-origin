@@ -21,7 +21,7 @@ contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
   IDefaultInterestRateStrategyV2.InterestRateData public defaultRateParams =
     IDefaultInterestRateStrategyV2.InterestRateData({
       optimalUsageRatio: 1_00,
-      baseVariableBorrowRate: 0.2e4,
+      baseVariableBorrowRate: 0.20e4,
       variableRateSlope1: 0,
       variableRateSlope2: 0
     });
@@ -333,7 +333,7 @@ contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
 
   function testUpdateGhoBorrowRateUpwardsFromHigh() public {
     // set a very high borrow rate of 80%
-    uint32 highBaseBorrowRate = 0.8e4;
+    uint32 highBaseBorrowRate = 0.80e4;
     _setGhoBorrowRateViaConfigurator(highBaseBorrowRate);
     highBaseBorrowRate += 0.04e4;
     vm.prank(RISK_COUNCIL);
@@ -362,7 +362,7 @@ contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
 
   function testUpdateGhoBorrowRateDownwardsFromHigh() public {
     // set a very high borrow rate of 80%
-    uint32 highBaseBorrowRate = 0.8e4;
+    uint32 highBaseBorrowRate = 0.80e4;
     _setGhoBorrowRateViaConfigurator(highBaseBorrowRate);
     highBaseBorrowRate -= 0.04e4;
     vm.prank(RISK_COUNCIL);

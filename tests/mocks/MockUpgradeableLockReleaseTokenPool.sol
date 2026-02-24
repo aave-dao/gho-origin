@@ -101,9 +101,7 @@ contract MockUpgradeableLockReleaseTokenPool is Initializable {
     RateLimiter.Config memory outboundConfig,
     RateLimiter.Config memory inboundConfig
   ) external {
-    if (msg.sender != s_rateLimitAdmin && msg.sender != owner()) {
-      revert Unauthorized(msg.sender);
-    }
+    if (msg.sender != s_rateLimitAdmin && msg.sender != owner()) revert Unauthorized(msg.sender);
 
     _setRateLimitConfig(remoteChainSelector, outboundConfig, inboundConfig);
   }

@@ -144,7 +144,7 @@ contract TestGhoBase is Test, Constants, Events {
     ACL_MANAGER = new MockAclManager();
     PROVIDER = new MockAddressesProvider(address(ACL_MANAGER));
     MOCK_POOL_DATA_PROVIDER = new MockPoolDataProvider(address(PROVIDER));
-    // Note: Using minimal MockPool after removal of old Aave integration (GhoAToken/GhoVariableDebtToken)
+
     POOL = new MockPool(IPoolAddressesProvider(address(PROVIDER)));
     CONFIGURATOR = new MockConfigurator(IPool(address(POOL)));
     PRICE_ORACLE = new PriceOracle();

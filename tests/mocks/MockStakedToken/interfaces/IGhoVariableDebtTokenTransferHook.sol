@@ -11,8 +11,7 @@ interface IGhoVariableDebtTokenTransferHook {
    * @param senderDiscountTokenBalance sender discount token balance
    * @param recipientDiscountTokenBalance recipient discount token balance
    * @param amount amount of discount token being transferred
-   *
-   */
+   **/
   function updateDiscountDistribution(
     address sender,
     address recipient,

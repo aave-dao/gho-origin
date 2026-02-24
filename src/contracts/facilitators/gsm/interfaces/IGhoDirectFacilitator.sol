@@ -11,7 +11,7 @@ import {IAccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/
 interface IGhoDirectFacilitator is IAccessControl {
   /**
    * @notice Mint an amount of GHO to an address
-   *  @dev Only callable by addresses with `MINTER_ROLE` role..
+   * @dev Only callable by addresses with `MINTER_ROLE` role..
    * @param account The address receiving GHO
    * @param amount The amount of GHO to be minted
    */

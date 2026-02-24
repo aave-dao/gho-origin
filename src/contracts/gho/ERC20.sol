@@ -11,8 +11,8 @@ import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contract
  */
 abstract contract ERC20 is IERC20 {
   /*///////////////////////////////////////////////////////////////
-                               METADATA STORAGE
-      //////////////////////////////////////////////////////////////*/
+                             METADATA STORAGE
+    //////////////////////////////////////////////////////////////*/
 
   string public name;
 
@@ -21,8 +21,8 @@ abstract contract ERC20 is IERC20 {
   uint8 public immutable decimals;
 
   /*///////////////////////////////////////////////////////////////
-                                ERC20 STORAGE
-      //////////////////////////////////////////////////////////////*/
+                              ERC20 STORAGE
+    //////////////////////////////////////////////////////////////*/
 
   uint256 public totalSupply;
 
@@ -31,8 +31,8 @@ abstract contract ERC20 is IERC20 {
   mapping(address => mapping(address => uint256)) public allowance;
 
   /*///////////////////////////////////////////////////////////////
-                               EIP-2612 STORAGE
-      //////////////////////////////////////////////////////////////*/
+                             EIP-2612 STORAGE
+    //////////////////////////////////////////////////////////////*/
 
   bytes32 public constant PERMIT_TYPEHASH =
     keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
@@ -44,8 +44,8 @@ abstract contract ERC20 is IERC20 {
   mapping(address => uint256) public nonces;
 
   /*///////////////////////////////////////////////////////////////
-                                 CONSTRUCTOR
-      //////////////////////////////////////////////////////////////*/
+                               CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
   constructor(string memory _name, string memory _symbol, uint8 _decimals) {
     name = _name;
@@ -57,8 +57,8 @@ abstract contract ERC20 is IERC20 {
   }
 
   /*///////////////////////////////////////////////////////////////
-                                ERC20 LOGIC
-      //////////////////////////////////////////////////////////////*/
+                              ERC20 LOGIC
+    //////////////////////////////////////////////////////////////*/
 
   function approve(address spender, uint256 amount) public virtual returns (bool) {
     allowance[msg.sender][spender] = amount;
@@ -101,8 +101,8 @@ abstract contract ERC20 is IERC20 {
   }
 
   /*///////////////////////////////////////////////////////////////
-                                EIP-2612 LOGIC
-      //////////////////////////////////////////////////////////////*/
+                              EIP-2612 LOGIC
+    //////////////////////////////////////////////////////////////*/
 
   function permit(
     address owner,
@@ -156,8 +156,8 @@ abstract contract ERC20 is IERC20 {
   }
 
   /*///////////////////////////////////////////////////////////////
-                         INTERNAL MINT/BURN LOGIC
-      //////////////////////////////////////////////////////////////*/
+                       INTERNAL MINT/BURN LOGIC
+    //////////////////////////////////////////////////////////////*/
 
   function _mint(address to, uint256 amount) internal virtual {
     totalSupply += amount;

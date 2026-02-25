@@ -18,9 +18,8 @@ import {EIP712Types} from '../helpers/EIP712Types.sol';
 
 // generic libs
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
-import {Errors} from 'aave-v3-origin/contracts/protocol/libraries/helpers/Errors.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
-import {SafeCast} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/SafeCast.sol';
+import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
 // mocks
@@ -39,14 +38,10 @@ import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 import {MockStakedToken} from '../mocks/MockStakedToken.sol';
 
 // interfaces
-import {IAaveIncentivesController} from 'aave-v3-origin/contracts/interfaces/IAaveIncentivesController.sol';
-import {IAToken} from 'aave-v3-origin/contracts/interfaces/IAToken.sol';
 import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
 import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
-import {IERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
-import {IGhoVariableDebtTokenTransferHook} from '../mocks/MockStakedToken/interfaces/IGhoVariableDebtTokenTransferHook.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IMockStakedToken} from '../mocks/MockStakedToken/interfaces/IMockStakedToken.sol';
@@ -61,15 +56,11 @@ import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppel
 import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 
 // GHO contracts
-import {GhoAToken} from 'src/contracts/facilitators/aave/tokens/GhoAToken.sol';
-import {GhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
-import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
-import {GhoOracle} from 'src/contracts/facilitators/aave/oracle/GhoOracle.sol';
+import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
-import {GhoVariableDebtToken} from 'src/contracts/facilitators/aave/tokens/GhoVariableDebtToken.sol';
 
 // GSM contracts
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
@@ -86,7 +77,7 @@ import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import {GhoGsmSteward} from 'src/contracts/misc/GhoGsmSteward.sol';
 import {FixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
-import {OwnableFacilitator} from 'src/contracts/facilitators/gsm/OwnableFacilitator.sol';
+import {GhoDirectFacilitator} from 'src/contracts/facilitators/gsm/GhoDirectFacilitator.sol';
 import {OracleSwapFreezerBase} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
 import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
 import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
@@ -95,7 +86,6 @@ import {IGelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreez
 // CCIP contracts
 import {MockUpgradeableLockReleaseTokenPool} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
-import {IGhoCcipSteward} from 'src/contracts/misc/interfaces/IGhoCcipSteward.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';
 import {GhoBucketSteward} from 'src/contracts/misc/GhoBucketSteward.sol';
 
@@ -103,20 +93,6 @@ contract TestGhoBase is Test, Constants, Events {
   using WadRayMath for uint256;
   using SafeCast for uint256;
   using PercentageMath for uint256;
-
-  // helper for state tracking
-  struct BorrowState {
-    uint256 supplyBeforeAction;
-    uint256 debtSupplyBeforeAction;
-    uint256 debtScaledSupplyBeforeAction;
-    uint256 balanceBeforeAction;
-    uint256 debtScaledBalanceBeforeAction;
-    uint256 debtBalanceBeforeAction;
-    uint256 userIndexBeforeAction;
-    uint256 userInterestsBeforeAction;
-    uint256 assetIndexBefore;
-    uint256 discountPercent;
-  }
 
   bytes32 public constant PERMIT_TYPEHASH =
     keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
@@ -132,10 +108,7 @@ contract TestGhoBase is Test, Constants, Events {
   MockConfigurator CONFIGURATOR;
   PriceOracle PRICE_ORACLE;
   WETH9Mock WETH;
-  GhoVariableDebtToken GHO_DEBT_TOKEN;
-  GhoAToken GHO_ATOKEN;
   GhoFlashMinter GHO_FLASH_MINTER;
-  GhoDiscountRateStrategy GHO_DISCOUNT_STRATEGY;
   MockFlashBorrower FLASH_BORROWER;
   Gsm GHO_GSM;
   Gsm4626 GHO_GSM_4626;
@@ -156,7 +129,7 @@ contract TestGhoBase is Test, Constants, Events {
   MockUpgradeableLockReleaseTokenPool GHO_TOKEN_POOL;
 
   GhoReserve GHO_RESERVE;
-  OwnableFacilitator OWNABLE_FACILITATOR;
+  GhoDirectFacilitator GHO_DIRECT_FACILITATOR;
 
   constructor() {
     setupGho();
@@ -168,12 +141,12 @@ contract TestGhoBase is Test, Constants, Events {
   }
 
   function setupGho() public {
-    bytes memory empty;
     ACL_MANAGER = new MockAclManager();
     PROVIDER = new MockAddressesProvider(address(ACL_MANAGER));
     MOCK_POOL_DATA_PROVIDER = new MockPoolDataProvider(address(PROVIDER));
+
     POOL = new MockPool(IPoolAddressesProvider(address(PROVIDER)));
-    CONFIGURATOR = new MockConfigurator(IPool(POOL));
+    CONFIGURATOR = new MockConfigurator(IPool(address(POOL)));
     PRICE_ORACLE = new PriceOracle();
     PROVIDER.setPool(address(POOL));
     PROVIDER.setConfigurator(address(CONFIGURATOR));
@@ -185,51 +158,15 @@ contract TestGhoBase is Test, Constants, Events {
     AAVE_TOKEN = new TestnetERC20('AAVE', 'AAVE', 18, FAUCET);
     USDX_TOKEN = new TestnetERC20('USD Coin', 'USDX', 6, FAUCET);
     USDX_4626_TOKEN = new MockERC4626('USD Coin 4626', '4626', address(USDX_TOKEN));
-    IPool iPool = IPool(address(POOL));
     WETH = new WETH9Mock('Wrapped Ether', 'WETH', FAUCET);
-    GHO_DEBT_TOKEN = new GhoVariableDebtToken(iPool);
-    MockStakedToken stkAave = new MockStakedToken(
-      IERC20(address(AAVE_TOKEN)),
-      IERC20(address(AAVE_TOKEN)),
-      IGhoVariableDebtTokenTransferHook(address(GHO_DEBT_TOKEN))
-    );
-    STK_TOKEN = IMockStakedToken(address(stkAave));
-    GHO_ATOKEN = new GhoAToken(iPool);
-    GHO_DEBT_TOKEN.initialize(
-      iPool,
-      address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
-      18,
-      'Aave Variable Debt GHO',
-      'variableDebtGHO',
-      empty
-    );
-    GHO_ATOKEN.initialize(
-      iPool,
-      TREASURY,
-      address(GHO_TOKEN),
-      IAaveIncentivesController(address(0)),
-      18,
-      'Aave GHO',
-      'aGHO',
-      empty
-    );
-    GHO_ATOKEN.updateGhoTreasury(TREASURY);
-    GHO_DEBT_TOKEN.updateDiscountToken(address(STK_TOKEN));
-    GHO_DISCOUNT_STRATEGY = new GhoDiscountRateStrategy();
-    GHO_DEBT_TOKEN.updateDiscountRateStrategy(address(GHO_DISCOUNT_STRATEGY));
-    GHO_DEBT_TOKEN.setAToken(address(GHO_ATOKEN));
-    GHO_ATOKEN.setVariableDebtToken(address(GHO_DEBT_TOKEN));
-    GHO_TOKEN.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
-    POOL.setGhoTokens(GHO_DEBT_TOKEN, GHO_ATOKEN);
 
     GHO_RESERVE = _deployReserve();
 
-    OWNABLE_FACILITATOR = new OwnableFacilitator(address(this), address(GHO_TOKEN));
-    // Give OwnableFacilitator twice the default capacity to fully fund two GSMs
+    GHO_DIRECT_FACILITATOR = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
+    // Give GhoDirectFacilitator twice the default capacity to fully fund two GSMs
     GHO_TOKEN.addFacilitator(
-      address(OWNABLE_FACILITATOR),
-      'OwnableFacilitator',
+      address(GHO_DIRECT_FACILITATOR),
+      'GhoDirectFacilitator',
       DEFAULT_CAPACITY * 2
     );
 
@@ -241,11 +178,7 @@ contract TestGhoBase is Test, Constants, Events {
     );
     FLASH_BORROWER = new MockFlashBorrower(IERC3156FlashLender(GHO_FLASH_MINTER));
 
-    GHO_TOKEN.addFacilitator(
-      address(GHO_FLASH_MINTER),
-      'FlashMinter Facilitator',
-      DEFAULT_CAPACITY
-    );
+    GHO_TOKEN.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
     GHO_TOKEN.addFacilitator(address(FLASH_BORROWER), 'Gho Flash Borrower', DEFAULT_CAPACITY);
 
     GHO_GSM_FIXED_PRICE_STRATEGY = new FixedPriceStrategy(
@@ -260,23 +193,17 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    GHO_GSM = _deployGsm(
-      address(GHO_TOKEN),
+    GHO_GSM = _deployGsmProxy(
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      address(this),
-      TREASURY,
       DEFAULT_GSM_USDX_EXPOSURE,
-      address(GHO_RESERVE)
+      address(this)
     );
-    GHO_GSM_4626 = _deployGsm4626(
-      address(GHO_TOKEN),
+
+    GHO_GSM_4626 = _deployGsm4626Proxy(
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
-      address(this),
-      TREASURY,
-      DEFAULT_GSM_USDX_EXPOSURE,
-      address(GHO_RESERVE)
+      DEFAULT_GSM_USDX_EXPOSURE
     );
 
     GHO_RESERVE.addEntity(address(GHO_GSM));
@@ -285,7 +212,7 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_RESERVE.setLimit(address(GHO_GSM_4626), DEFAULT_CAPACITY);
 
     // Mint twice default capacity for both GSMs to be fully funded
-    OWNABLE_FACILITATOR.mint(address(GHO_RESERVE), DEFAULT_CAPACITY * 2);
+    GHO_DIRECT_FACILITATOR.mint(address(GHO_RESERVE), DEFAULT_CAPACITY * 2);
 
     GHO_GSM_FIXED_FEE_STRATEGY = new FixedFeeStrategy(DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
     GHO_GSM.updateFeeStrategy(address(GHO_GSM_FIXED_FEE_STRATEGY));
@@ -358,259 +285,101 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_TOKEN.mint(to, amount);
   }
 
-  function borrowAction(address user, uint256 amount) public {
-    borrowActionOnBehalf(user, user, amount);
+  function _deployGsmProxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap
+  ) internal returns (Gsm) {
+    return _deployGsmProxy(underlyingToken, priceStrategy, exposureCap, address(this));
   }
 
-  function borrowActionOnBehalf(address caller, address onBehalfOf, uint256 amount) public {
-    BorrowState memory bs;
-    bs.supplyBeforeAction = GHO_TOKEN.totalSupply();
-    bs.debtSupplyBeforeAction = GHO_DEBT_TOKEN.totalSupply();
-    bs.debtScaledSupplyBeforeAction = GHO_DEBT_TOKEN.scaledTotalSupply();
-    bs.balanceBeforeAction = GHO_TOKEN.balanceOf(onBehalfOf);
-    bs.debtScaledBalanceBeforeAction = GHO_DEBT_TOKEN.scaledBalanceOf(onBehalfOf);
-    bs.debtBalanceBeforeAction = GHO_DEBT_TOKEN.balanceOf(onBehalfOf);
-    bs.userIndexBeforeAction = GHO_DEBT_TOKEN.getPreviousIndex(onBehalfOf);
-    bs.userInterestsBeforeAction = GHO_DEBT_TOKEN.getBalanceFromInterest(onBehalfOf);
-    bs.assetIndexBefore = POOL.getReserveNormalizedVariableDebt(address(GHO_TOKEN));
-    bs.discountPercent = GHO_DEBT_TOKEN.getDiscountPercent(onBehalfOf);
-
-    if (bs.userIndexBeforeAction == 0) {
-      bs.userIndexBeforeAction = 1e27;
-    }
-
-    (uint256 computedInterest, uint256 discountScaled, ) = DebtUtils.computeDebt(
-      bs.userIndexBeforeAction,
-      bs.assetIndexBefore,
-      bs.debtScaledBalanceBeforeAction,
-      bs.userInterestsBeforeAction,
-      bs.discountPercent
-    );
-    uint256 newDiscountRate = GHO_DISCOUNT_STRATEGY.calculateDiscountRate(
-      (bs.debtScaledBalanceBeforeAction - discountScaled).rayMul(bs.assetIndexBefore) + amount,
-      IERC20(address(STK_TOKEN)).balanceOf(onBehalfOf)
-    );
-
-    if (newDiscountRate != bs.discountPercent) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit DiscountPercentUpdated(onBehalfOf, bs.discountPercent, newDiscountRate);
-    }
-
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Transfer(address(0), onBehalfOf, amount + computedInterest);
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Mint(caller, onBehalfOf, amount + computedInterest, computedInterest, bs.assetIndexBefore);
-
-    // Action
-    vm.prank(caller);
-    POOL.borrow(address(GHO_TOKEN), amount, 2, 0, onBehalfOf);
-
-    // Checks
-    assertEq(
-      GHO_TOKEN.balanceOf(onBehalfOf),
-      bs.balanceBeforeAction + amount,
-      'Gho amount does not match borrow'
-    );
-    assertEq(GHO_DEBT_TOKEN.getDiscountPercent(onBehalfOf), newDiscountRate);
-    assertEq(
-      GHO_TOKEN.totalSupply(),
-      bs.supplyBeforeAction + amount,
-      'Gho total supply does not match borrow'
-    );
-
-    assertEq(
-      GHO_DEBT_TOKEN.scaledBalanceOf(onBehalfOf),
-      bs.debtScaledBalanceBeforeAction + amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token balance does not match borrow'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.scaledTotalSupply(),
-      bs.debtScaledSupplyBeforeAction + amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token Supply does not match borrow'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.getBalanceFromInterest(onBehalfOf),
-      bs.userInterestsBeforeAction + computedInterest,
-      'Gho debt interests does not match borrow'
-    );
+  function _deployGsmProxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap,
+    address admin
+  ) internal returns (Gsm) {
+    return
+      _deployGsmProxy(underlyingToken, priceStrategy, exposureCap, admin, address(GHO_RESERVE));
   }
 
-  function repayAction(address user, uint256 amount) public {
-    BorrowState memory bs;
-    bs.supplyBeforeAction = GHO_TOKEN.totalSupply();
-    bs.debtSupplyBeforeAction = GHO_DEBT_TOKEN.totalSupply();
-    bs.debtScaledSupplyBeforeAction = GHO_DEBT_TOKEN.scaledTotalSupply();
-    bs.balanceBeforeAction = GHO_TOKEN.balanceOf(user);
-    bs.debtScaledBalanceBeforeAction = GHO_DEBT_TOKEN.scaledBalanceOf(user);
-    bs.debtBalanceBeforeAction = GHO_DEBT_TOKEN.balanceOf(user);
-    bs.userIndexBeforeAction = GHO_DEBT_TOKEN.getPreviousIndex(user);
-    bs.userInterestsBeforeAction = GHO_DEBT_TOKEN.getBalanceFromInterest(user);
-    bs.assetIndexBefore = POOL.getReserveNormalizedVariableDebt(address(GHO_TOKEN));
-    bs.discountPercent = GHO_DEBT_TOKEN.getDiscountPercent(user);
-    uint256 expectedDebt = 0;
-    uint256 expectedBurnOffset = 0;
-
-    if (bs.userIndexBeforeAction == 0) {
-      bs.userIndexBeforeAction = 1e27;
-    }
-
-    (uint256 computedInterest, uint256 discountScaled, ) = DebtUtils.computeDebt(
-      bs.userIndexBeforeAction,
-      bs.assetIndexBefore,
-      bs.debtScaledBalanceBeforeAction,
-      bs.userInterestsBeforeAction,
-      bs.discountPercent
+  function _deployGsm(
+    address ghoToken,
+    address underlyingAsset,
+    address priceStrategy,
+    address admin,
+    address ghoTreasury,
+    uint128 exposureCap,
+    address ghoReserve
+  ) internal returns (Gsm) {
+    Gsm gsm = new Gsm(ghoToken, underlyingAsset, priceStrategy);
+    bytes memory initParams = abi.encodeWithSignature(
+      'initialize(address,address,uint128,address)',
+      admin,
+      ghoTreasury,
+      exposureCap,
+      ghoReserve
     );
-    uint256 newDiscountRate = GHO_DISCOUNT_STRATEGY.calculateDiscountRate(
-      (bs.debtScaledBalanceBeforeAction - discountScaled).rayMul(bs.assetIndexBefore) - amount,
-      IERC20(address(STK_TOKEN)).balanceOf(user)
+    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
+      address(gsm),
+      SHORT_EXECUTOR,
+      initParams
     );
-
-    if (amount <= (bs.userInterestsBeforeAction + computedInterest)) {
-      expectedDebt = bs.userInterestsBeforeAction + computedInterest - amount;
-    } else {
-      expectedBurnOffset = amount - bs.userInterestsBeforeAction + computedInterest;
-    }
-
-    // Action
-    vm.startPrank(user);
-    GHO_TOKEN.approve(address(POOL), amount);
-
-    if (newDiscountRate != bs.discountPercent) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit DiscountPercentUpdated(user, bs.discountPercent, newDiscountRate);
-    }
-
-    if (computedInterest > amount) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit Transfer(address(0), user, computedInterest - amount);
-    } else {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit Transfer(user, address(0), amount - computedInterest);
-    }
-
-    POOL.repay(address(GHO_TOKEN), amount, 2, user);
-    vm.stopPrank();
-
-    // Checks
-    assertEq(
-      GHO_TOKEN.balanceOf(user),
-      bs.balanceBeforeAction - amount,
-      'Gho amount does not match repay'
-    );
-    assertEq(GHO_DEBT_TOKEN.getDiscountPercent(user), newDiscountRate);
-    if (expectedBurnOffset != 0) {
-      assertEq(
-        GHO_TOKEN.totalSupply(),
-        bs.supplyBeforeAction - amount + computedInterest + bs.userInterestsBeforeAction,
-        'Gho total supply does not match repay b'
-      );
-    } else {
-      assertEq(
-        GHO_TOKEN.totalSupply(),
-        bs.supplyBeforeAction,
-        'Gho total supply does not match repay a'
-      );
-    }
-
-    assertEq(
-      GHO_DEBT_TOKEN.scaledBalanceOf(user),
-      bs.debtScaledBalanceBeforeAction - amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token balance does not match repay'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.scaledTotalSupply(),
-      bs.debtScaledSupplyBeforeAction - amount.rayDiv(bs.assetIndexBefore) - discountScaled,
-      'Gho debt token Supply does not match repay'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.getBalanceFromInterest(user),
-      expectedDebt,
-      'Gho debt interests does not match repay'
-    );
+    return Gsm(address(proxy));
   }
 
-  function mintAndStakeDiscountToken(address user, uint256 amount) public {
-    vm.prank(FAUCET);
-    AAVE_TOKEN.mint(user, amount);
-
-    vm.startPrank(user);
-    AAVE_TOKEN.approve(address(STK_TOKEN), amount);
-    STK_TOKEN.stake(user, amount);
-    vm.stopPrank();
+  function _deployGsmProxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap,
+    address admin,
+    address reserve
+  ) internal returns (Gsm) {
+    Gsm gsmImpl = new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        admin,
+        TREASURY,
+        exposureCap,
+        reserve
+      )
+    );
+    return Gsm(address(gsmProxy));
   }
 
-  function rebalanceDiscountAction(address user) public {
-    BorrowState memory bs;
-    bs.supplyBeforeAction = GHO_TOKEN.totalSupply();
-    bs.debtSupplyBeforeAction = GHO_DEBT_TOKEN.totalSupply();
-    bs.debtScaledSupplyBeforeAction = GHO_DEBT_TOKEN.scaledTotalSupply();
-    bs.balanceBeforeAction = GHO_TOKEN.balanceOf(user);
-    bs.debtScaledBalanceBeforeAction = GHO_DEBT_TOKEN.scaledBalanceOf(user);
-    bs.debtBalanceBeforeAction = GHO_DEBT_TOKEN.balanceOf(user);
-    bs.userIndexBeforeAction = GHO_DEBT_TOKEN.getPreviousIndex(user);
-    bs.userInterestsBeforeAction = GHO_DEBT_TOKEN.getBalanceFromInterest(user);
-    bs.assetIndexBefore = POOL.getReserveNormalizedVariableDebt(address(GHO_TOKEN));
-    bs.discountPercent = GHO_DEBT_TOKEN.getDiscountPercent(user);
-
-    if (bs.userIndexBeforeAction == 0) {
-      bs.userIndexBeforeAction = 1e27;
-    }
-
-    (uint256 computedInterest, uint256 discountScaled, ) = DebtUtils.computeDebt(
-      bs.userIndexBeforeAction,
-      bs.assetIndexBefore,
-      bs.debtScaledBalanceBeforeAction,
-      bs.userInterestsBeforeAction,
-      bs.discountPercent
+  function _deployGsm4626Proxy(
+    address underlyingToken,
+    address priceStrategy,
+    uint128 exposureCap
+  ) internal returns (Gsm4626) {
+    Gsm4626 gsmImpl = new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
+    AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(this),
+        TREASURY,
+        exposureCap,
+        address(GHO_RESERVE)
+      )
     );
-    uint256 newDiscountRate = GHO_DISCOUNT_STRATEGY.calculateDiscountRate(
-      (bs.debtScaledBalanceBeforeAction - discountScaled).rayMul(bs.assetIndexBefore),
-      IERC20(address(STK_TOKEN)).balanceOf(user)
-    );
+    return Gsm4626(address(gsmProxy));
+  }
 
-    if (newDiscountRate != bs.discountPercent) {
-      vm.expectEmit(address(GHO_DEBT_TOKEN));
-      emit DiscountPercentUpdated(user, bs.discountPercent, newDiscountRate);
-    }
-
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Transfer(address(0), user, computedInterest);
-    vm.expectEmit(address(GHO_DEBT_TOKEN));
-    emit Mint(address(0), user, computedInterest, computedInterest, bs.assetIndexBefore);
-
-    // Action
-    vm.prank(user);
-    GHO_DEBT_TOKEN.rebalanceUserDiscountPercent(user);
-
-    // Checks
-    assertEq(
-      GHO_TOKEN.balanceOf(user),
-      bs.balanceBeforeAction,
-      'Gho amount does not match rebalance'
+  function _deployReserve() internal returns (GhoReserve) {
+    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
+    bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
+    address proxyAdmin = makeAddr('PROXY_ADMIN');
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(reserve),
+      proxyAdmin,
+      initParams
     );
-    assertEq(GHO_DEBT_TOKEN.getDiscountPercent(user), newDiscountRate);
-    assertEq(
-      GHO_TOKEN.totalSupply(),
-      bs.supplyBeforeAction,
-      'Gho total supply does not match rebalance'
-    );
-
-    assertEq(
-      GHO_DEBT_TOKEN.scaledBalanceOf(user),
-      bs.debtScaledBalanceBeforeAction - discountScaled,
-      'Gho debt token balance does not match rebalance'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.scaledTotalSupply(),
-      bs.debtScaledSupplyBeforeAction - discountScaled,
-      'Gho debt token Supply does not match borrow'
-    );
-    assertEq(
-      GHO_DEBT_TOKEN.getBalanceFromInterest(user),
-      bs.userInterestsBeforeAction + computedInterest,
-      'Gho debt interests does not match borrow'
-    );
+    return GhoReserve(address(proxy));
   }
 
   /// Helper function to sell asset in the GSM
@@ -688,45 +457,6 @@ contract TestGhoBase is Test, Constants, Events {
       vm.prank(address(vault));
       token.transfer(address(1), amount);
     }
-  }
-
-  /// Helper function to deploy Gsm through proxy with initialization
-  function _deployGsm(
-    address ghoToken,
-    address underlyingAsset,
-    address priceStrategy,
-    address admin,
-    address ghoTreasury,
-    uint128 exposureCap,
-    address ghoReserve
-  ) internal returns (Gsm) {
-    Gsm gsm = new Gsm(ghoToken, underlyingAsset, priceStrategy);
-    bytes memory initParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
-      admin,
-      ghoTreasury,
-      exposureCap,
-      ghoReserve
-    );
-    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      initParams
-    );
-    return Gsm(address(proxy));
-  }
-
-  /// Helper function to deploy GhoReserve through proxy with initialization
-  function _deployReserve() internal returns (GhoReserve) {
-    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
-    bytes memory initParams = abi.encodeWithSignature('initialize(address)', address(this));
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
-    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-      address(reserve),
-      proxyAdmin,
-      initParams
-    );
-    return GhoReserve(address(proxy));
   }
 
   /// Helper function to deploy Gsm4626 through proxy with initialization

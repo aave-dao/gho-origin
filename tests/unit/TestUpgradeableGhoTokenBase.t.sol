@@ -35,7 +35,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
     ghoToken.grantRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, address(this));
 
     // Add Aave as Facilitator
-    ghoToken.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
+    ghoToken.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
     // Add Faucet ad Facilitator
     ghoToken.addFacilitator(FAUCET, 'Faucet Facilitator', type(uint128).max);
   }
@@ -71,8 +71,8 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
   }
 
   function testGetFacilitatorData() public view {
-    IGhoToken.Facilitator memory data = ghoToken.getFacilitator(address(GHO_ATOKEN));
-    assertEq(data.label, 'Aave V3 Pool', 'Unexpected facilitator label');
+    IGhoToken.Facilitator memory data = ghoToken.getFacilitator(address(GHO_FLASH_MINTER));
+    assertEq(data.label, 'Flash Minter', 'Unexpected facilitator label');
     assertEq(data.bucketCapacity, DEFAULT_CAPACITY, 'Unexpected bucket capacity');
     assertEq(data.bucketLevel, 0, 'Unexpected bucket level');
   }
@@ -85,7 +85,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
   }
 
   function testGetFacilitatorBucket() public view {
-    (uint256 capacity, uint256 level) = ghoToken.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 capacity, uint256 level) = ghoToken.getFacilitatorBucket(address(GHO_FLASH_MINTER));
     assertEq(capacity, DEFAULT_CAPACITY, 'Unexpected bucket capacity');
     assertEq(level, 0, 'Unexpected bucket level');
   }
@@ -99,7 +99,11 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
   function testGetPopulatedFacilitatorsList() public view {
     address[] memory facilitatorList = ghoToken.getFacilitatorsList();
     assertEq(facilitatorList.length, 2, 'Unexpected number of facilitators');
-    assertEq(facilitatorList[0], address(GHO_ATOKEN), 'Unexpected address for mock facilitator 1');
+    assertEq(
+      facilitatorList[0],
+      address(GHO_FLASH_MINTER),
+      'Unexpected address for mock facilitator 1'
+    );
     assertEq(facilitatorList[1], FAUCET, 'Unexpected address for mock facilitator 5');
   }
 
@@ -121,7 +125,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
 
   function testRevertAddExistingFacilitator() public {
     vm.expectRevert('FACILITATOR_ALREADY_EXISTS');
-    ghoToken.addFacilitator(address(GHO_ATOKEN), 'Aave V3 Pool', DEFAULT_CAPACITY);
+    ghoToken.addFacilitator(address(GHO_FLASH_MINTER), 'Flash Minter', DEFAULT_CAPACITY);
   }
 
   function testRevertAddFacilitatorNoLabel() public {
@@ -144,8 +148,8 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
 
   function testSetNewBucketCapacity() public {
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorBucketCapacityUpdated(address(GHO_ATOKEN), DEFAULT_CAPACITY, 0);
-    ghoToken.setFacilitatorBucketCapacity(address(GHO_ATOKEN), 0);
+    emit FacilitatorBucketCapacityUpdated(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY, 0);
+    ghoToken.setFacilitatorBucketCapacity(address(GHO_FLASH_MINTER), 0);
   }
 
   function testSetNewBucketCapacityAsManager() public {
@@ -154,8 +158,8 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
     ghoToken.grantRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, ALICE);
     vm.prank(ALICE);
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorBucketCapacityUpdated(address(GHO_ATOKEN), DEFAULT_CAPACITY, 0);
-    ghoToken.setFacilitatorBucketCapacity(address(GHO_ATOKEN), 0);
+    emit FacilitatorBucketCapacityUpdated(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY, 0);
+    ghoToken.setFacilitatorBucketCapacity(address(GHO_FLASH_MINTER), 0);
   }
 
   function testRevertSetNewBucketCapacityNoRole() public {
@@ -163,7 +167,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
       AccessControlErrorsLib.MISSING_ROLE(GHO_TOKEN_BUCKET_MANAGER_ROLE, address(ALICE))
     );
     vm.prank(ALICE);
-    ghoToken.setFacilitatorBucketCapacity(address(GHO_ATOKEN), 0);
+    ghoToken.setFacilitatorBucketCapacity(address(GHO_FLASH_MINTER), 0);
   }
 
   function testRevertRemoveNonFacilitator() public {
@@ -181,8 +185,8 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
 
   function testRemoveFacilitator() public {
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorRemoved(address(GHO_ATOKEN));
-    ghoToken.removeFacilitator(address(GHO_ATOKEN));
+    emit FacilitatorRemoved(address(GHO_FLASH_MINTER));
+    ghoToken.removeFacilitator(address(GHO_FLASH_MINTER));
   }
 
   function testRemoveFacilitatorWithRole() public {
@@ -191,8 +195,8 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
     ghoToken.grantRole(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE);
     vm.prank(ALICE);
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorRemoved(address(GHO_ATOKEN));
-    ghoToken.removeFacilitator(address(GHO_ATOKEN));
+    emit FacilitatorRemoved(address(GHO_FLASH_MINTER));
+    ghoToken.removeFacilitator(address(GHO_FLASH_MINTER));
   }
 
   function testRevertRemoveFacilitatorNoRole() public {
@@ -200,7 +204,7 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
       AccessControlErrorsLib.MISSING_ROLE(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, address(ALICE))
     );
     vm.prank(ALICE);
-    ghoToken.removeFacilitator(address(GHO_ATOKEN));
+    ghoToken.removeFacilitator(address(GHO_FLASH_MINTER));
   }
 
   function testRevertMintBadFacilitator() public {
@@ -210,68 +214,68 @@ abstract contract TestUpgradeableGhoTokenBase is TestUpgradeableGhoTokenSetup {
   }
 
   function testRevertMintExceedCapacity() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectRevert('FACILITATOR_BUCKET_CAPACITY_EXCEEDED');
     ghoToken.mint(ALICE, DEFAULT_CAPACITY + 1);
   }
 
   function testMint() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectEmit(address(ghoToken));
     emit Transfer(address(0), ALICE, DEFAULT_CAPACITY);
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorBucketLevelUpdated(address(GHO_ATOKEN), 0, DEFAULT_CAPACITY);
+    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
     ghoToken.mint(ALICE, DEFAULT_CAPACITY);
   }
 
   function testRevertZeroMint() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectRevert('INVALID_MINT_AMOUNT');
     ghoToken.mint(ALICE, 0);
   }
 
   function testRevertZeroBurn() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectRevert('INVALID_BURN_AMOUNT');
     ghoToken.burn(0);
   }
 
   function testRevertBurnMoreThanMinted() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorBucketLevelUpdated(address(GHO_ATOKEN), 0, DEFAULT_CAPACITY);
-    ghoToken.mint(address(GHO_ATOKEN), DEFAULT_CAPACITY);
+    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
+    ghoToken.mint(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
 
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectRevert(stdError.arithmeticError);
     ghoToken.burn(DEFAULT_CAPACITY + 1);
   }
 
   function testRevertBurnOthersTokens() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectEmit(address(ghoToken));
     emit Transfer(address(0), ALICE, DEFAULT_CAPACITY);
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorBucketLevelUpdated(address(GHO_ATOKEN), 0, DEFAULT_CAPACITY);
+    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
     ghoToken.mint(ALICE, DEFAULT_CAPACITY);
 
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectRevert(stdError.arithmeticError);
     ghoToken.burn(DEFAULT_CAPACITY);
   }
 
   function testBurn() public {
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectEmit(address(ghoToken));
-    emit Transfer(address(0), address(GHO_ATOKEN), DEFAULT_CAPACITY);
+    emit Transfer(address(0), address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
     vm.expectEmit(address(ghoToken));
-    emit FacilitatorBucketLevelUpdated(address(GHO_ATOKEN), 0, DEFAULT_CAPACITY);
-    ghoToken.mint(address(GHO_ATOKEN), DEFAULT_CAPACITY);
+    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
+    ghoToken.mint(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
 
-    vm.prank(address(GHO_ATOKEN));
+    vm.prank(address(GHO_FLASH_MINTER));
     vm.expectEmit(address(ghoToken));
     emit FacilitatorBucketLevelUpdated(
-      address(GHO_ATOKEN),
+      address(GHO_FLASH_MINTER),
       DEFAULT_CAPACITY,
       DEFAULT_CAPACITY - DEFAULT_BORROW_AMOUNT
     );

@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
 import {GhoTokenProcedure} from 'src/deployments/contracts/procedures/GhoTokenProcedure.sol';
+import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 
 contract GhoTokenBatch is GhoTokenProcedure {
   GhoReportTypes.GhoTokenReport _ghoTokenReport;
@@ -15,9 +16,12 @@ contract GhoTokenBatch is GhoTokenProcedure {
       tokenAdmin: ghoToken
     });
 
+    address ghoOracle = address(new GhoOracle());
+
     _ghoTokenReport = GhoReportTypes.GhoTokenReport({
       ghoToken: ghoToken,
-      upgradeableGhoToken: upgradeableGhoToken
+      upgradeableGhoToken: upgradeableGhoToken,
+      ghoOracle: ghoOracle
     });
   }
 

@@ -16,6 +16,10 @@ contract MockPoolDataProvider is IPoolDataProvider {
     return POOL_ADDRESSES_PROVIDER;
   }
 
+  function POOL() external view returns (IPool) {
+    return IPool(POOL_ADDRESSES_PROVIDER.getPool());
+  }
+
   constructor(address addressesProvider) {
     POOL_ADDRESSES_PROVIDER = IPoolAddressesProvider(addressesProvider);
   }

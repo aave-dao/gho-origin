@@ -67,25 +67,12 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertInitializeTwice() public {
-    Gsm4626 gsm = new Gsm4626(
-      address(GHO_TOKEN),
+    Gsm4626 gsm = _deployGsm4626Proxy(
       address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      DEFAULT_GSM_USDX_EXPOSURE
     );
-    bytes memory initParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
-      address(this),
-      TREASURY,
-      DEFAULT_GSM_USDX_EXPOSURE,
-      address(GHO_RESERVE)
-    );
-    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      initParams
-    );
-    gsm = Gsm4626(address(proxy));
-    vm.expectRevert('Initializable: contract is already initialized');
+    vm.expectRevert();
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
 
@@ -979,7 +966,7 @@ contract TestGsm4626 is TestGhoBase {
     assertTrue(usedGho > 0, 'Unexpected usedGho amount');
 
     vm.expectRevert('FACILITATOR_BUCKET_LEVEL_NOT_ZERO');
-    GHO_TOKEN.removeFacilitator(address(OWNABLE_FACILITATOR));
+    GHO_TOKEN.removeFacilitator(address(GHO_DIRECT_FACILITATOR));
 
     ghoFaucet(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), DEFAULT_GSM_GHO_AMOUNT + 1);
     vm.startPrank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));

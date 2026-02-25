@@ -28,7 +28,7 @@ contract Constants {
 
   // admin role for GhoDirectFacilitator
   bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
-  bytes32 public constant BURNER_ROLE = keccak256('MINTER_ROLE');
+  bytes32 public constant BURNER_ROLE = keccak256('BURNER_ROLE');
 
   // admin role for GhoReserve
   bytes32 public constant ENTITY_MANAGER_ROLE = keccak256('ENTITY_MANAGER_ROLE');

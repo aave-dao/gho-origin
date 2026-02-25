@@ -67,7 +67,7 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertInitializeTwice() public {
-    Gsm4626 gsm = _deployGsm4626Proxy(
+    Gsm4626 gsm = _deployGsm4626(
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
       DEFAULT_GSM_USDX_EXPOSURE

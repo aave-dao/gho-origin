@@ -16,15 +16,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testInitialize() public {
-    address proxyAdmin = makeAddr('PROXY_ADMIN');
-    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
-
-    TransparentUpgradeableProxy reserveProxy = new TransparentUpgradeableProxy(
-      address(reserveImpl),
-      proxyAdmin,
-      abi.encodeWithSignature('initialize(address)', address(this))
-    );
-    GhoReserve reserve = GhoReserve(address(reserveProxy));
+    GhoReserve reserve = _deployReserve();
 
     assertTrue(reserve.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
     assertTrue(reserve.hasRole(ENTITY_MANAGER_ROLE, address(this)));

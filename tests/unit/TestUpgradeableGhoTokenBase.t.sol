@@ -10,10 +10,10 @@ abstract contract TestUpgradeableGhoTokenSetup is TestGhoBase {
   address internal ghoTokenImplementation;
 
   function setUp() public virtual {
-    (address ghoTokenProxy, address ghoTokenImpl) = _deployGhoTokenProxy(
-      PROXY_ADMIN_OWNER,
-      address(this)
-    );
+    (address ghoTokenProxy, address ghoTokenImpl) = _deployGhoTokenProxy({
+      proxyAdmin: PROXY_ADMIN_OWNER,
+      tokenAdmin: address(this)
+    });
     ghoTokenImplementation = ghoTokenImpl;
     ghoToken = UpgradeableGhoToken(ghoTokenProxy);
   }

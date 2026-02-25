@@ -26,7 +26,12 @@ contract TestGhoDeployment is Test {
       abi.encode(aclManager)
     );
 
-    ghoReport = _deployGhoTestnet(ghoAdmin, FLASH_MINTER_FEE, treasury, poolAddressesProvider);
+    ghoReport = _deployGhoTestnet({
+      deployer: ghoAdmin,
+      flashMinterFee: FLASH_MINTER_FEE,
+      treasury_: treasury,
+      poolAddressesProvider_: poolAddressesProvider
+    });
   }
 
   function test_GhoDeployment() public view {

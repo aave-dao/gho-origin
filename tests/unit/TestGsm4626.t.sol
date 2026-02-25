@@ -46,21 +46,21 @@ contract TestGsm4626 is TestGhoBase {
     vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
 
-    Gsm4626 gsm = _deployGsm4626Proxy(
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    Gsm4626 gsm = _deployGsm4626Proxy({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
 
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
   }
 
   function testRevertInitializeTwice() public {
-    Gsm4626 gsm = _deployGsm4626Proxy(
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    Gsm4626 gsm = _deployGsm4626Proxy({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
 
     vm.expectRevert('Contract instance has already been initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
@@ -163,11 +163,11 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertSellAssetTooMuchUnderlyingExposure() public {
-    Gsm4626 gsm = _deployGsm4626Proxy(
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
-      uint128(DEFAULT_GSM_USDX_EXPOSURE - 1)
-    );
+    Gsm4626 gsm = _deployGsm4626Proxy({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: uint128(DEFAULT_GSM_USDX_EXPOSURE - 1)
+    });
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Exposure Cap', DEFAULT_CAPACITY);
 
     _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_EXPOSURE);

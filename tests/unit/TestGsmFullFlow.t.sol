@@ -10,13 +10,13 @@ contract TestGsmFullFlow is TestGhoBase {
 
     GhoReserve reserve = _deployReserve();
 
-    Gsm gsm = _deployGsmProxy(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE,
-      address(this),
-      address(reserve)
-    );
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
+      admin: address(this),
+      reserve: address(reserve)
+    });
 
     reserve.addEntity(address(gsm));
     reserve.setLimit(address(gsm), 5_000_000 ether);

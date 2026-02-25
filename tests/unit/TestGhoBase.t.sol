@@ -193,18 +193,18 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    GHO_GSM = _deployGsmProxy(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE,
-      address(this)
-    );
+    GHO_GSM = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
+      admin: address(this)
+    });
 
-    GHO_GSM_4626 = _deployGsm4626Proxy(
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    GHO_GSM_4626 = _deployGsm4626Proxy({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
 
     GHO_RESERVE.addEntity(address(GHO_GSM));
     GHO_RESERVE.addEntity(address(GHO_GSM_4626));
@@ -290,7 +290,13 @@ contract TestGhoBase is Test, Constants, Events {
     address priceStrategy,
     uint128 exposureCap
   ) internal returns (Gsm) {
-    return _deployGsmProxy(underlyingToken, priceStrategy, exposureCap, address(this));
+    return
+      _deployGsmProxy({
+        underlyingToken: underlyingToken,
+        priceStrategy: priceStrategy,
+        exposureCap: exposureCap,
+        admin: address(this)
+      });
   }
 
   function _deployGsmProxy(
@@ -300,7 +306,13 @@ contract TestGhoBase is Test, Constants, Events {
     address admin
   ) internal returns (Gsm) {
     return
-      _deployGsmProxy(underlyingToken, priceStrategy, exposureCap, admin, address(GHO_RESERVE));
+      _deployGsmProxy({
+        underlyingToken: underlyingToken,
+        priceStrategy: priceStrategy,
+        exposureCap: exposureCap,
+        admin: admin,
+        reserve: address(GHO_RESERVE)
+      });
   }
 
   function _deployGsmProxy(

@@ -52,11 +52,11 @@ contract TestGsm is TestGhoBase {
     vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
 
-    Gsm gsm = _deployGsmProxy(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
 
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
   }
@@ -106,11 +106,11 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeTwice() public {
-    Gsm gsm = _deployGsmProxy(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
 
     vm.expectRevert('Contract instance has already been initialized');
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
@@ -388,11 +388,11 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertSellAssetNoBucketCap() public {
-    Gsm gsm = _deployGsmProxy(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
     GHO_RESERVE.addEntity(address(gsm));
     uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
 
@@ -407,11 +407,11 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertSellAssetTooMuchUnderlyingExposure() public {
-    Gsm gsm = _deployGsmProxy(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      uint128(DEFAULT_GSM_USDX_EXPOSURE - 1)
-    );
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: uint128(DEFAULT_GSM_USDX_EXPOSURE - 1)
+    });
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Exposure Cap', DEFAULT_CAPACITY);
 
     vm.prank(FAUCET);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Initializable} from 'src/contracts/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
 import {GPv2SafeERC20} from 'aave-v3-origin/contracts/dependencies/gnosis/contracts/GPv2SafeERC20.sol';
 import {EIP712} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol';
@@ -102,6 +102,7 @@ contract Gsm is AccessControl, Initializable, EIP712, IGsm {
     GHO_TOKEN = ghoToken;
     UNDERLYING_ASSET = underlyingAsset;
     PRICE_STRATEGY = priceStrategy;
+    _disableInitializers();
   }
 
   /**

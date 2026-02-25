@@ -33,14 +33,15 @@ contract TestGsmUpgrade is TestGhoBase {
   }
 
   function _getStorageSnapshot() internal view returns (bytes32[] memory) {
-    // Snapshot values for lastInitializedRevision (slot 1) and GSM local storage (3-7)
+    // Snapshot values for lastInitializedRevision (ERC-7201 namespaced slot) and GSM local storage (2-6)
+    bytes32 initializableStorageSlot = 0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
     bytes32[] memory data = new bytes32[](6);
-    data[0] = vm.load(address(GHO_GSM), bytes32(uint256(1)));
-    data[1] = vm.load(address(GHO_GSM), bytes32(uint256(3)));
-    data[2] = vm.load(address(GHO_GSM), bytes32(uint256(4)));
-    data[3] = vm.load(address(GHO_GSM), bytes32(uint256(5)));
-    data[4] = vm.load(address(GHO_GSM), bytes32(uint256(6)));
-    data[5] = vm.load(address(GHO_GSM), bytes32(uint256(7)));
+    data[0] = vm.load(address(GHO_GSM), initializableStorageSlot);
+    data[1] = vm.load(address(GHO_GSM), bytes32(uint256(2)));
+    data[2] = vm.load(address(GHO_GSM), bytes32(uint256(3)));
+    data[3] = vm.load(address(GHO_GSM), bytes32(uint256(4)));
+    data[4] = vm.load(address(GHO_GSM), bytes32(uint256(5)));
+    data[5] = vm.load(address(GHO_GSM), bytes32(uint256(6)));
     return data;
   }
 }

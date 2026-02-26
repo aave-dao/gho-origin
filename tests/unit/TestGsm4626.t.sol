@@ -41,28 +41,19 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testInitialize() public {
-    Gsm4626 gsm = new Gsm4626(
-      address(GHO_TOKEN),
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
-    );
-    bytes memory initParams = abi.encodeWithSignature(
-      'initialize(address,address,uint128,address)',
-      address(this),
-      TREASURY,
-      DEFAULT_GSM_USDX_EXPOSURE,
-      address(GHO_RESERVE)
-    );
     vm.expectEmit(true, true, true, true);
     emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
     vm.expectEmit(true, true, false, true);
+    emit GhoTreasuryUpdated(address(0), address(TREASURY));
+    vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
-    AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
-      address(gsm),
-      SHORT_EXECUTOR,
-      initParams
-    );
-    gsm = Gsm4626(address(proxy));
+
+    Gsm4626 gsm = _deployGsm4626({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
+
     assertEq(gsm.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure capacity');
   }
 
@@ -73,7 +64,7 @@ contract TestGsm4626 is TestGhoBase {
       exposureCap: DEFAULT_GSM_USDX_EXPOSURE
     });
 
-    vm.expectRevert();
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
 

@@ -45,7 +45,7 @@ contract TestGsmSwapEdge is TestGhoBase {
 
     // Try to buy all, which is 2 assets for 2e11+1 GHO
     uint256 allUnderlying = gsm.getAvailableLiquidity();
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     gsm.buyAsset(allUnderlying, ALICE);
 
     // Buy a portion

@@ -238,7 +238,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
     vm.startPrank(FAUCET);
     newToken.mint(FAUCET, amount);
     newToken.approve(address(gsm), amount);
-    vm.expectRevert();
+    vm.expectRevert('EXOGENOUS_ASSET_EXPOSURE_TOO_HIGH');
     gsm.sellAsset(amount, ALICE);
     vm.stopPrank();
   }
@@ -293,7 +293,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
     ghoFaucet(BOB, type(uint128).max);
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(gsm), type(uint128).max);
-    vm.expectRevert();
+    vm.expectRevert('INSUFFICIENT_AVAILABLE_EXOGENOUS_ASSET_LIQUIDITY');
     gsm.buyAsset(amount + 1, BOB);
     vm.stopPrank();
   }

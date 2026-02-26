@@ -6,6 +6,7 @@ import 'forge-std/console2.sol';
 import {Vm} from 'forge-std/Vm.sol';
 
 // dependencies
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
 import {Address} from 'openzeppelin-contracts/contracts/utils/Address.sol';
 import {AutomationCompatibleInterface} from 'src/contracts/dependencies/chainlink/AutomationCompatibleInterface.sol';
 

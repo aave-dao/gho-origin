@@ -50,5 +50,5 @@ interface IFixedFeeStrategyFactory {
    * @notice Returns the GsmFeeStrategyFactory revision number
    * @return The revision number
    */
-  function REVISION() external pure returns (uint256);
+  function REVISION() external pure returns (uint64);
 }

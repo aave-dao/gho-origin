@@ -21,7 +21,7 @@ import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
  * @notice GHO Stability Module. It provides buy/sell facilities to go to/from an underlying asset to/from GHO.
  * @dev To be covered by a proxy contract.
  */
-contract Gsm is AccessControl, Initializable, EIP712, IGsm {
+contract Gsm is Initializable, EIP712, AccessControl, IGsm {
   using GPv2SafeERC20 for IERC20;
   using SafeCast for uint256;
 
@@ -93,6 +93,7 @@ contract Gsm is AccessControl, Initializable, EIP712, IGsm {
    * @param priceStrategy The address of the price strategy
    */
   constructor(address ghoToken, address underlyingAsset, address priceStrategy) EIP712('GSM', '1') {
+    _disableInitializers();
     require(ghoToken != address(0), 'ZERO_ADDRESS_NOT_VALID');
     require(underlyingAsset != address(0), 'ZERO_ADDRESS_NOT_VALID');
     require(
@@ -102,7 +103,6 @@ contract Gsm is AccessControl, Initializable, EIP712, IGsm {
     GHO_TOKEN = ghoToken;
     UNDERLYING_ASSET = underlyingAsset;
     PRICE_STRATEGY = priceStrategy;
-    _disableInitializers();
   }
 
   /**

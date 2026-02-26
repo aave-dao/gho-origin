@@ -15,6 +15,12 @@ import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/Fixed
 contract FixedFeeStrategyFactory is Initializable, IFixedFeeStrategyFactory {
   using EnumerableSet for EnumerableSet.AddressSet;
 
+  uint64 public constant REVISION = 1;
+
+  constructor() {
+    _disableInitializers();
+  }
+
   // Mapping of fee strategy contracts by buy and sell fees (buyFee => sellFee => feeStrategy)
   mapping(uint256 => mapping(uint256 => address)) internal _gsmFeeStrategiesByFees;
   EnumerableSet.AddressSet internal _gsmFeeStrategies;
@@ -24,7 +30,7 @@ contract FixedFeeStrategyFactory is Initializable, IFixedFeeStrategyFactory {
    * @param feeStrategiesList List of fee strategies
    * @dev Assumes that the addresses provided are deployed FixedFeeStrategy contracts
    */
-  function initialize(address[] memory feeStrategiesList) external initializer {
+  function initialize(address[] memory feeStrategiesList) external reinitializer(REVISION) {
     for (uint256 i = 0; i < feeStrategiesList.length; i++) {
       address feeStrategy = feeStrategiesList[i];
       uint256 buyFee = IGsmFeeStrategy(feeStrategy).getBuyFee(1e4);
@@ -71,10 +77,5 @@ contract FixedFeeStrategyFactory is Initializable, IFixedFeeStrategyFactory {
   ///@inheritdoc IFixedFeeStrategyFactory
   function getFixedFeeStrategy(uint256 buyFee, uint256 sellFee) external view returns (address) {
     return _gsmFeeStrategiesByFees[buyFee][sellFee];
-  }
-
-  ///@inheritdoc IFixedFeeStrategyFactory
-  function REVISION() public pure virtual override returns (uint256) {
-    return 1;
   }
 }

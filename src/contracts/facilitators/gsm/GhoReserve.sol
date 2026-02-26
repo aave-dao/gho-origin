@@ -14,7 +14,7 @@ import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve
  * @notice It allows approved entities to withdraw and return GHO funds, with a defined maximum withdrawal capacity per entity.
  * @dev To be covered by a proxy contract.
  */
-contract GhoReserve is AccessControl, Initializable, IGhoReserve {
+contract GhoReserve is Initializable, AccessControl, IGhoReserve {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeCast for uint256;
 

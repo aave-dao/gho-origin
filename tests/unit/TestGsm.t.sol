@@ -110,7 +110,8 @@ contract TestGsm is TestGhoBase {
     Gsm gsm = _deployGsm({
       underlyingToken: address(USDX_TOKEN),
       priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
+      reserve: address(GHO_RESERVE)
     });
     vm.expectRevert();
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
@@ -391,7 +392,8 @@ contract TestGsm is TestGhoBase {
     Gsm gsm = _deployGsm({
       underlyingToken: address(USDX_TOKEN),
       priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
@@ -410,7 +412,8 @@ contract TestGsm is TestGhoBase {
     Gsm gsm = _deployGsm({
       underlyingToken: address(USDX_TOKEN),
       priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      exposureCap: uint128(DEFAULT_GSM_USDX_EXPOSURE - 1)
+      exposureCap: uint128(DEFAULT_GSM_USDX_EXPOSURE - 1),
+      reserve: address(GHO_RESERVE)
     });
     GHO_TOKEN.addFacilitator(address(gsm), 'GSM Modified Exposure Cap', DEFAULT_CAPACITY);
 

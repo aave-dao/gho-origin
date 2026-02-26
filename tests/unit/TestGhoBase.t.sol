@@ -197,7 +197,7 @@ contract TestGhoBase is Test, Constants, Events {
       underlyingToken: address(USDX_TOKEN),
       priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
       exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
-      admin: address(this)
+      reserve: address(GHO_RESERVE)
     });
     GHO_GSM_4626 = _deployGsm4626({
       underlyingToken: address(USDX_4626_TOKEN),
@@ -287,51 +287,16 @@ contract TestGhoBase is Test, Constants, Events {
   function _deployGsm(
     address underlyingToken,
     address priceStrategy,
-    uint128 exposureCap
-  ) internal returns (Gsm) {
-    return
-      _deployGsm({
-        underlyingToken: underlyingToken,
-        priceStrategy: priceStrategy,
-        exposureCap: exposureCap,
-        admin: address(this)
-      });
-  }
-
-  function _deployGsm(
-    address underlyingToken,
-    address priceStrategy,
     uint128 exposureCap,
-    address admin
+    address reserve
   ) internal returns (Gsm) {
-    return
-      _deployGsm({
-        ghoToken: address(GHO_TOKEN),
-        underlyingAsset: underlyingToken,
-        priceStrategy: priceStrategy,
-        admin: admin,
-        ghoTreasury: TREASURY,
-        exposureCap: exposureCap,
-        ghoReserve: address(GHO_RESERVE)
-      });
-  }
-
-  function _deployGsm(
-    address ghoToken,
-    address underlyingAsset,
-    address priceStrategy,
-    address admin,
-    address ghoTreasury,
-    uint128 exposureCap,
-    address ghoReserve
-  ) internal returns (Gsm) {
-    Gsm gsm = new Gsm(ghoToken, underlyingAsset, priceStrategy);
+    Gsm gsm = new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
     bytes memory initParams = abi.encodeWithSignature(
       'initialize(address,address,uint128,address)',
-      admin,
-      ghoTreasury,
+      address(this),
+      TREASURY,
       exposureCap,
-      ghoReserve
+      reserve
     );
     AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
       address(gsm),
@@ -346,34 +311,13 @@ contract TestGhoBase is Test, Constants, Events {
     address priceStrategy,
     uint128 exposureCap
   ) internal returns (Gsm4626) {
-    return
-      _deployGsm4626(
-        address(GHO_TOKEN),
-        underlyingToken,
-        priceStrategy,
-        address(this),
-        TREASURY,
-        exposureCap,
-        address(GHO_RESERVE)
-      );
-  }
-
-  function _deployGsm4626(
-    address ghoToken,
-    address underlyingAsset,
-    address priceStrategy,
-    address admin,
-    address ghoTreasury,
-    uint128 exposureCap,
-    address ghoReserve
-  ) internal returns (Gsm4626) {
-    Gsm4626 gsm = new Gsm4626(ghoToken, underlyingAsset, priceStrategy);
+    Gsm4626 gsm = new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
     bytes memory initParams = abi.encodeWithSignature(
       'initialize(address,address,uint128,address)',
-      admin,
-      ghoTreasury,
+      address(this),
+      TREASURY,
       exposureCap,
-      ghoReserve
+      address(GHO_RESERVE)
     );
     AdminUpgradeabilityProxy proxy = new AdminUpgradeabilityProxy(
       address(gsm),

@@ -21,7 +21,8 @@ contract TestGsmSwapEdge is TestGhoBase {
     Gsm gsm = _deployGsm({
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
-      exposureCap: type(uint128).max
+      exposureCap: type(uint128).max,
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
@@ -82,7 +83,8 @@ contract TestGsmSwapEdge is TestGhoBase {
     Gsm gsm = _deployGsm({
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
-      exposureCap: 100_000_000e18
+      exposureCap: 100_000_000e18,
+      reserve: address(GHO_RESERVE)
     });
     gsm.updateFeeStrategy(address(newFeeStrategy));
     GHO_RESERVE.addEntity(address(gsm));
@@ -120,7 +122,8 @@ contract TestGsmSwapEdge is TestGhoBase {
     Gsm gsm = _deployGsm({
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
-      exposureCap: 100_000_000e18
+      exposureCap: 100_000_000e18,
+      reserve: address(GHO_RESERVE)
     });
     gsm.updateFeeStrategy(address(newFeeStrategy));
     GHO_RESERVE.addEntity(address(gsm));
@@ -169,7 +172,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
       exposureCap: 1_000_000e24,
-      admin: ALICE
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);
@@ -223,7 +226,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
       exposureCap: 1_000_000e24,
-      admin: ALICE
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);
@@ -272,7 +275,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
       exposureCap: 1_000_000e6,
-      admin: ALICE
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);
@@ -327,7 +330,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
       exposureCap: 1_000_000e24,
-      admin: ALICE
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);
@@ -382,7 +385,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
       exposureCap: 1_000_000e6,
-      admin: ALICE
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);
@@ -436,7 +439,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       underlyingToken: address(newToken),
       priceStrategy: address(newPriceStrategy),
       exposureCap: 1_000_000e24,
-      admin: ALICE
+      reserve: address(GHO_RESERVE)
     });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);

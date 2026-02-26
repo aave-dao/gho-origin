@@ -6,7 +6,6 @@ import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-con
 import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
 import {IGhoFlashMinter} from 'src/contracts/facilitators/flashMinter/interfaces/IGhoFlashMinter.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
-import {IGhoAToken} from 'src/contracts/facilitators/aave/tokens/interfaces/IGhoAToken.sol';
 
 contract MockFlashBorrower is IERC3156FlashBorrower {
   enum Action {
@@ -19,15 +18,6 @@ contract MockFlashBorrower is IERC3156FlashBorrower {
     ADD_FACILITATOR,
     REMOVE_FACILITATOR,
     SET_FACILITATOR,
-    APPROVE,
-    TRANSFER,
-    TRANSFER_FROM,
-    TRANSFER_UNDERLYING_TO,
-    HANDLE_REPAYMENT,
-    ATOKEN_DISTRIBUTE_FEES,
-    RESCUE_TOKENS,
-    SET_VAR_DEBT_TOKEN,
-    ATOKEN_UPDATE_TREASURY,
     OTHER
   }
 
@@ -42,7 +32,6 @@ contract MockFlashBorrower is IERC3156FlashBorrower {
   uint8 public repeat_on_count;
   IGhoFlashMinter public minter;
   IGhoToken public Gho;
-  IGhoAToken public AGho;
   address public _transferTo;
 
   IERC3156FlashLender private _lender;
@@ -94,39 +83,6 @@ contract MockFlashBorrower is IERC3156FlashBorrower {
       address facilitator;
       uint128 newCapacity;
       Gho.setFacilitatorBucketCapacity(facilitator, newCapacity);
-    } else if (action == Action.APPROVE) {
-      address spender;
-      uint256 amt;
-      AGho.approve(spender, amt);
-    } else if (action == Action.TRANSFER) {
-      uint256 amt;
-      AGho.transfer(_transferTo, amt);
-    } else if (action == Action.TRANSFER_FROM) {
-      address from;
-      uint256 amt;
-      AGho.transferFrom(from, _transferTo, amt);
-    } else if (action == Action.TRANSFER_UNDERLYING_TO) {
-      address target;
-      uint256 amt;
-      AGho.transferUnderlyingTo(target, amt);
-    } else if (action == Action.HANDLE_REPAYMENT) {
-      address user;
-      address onBehalfOf;
-      uint256 amt;
-      AGho.handleRepayment(user, onBehalfOf, amt);
-    } else if (action == Action.ATOKEN_DISTRIBUTE_FEES) {
-      AGho.distributeFeesToTreasury();
-    } else if (action == Action.RESCUE_TOKENS) {
-      address token;
-      address to;
-      uint256 amt;
-      AGho.rescueTokens(token, to, amt);
-    } else if (action == Action.SET_VAR_DEBT_TOKEN) {
-      address ghoVariableDebtToken;
-      AGho.setVariableDebtToken(ghoVariableDebtToken);
-    } else if (action == Action.ATOKEN_UPDATE_TREASURY) {
-      address newGhoTreasury;
-      AGho.updateGhoTreasury(newGhoTreasury);
     } else if (action == Action.OTHER) {
       require(true);
     }

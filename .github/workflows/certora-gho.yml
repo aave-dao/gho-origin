@@ -39,20 +39,7 @@ jobs:
           configurations: |-
             certora/gho/conf/verifyUpgradeableGhoToken.conf
             certora/gho/conf/verifyGhoToken.conf
-            certora/gho/conf/verifyGhoAToken.conf --rule noMint noBurn noTransfer transferUnderlyingToCantExceedCapacity totalSupplyAlwaysZero userBalanceAlwaysZero level_does_not_decrease_after_transferUnderlyingTo_followed_by_handleRepayment
-            certora/gho/conf/verifyGhoDiscountRateStrategy.conf --rule equivalenceOfWadMulCVLAndWadMulSol maxDiscountForHighDiscountTokenBalance zeroDiscountForSmallDiscountTokenBalance partialDiscountForIntermediateTokenBalance limitOnDiscountRate
             certora/gho/conf/verifyFlashMinter.conf --rule balanceOfFlashMinterGrows integrityOfTreasurySet integrityOfFeeSet availableLiquidityDoesntChange integrityOfDistributeFeesToTreasury feeSimulationEqualsActualFee
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule user_index_after_mint user_index_ge_one_ray nonzeroNewDiscountToken
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule accumulated_interest_increase_after_mint
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule userCantNullifyItsDebt
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule discountCantExceedDiscountRate
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule onlyMintForUserCanIncreaseUsersBalance
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule discountCantExceed100Percent
-            certora/gho/conf/verifyGhoVariableDebtToken.conf --rule disallowedFunctionalities nonMintFunctionCantIncreaseBalance nonMintFunctionCantIncreaseScaledBalance debtTokenIsNotTransferable onlyCertainFunctionsCanModifyScaledBalance userAccumulatedDebtInterestWontDecrease integrityOfMint_updateDiscountRate integrityOfMint_updateIndex integrityOfMint_updateScaledBalance_fixedIndex integrityOfMint_userIsolation integrityMint_atoken integrityOfBurn_updateDiscountRate integrityOfBurn_updateIndex burnZeroDoesntChangeBalance integrityOfBurn_fullRepay_concrete integrityOfBurn_userIsolation integrityOfUpdateDiscountDistribution_updateIndex integrityOfUpdateDiscountDistribution_userIsolation integrityOfRebalanceUserDiscountPercent_updateDiscountRate integrityOfRebalanceUserDiscountPercent_updateIndex integrityOfRebalanceUserDiscountPercent_userIsolation integrityOfBalanceOf_fullDiscount integrityOfBalanceOf_noDiscount integrityOfBalanceOf_zeroScaledBalance burnAllDebtReturnsZeroDebt integrityOfUpdateDiscountRateStrategy user_index_up_to_date
-            certora/gho/conf/verifyGhoVariableDebtToken_summarized.conf --rule accrueAlwaysCalleldBeforeRefresh
-            certora/gho/conf/verifyGhoVariableDebtTokenInternal.conf
-            certora/gho/conf/verifyGhoVariableDebtToken-rayMulDiv-summarization.conf
-            certora/gho/conf/verifyGhoVariableDebtToken_specialBranch.conf --rule sendersDiscountPercentCannotIncrease
           solc-versions: 0.8.10
           comment-fail-only: false
           solc-remove-version-prefix: "0."

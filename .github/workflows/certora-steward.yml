@@ -41,7 +41,7 @@ jobs:
             certora/steward/conf/GhoBucketSteward.conf
             certora/steward/conf/GhoCcipSteward.conf
             certora/steward/conf/GhoGsmSteward.conf
-          solc-versions: 0.8.10
+          solc-versions: 0.8.27
           comment-fail-only: false
           solc-remove-version-prefix: "0."
           job-name: "Certora Prover Run"

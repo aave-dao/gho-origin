@@ -35,7 +35,6 @@ import {PriceOracle} from 'aave-v3-origin/contracts/mocks/oracle/PriceOracle.sol
 import {TestnetERC20} from 'aave-v3-origin/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
-import {MockStakedToken} from '../mocks/MockStakedToken.sol';
 
 // interfaces
 import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
@@ -44,7 +43,6 @@ import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contr
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
-import {IMockStakedToken} from '../mocks/MockStakedToken/interfaces/IMockStakedToken.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 
 // non-GHO contracts
@@ -99,7 +97,6 @@ contract TestGhoBase is Test, Constants, Events {
 
   GhoToken GHO_TOKEN;
   TestnetERC20 AAVE_TOKEN;
-  IMockStakedToken STK_TOKEN;
   TestnetERC20 USDX_TOKEN;
   MockERC4626 USDX_4626_TOKEN;
   MockPool POOL;

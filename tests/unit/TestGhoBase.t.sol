@@ -193,18 +193,17 @@ contract TestGhoBase is Test, Constants, Events {
     );
     GHO_GSM_LAST_RESORT_LIQUIDATOR = new SampleLiquidator();
     GHO_GSM_SWAP_FREEZER = new SampleSwapFreezer();
-    GHO_GSM = _deployGsm(
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE,
-      address(this)
-    );
-
-    GHO_GSM_4626 = _deployGsm4626(
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
-      DEFAULT_GSM_USDX_EXPOSURE
-    );
+    GHO_GSM = _deployGsm({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
+      admin: address(this)
+    });
+    GHO_GSM_4626 = _deployGsm4626({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
 
     GHO_RESERVE.addEntity(address(GHO_GSM));
     GHO_RESERVE.addEntity(address(GHO_GSM_4626));
@@ -290,7 +289,13 @@ contract TestGhoBase is Test, Constants, Events {
     address priceStrategy,
     uint128 exposureCap
   ) internal returns (Gsm) {
-    return _deployGsm(underlyingToken, priceStrategy, exposureCap, address(this));
+    return
+      _deployGsm({
+        underlyingToken: underlyingToken,
+        priceStrategy: priceStrategy,
+        exposureCap: exposureCap,
+        admin: address(this)
+      });
   }
 
   function _deployGsm(
@@ -300,15 +305,15 @@ contract TestGhoBase is Test, Constants, Events {
     address admin
   ) internal returns (Gsm) {
     return
-      _deployGsm(
-        address(GHO_TOKEN),
-        underlyingToken,
-        priceStrategy,
-        admin,
-        TREASURY,
-        exposureCap,
-        address(GHO_RESERVE)
-      );
+      _deployGsm({
+        ghoToken: address(GHO_TOKEN),
+        underlyingAsset: underlyingToken,
+        priceStrategy: priceStrategy,
+        admin: admin,
+        ghoTreasury: TREASURY,
+        exposureCap: exposureCap,
+        ghoReserve: address(GHO_RESERVE)
+      });
   }
 
   function _deployGsm(

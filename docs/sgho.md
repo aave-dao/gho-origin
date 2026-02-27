@@ -35,22 +35,22 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ### Key Parameters
 
-- **Target Rate**: Annual percentage rate in basis points (max 50% = 5000)
+- **Target Rate**: Annual percentage rate in basis points (max 50% = 5000). Maximum rate can be higher with frequent updates.
 - **Rate Per Second**: Rate at which the index will increase for each second passed (calculated from the set Target Rate)
 - **Yield Index**: Index used for share/asset conversions
 
 ## Role Management
 
-- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause sGho deposits and withdrawals
+- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause sGho deposits and withdrawals. Transfers are also frozen when the contract is paused.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
-- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate
+- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
 
 ## Security Considerations
 
 ### Built-in Protections
 
 - **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield
+- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield. Maximum rate can be higher with frequent updates.
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 
 ### Important Limitations
@@ -67,7 +67,16 @@ The vault operates on a first-come, first-served basis. If the contract's GHO ba
 
 ### Overview
 
-sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions. The contract employs the RAY precision unit (1e27) for internal yield calculations.
+sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions. The contract employs the RAY precision unit (1e27) for internal yield calculations. The configured annual rate is applied as a repeatedly compounded per-interval growth process, so effective annual yield depends on update frequency. For example, at the maximum rate of 50%, with updates every 12 seconds for a full year, the realized annual rate would be 64.87%, as shown below:
+
+```
+ratePerSecond = 15854895991882293252
+step factor = 1.000000190258751902587519024
+yearly factor = step^(2,628,000) = 1.648721192279...
+effective APY = 64.872119...% (not 50%)
+```
+
+If updates are too frequent, the annual rate can be lowered to compensate for this.
 
 ### Key Precision Considerations
 

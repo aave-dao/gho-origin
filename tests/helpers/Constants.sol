@@ -64,13 +64,15 @@ contract Constants {
   uint256 constant MINIMUM_DELAY_V2 = 1 days;
   uint256 constant FIXED_RATE_STRATEGY_FACTORY_REVISION = 1;
 
+  // Gsm Admins
+  address constant GSM_ADMIN = address(0x272727);
+  address constant GSM_4626_ADMIN = address(0x282828);
+
   // sample users used across unit tests
-  address public constant ALICE = address(0x313131);
+  address constant ALICE = address(0x313131);
   address constant BOB = address(0x1112);
   address constant CHARLES = address(0x1113);
 
-  address public constant GSM_ADMIN = address(0x272727);
-  address public constant GSM_4626_ADMIN = address(0x282828);
   address constant FAUCET = address(0x10001);
   address constant TREASURY = address(0x10002);
   address constant RISK_COUNCIL = address(0x10003);

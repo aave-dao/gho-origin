@@ -19,6 +19,9 @@ contract GhoReserve is Initializable, AccessControl, IGhoReserve {
   using SafeCast for uint256;
 
   /// @inheritdoc IGhoReserve
+  uint64 public constant REVISION = 1;
+
+  /// @inheritdoc IGhoReserve
   bytes32 public constant ENTITY_MANAGER_ROLE = keccak256('ENTITY_MANAGER_ROLE');
 
   /// @inheritdoc IGhoReserve
@@ -41,6 +44,7 @@ contract GhoReserve is Initializable, AccessControl, IGhoReserve {
    * @param gho The address of the GHO token on the remote chain
    */
   constructor(address gho) {
+    _disableInitializers();
     require(gho != address(0), 'ZERO_ADDRESS_NOT_VALID');
     GHO_TOKEN = gho;
   }
@@ -136,10 +140,5 @@ contract GhoReserve is Initializable, AccessControl, IGhoReserve {
   /// @inheritdoc IGhoReserve
   function totalEntities() external view returns (uint256) {
     return _entities.length();
-  }
-
-  /// @inheritdoc IGhoReserve
-  function GHO_REMOTE_RESERVE_REVISION() public pure virtual override returns (uint256) {
-    return 1;
   }
 }

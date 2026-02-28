@@ -15,6 +15,7 @@ import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/Fixed
 contract FixedFeeStrategyFactory is Initializable, IFixedFeeStrategyFactory {
   using EnumerableSet for EnumerableSet.AddressSet;
 
+  /// @inheritdoc IFixedFeeStrategyFactory
   uint64 public constant REVISION = 1;
 
   constructor() {

@@ -100,6 +100,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -229,6 +230,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -276,6 +278,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -331,6 +334,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -380,6 +384,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -429,6 +434,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -477,6 +483,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -527,6 +534,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -602,6 +610,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -675,6 +684,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 
@@ -778,6 +788,7 @@ contract TestGsmSwapFuzz is TestGhoBase {
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
+      vm.prank(GSM_ADMIN);
       gsm.updateFeeStrategy(address(newFeeStrategy));
     }
 

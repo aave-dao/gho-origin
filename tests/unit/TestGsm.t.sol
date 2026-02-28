@@ -46,7 +46,7 @@ contract TestGsm is TestGhoBase {
 
   function testInitialize() public {
     vm.expectEmit(true, true, true, true);
-    emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
+    emit RoleGranted(DEFAULT_ADMIN_ROLE, GSM_ADMIN, address(this));
     vm.expectEmit(true, true, false, true);
     emit GhoTreasuryUpdated(address(0), address(TREASURY));
     vm.expectEmit(true, true, false, true);
@@ -100,6 +100,16 @@ contract TestGsm is TestGhoBase {
     gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
 
+  function testRevertInitializeImplementation() public {
+    Gsm gsmImpl = new Gsm(
+      address(GHO_TOKEN),
+      address(USDX_TOKEN),
+      address(GHO_GSM_FIXED_PRICE_STRATEGY)
+    );
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    gsmImpl.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
+  }
+
   function testTypehash() public view {
     bytes32 buyTypeHash = vm.eip712HashType('BuyAssetWithSig');
     bytes32 sellTypeHash = vm.eip712HashType('SellAssetWithSig');
@@ -118,6 +128,7 @@ contract TestGsm is TestGhoBase {
   function testSellAssetZeroFee() public {
     vm.expectEmit(true, true, false, true, address(GHO_GSM));
     emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
     vm.prank(FAUCET);
@@ -434,6 +445,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testGetGhoAmountForSellAssetWithZeroFee() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
     (uint256 exactAssetAmount, uint256 ghoBought, uint256 grossAmount, uint256 fee) = GHO_GSM
@@ -478,6 +490,7 @@ contract TestGsm is TestGhoBase {
   function testBuyAssetZeroFee() public {
     vm.expectEmit(true, true, false, true, address(GHO_GSM));
     emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
     // Supply assets to the GSM first
@@ -720,6 +733,7 @@ contract TestGsm is TestGhoBase {
     // Use zero fees to simplify amount calculations
     vm.expectEmit(true, true, false, true, address(GHO_GSM));
     emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
     // Supply assets to the GSM first
@@ -901,6 +915,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testGetGhoAmountForBuyAssetWithZeroFee() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
     (uint256 exactAssetAmount, uint256 ghoSold, uint256 grossAmount, uint256 fee) = GHO_GSM
@@ -1007,12 +1022,14 @@ contract TestGsm is TestGhoBase {
   }
 
   function testUpdateConfigurator() public {
+    vm.startPrank(GSM_ADMIN);
     vm.expectEmit(true, true, true, true, address(GHO_GSM));
-    emit RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, address(this));
+    emit RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, GSM_ADMIN);
     GHO_GSM.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
     vm.expectEmit(true, true, true, true, address(GHO_GSM));
-    emit RoleRevoked(GSM_CONFIGURATOR_ROLE, address(this), address(this));
-    GHO_GSM.revokeRole(GSM_CONFIGURATOR_ROLE, address(this));
+    emit RoleRevoked(GSM_CONFIGURATOR_ROLE, ALICE, GSM_ADMIN);
+    GHO_GSM.revokeRole(GSM_CONFIGURATOR_ROLE, ALICE);
+    vm.stopPrank();
   }
 
   function testRevertUpdateConfiguratorNotAuthorized() public {
@@ -1023,8 +1040,9 @@ contract TestGsm is TestGhoBase {
 
   function testConfiguratorUpdateMethods() public {
     // Alice as configurator
+    vm.prank(GSM_ADMIN);
     vm.expectEmit(true, true, true, true, address(GHO_GSM));
-    emit RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, address(this));
+    emit RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, GSM_ADMIN);
     GHO_GSM.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
 
     vm.startPrank(address(ALICE));
@@ -1094,12 +1112,14 @@ contract TestGsm is TestGhoBase {
 
   function testUpdateGhoTreasuryRevertIfZero() public {
     vm.expectRevert(bytes('ZERO_ADDRESS_NOT_VALID'));
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateGhoTreasury(address(0));
   }
 
   function testUpdateGhoTreasury() public {
     vm.expectEmit(true, true, true, true, address(GHO_GSM));
     emit GhoTreasuryUpdated(TREASURY, ALICE);
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateGhoTreasury(ALICE);
 
     assertEq(GHO_GSM.getGhoTreasury(), ALICE);
@@ -1112,6 +1132,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRescueTokens() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     vm.prank(FAUCET);
@@ -1126,12 +1147,14 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertRescueTokensZeroAmount() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
     vm.expectRevert('INVALID_AMOUNT');
     GHO_GSM.rescueTokens(address(WETH), ALICE, 0);
   }
 
   function testRescueGhoTokens() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     ghoFaucet(address(GHO_GSM), 100e18);
@@ -1145,6 +1168,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRescueGhoTokensWithAccruedFees() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     uint256 fee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
@@ -1177,6 +1201,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertRescueGhoTokens() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     vm.expectRevert('INSUFFICIENT_GHO_TO_RESCUE');
@@ -1184,6 +1209,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRescueUnderlyingTokens() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     vm.prank(FAUCET);
@@ -1197,6 +1223,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRescueUnderlyingTokensWithAccruedFees() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     vm.prank(FAUCET);
@@ -1239,6 +1266,7 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertRescueUnderlyingTokens() public {
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
 
     vm.expectRevert('INSUFFICIENT_EXOGENOUS_ASSET_TO_RESCUE');
@@ -1461,6 +1489,7 @@ contract TestGsm is TestGhoBase {
   function testGetAccruedFeesWithZeroFee() public {
     vm.expectEmit(true, true, false, true, address(GHO_GSM));
     emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
     assertEq(GHO_GSM.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
@@ -1505,11 +1534,12 @@ contract TestGsm is TestGhoBase {
     USDX_TOKEN.mint(ALICE, 2 * DEFAULT_GSM_USDX_AMOUNT);
 
     // Alice as configurator
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
-    vm.startPrank(address(ALICE));
-
+    vm.prank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(0));
 
+    vm.startPrank(address(ALICE));
     USDX_TOKEN.approve(address(GHO_GSM), DEFAULT_GSM_USDX_AMOUNT);
     GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
 
@@ -1540,6 +1570,7 @@ contract TestGsm is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM), DEFAULT_GSM_GHO_AMOUNT / 2);
     GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT / 2, BOB);
+    vm.stopPrank();
 
     assertEq(GHO_GSM.getExposureCap(), 0, 'Unexpected exposure capacity');
   }

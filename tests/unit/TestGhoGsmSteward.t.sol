@@ -32,6 +32,7 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
     vm.warp(GHO_GSM_STEWARD.MINIMUM_DELAY() + 1);
 
     // Grant required roles
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD));
   }
 
@@ -54,6 +55,12 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
   function testRevertConstructorInvalidRiskCouncil() public {
     vm.expectRevert('INVALID_RISK_COUNCIL');
     new GhoGsmSteward(address(0x001), address(0));
+  }
+
+  function testRevertInitializeFixedFeeStrategyFactoryImplementation() public {
+    FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    factoryImpl.initialize(new address[](0));
   }
 
   function testUpdateGsmExposureCapUpwards() public {
@@ -141,6 +148,7 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
 
   function testRevertUpdateGsmExposureCapIfStewardLostConfiguratorRole() public {
     uint128 oldExposureCap = GHO_GSM.getExposureCap();
+    vm.prank(GSM_ADMIN);
     GHO_GSM.revokeRole(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD));
     vm.expectRevert(
       AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD))
@@ -474,6 +482,7 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
     address feeStrategy = GHO_GSM.getFeeStrategy();
     uint256 buyFee = IGsmFeeStrategy(feeStrategy).getBuyFee(1e4);
     uint256 sellFee = IGsmFeeStrategy(feeStrategy).getSellFee(1e4);
+    vm.prank(GSM_ADMIN);
     GHO_GSM.revokeRole(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD));
     vm.expectRevert(
       AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD))

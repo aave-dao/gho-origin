@@ -38,6 +38,12 @@ contract TestGhoReserve is TestGhoBase {
     reserve.initialize(address(0));
   }
 
+  function testRevertInitializeImplementation() public {
+    GhoReserve reserveImpl = new GhoReserve(address(GHO_TOKEN));
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    reserveImpl.initialize(address(this));
+  }
+
   function testRevertUseNoCapacity() public {
     GHO_RESERVE.addEntity(address(this));
     vm.expectRevert('LIMIT_EXCEEDED');

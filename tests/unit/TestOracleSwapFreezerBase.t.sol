@@ -22,6 +22,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
       DEFAULT_UNFREEZE_UPPER_BOUND,
       true
     );
+    vm.prank(GSM_ADMIN);
     GHO_GSM.grantRole(GSM_SWAP_FREEZER_ROLE, address(swapFreezer));
   }
 
@@ -307,6 +308,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
     assertEq(canPerformUpkeep, true, 'Unexpected initial upkeep state');
 
     // Revoke SwapFreezer role
+    vm.prank(GSM_ADMIN);
     GHO_GSM.revokeRole(GSM_SWAP_FREEZER_ROLE, address(swapFreezer));
 
     // Upkeep shouldn't be possible
@@ -352,6 +354,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
       true
     );
     if (grantRole) {
+      vm.prank(GSM_ADMIN);
       GHO_GSM.grantRole(GSM_SWAP_FREEZER_ROLE, agent);
     }
 

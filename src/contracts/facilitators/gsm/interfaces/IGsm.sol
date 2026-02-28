@@ -341,7 +341,7 @@ interface IGsm is IAccessControl, IGhoFacilitator {
    * @notice Returns the GSM revision number
    * @return The revision number
    */
-  function GSM_REVISION() external pure returns (uint256);
+  function REVISION() external pure returns (uint64);
 
   /**
    * @notice Returns the address of the GHO token

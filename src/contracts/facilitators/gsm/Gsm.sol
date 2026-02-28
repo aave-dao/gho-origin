@@ -26,6 +26,9 @@ contract Gsm is Initializable, EIP712, AccessControl, IGsm {
   using SafeCast for uint256;
 
   /// @inheritdoc IGsm
+  uint64 public constant REVISION = 1;
+
+  /// @inheritdoc IGsm
   bytes32 public constant CONFIGURATOR_ROLE = keccak256('CONFIGURATOR_ROLE');
 
   /// @inheritdoc IGsm
@@ -405,11 +408,6 @@ contract Gsm is Initializable, EIP712, AccessControl, IGsm {
   /// @inheritdoc IGhoFacilitator
   function getGhoTreasury() external view override returns (address) {
     return _ghoTreasury;
-  }
-
-  /// @inheritdoc IGsm
-  function GSM_REVISION() public pure virtual override returns (uint256) {
-    return 1;
   }
 
   /**

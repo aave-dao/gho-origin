@@ -914,6 +914,7 @@ contract TestGsm4626Edge is TestGhoBase {
     // Use zero fees for easier calculations
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
     emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    vm.prank(GSM_4626_ADMIN);
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     // Supply assets to the GSM first
@@ -1001,6 +1002,7 @@ contract TestGsm4626Edge is TestGhoBase {
     // Use zero fees for easier calculations
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
     emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    vm.prank(GSM_4626_ADMIN);
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     // Mint some vault shares first

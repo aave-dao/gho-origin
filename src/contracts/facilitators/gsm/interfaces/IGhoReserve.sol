@@ -170,5 +170,5 @@ interface IGhoReserve is IAccessControl {
    * @notice Returns the GhoReserve revision number
    * @return The revision number
    */
-  function GHO_REMOTE_RESERVE_REVISION() external pure returns (uint256);
+  function REVISION() external pure returns (uint64);
 }

@@ -5,7 +5,7 @@ import './TestGhoBase.t.sol';
 
 contract TestGsmUpgrade is TestGhoBase {
   function testUpgrade() public {
-    assertEq(GHO_GSM.GSM_REVISION(), 1, 'Unexpected pre-upgrade GSM revision');
+    assertEq(GHO_GSM.REVISION(), 1, 'Unexpected pre-upgrade GSM revision');
 
     bytes32[] memory beforeSnapshot = _getStorageSnapshot();
 
@@ -22,7 +22,10 @@ contract TestGsmUpgrade is TestGhoBase {
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GHO_GSM))).upgradeToAndCall(gsmV2, data);
 
-    assertEq(GHO_GSM.GSM_REVISION(), 2, 'Unexpected post-upgrade GSM revision');
+    bytes32 initializableStorageSlot = 0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
+    uint256 initializedVersion = uint256(vm.load(address(GHO_GSM), initializableStorageSlot)) &
+      0xffffffffffffffff;
+    assertEq(initializedVersion, 2, 'Unexpected post-upgrade initialized version');
 
     bytes32[] memory afterSnapshot = _getStorageSnapshot();
     // First storage item should be different, the rest the same post-upgrade

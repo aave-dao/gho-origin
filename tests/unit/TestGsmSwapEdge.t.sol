@@ -86,6 +86,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       exposureCap: 100_000_000e18,
       reserve: address(GHO_RESERVE)
     });
+    vm.prank(GSM_ADMIN);
     gsm.updateFeeStrategy(address(newFeeStrategy));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);
@@ -125,6 +126,7 @@ contract TestGsmSwapEdge is TestGhoBase {
       exposureCap: 100_000_000e18,
       reserve: address(GHO_RESERVE)
     });
+    vm.prank(GSM_ADMIN);
     gsm.updateFeeStrategy(address(newFeeStrategy));
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), 100_000_000 ether);

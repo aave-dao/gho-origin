@@ -212,13 +212,17 @@ contract TestGhoBase is Test, Constants, Events {
     GHO_DIRECT_FACILITATOR.mint(address(GHO_RESERVE), DEFAULT_CAPACITY * 2);
 
     GHO_GSM_FIXED_FEE_STRATEGY = new FixedFeeStrategy(DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
+    vm.startPrank(GSM_ADMIN);
     GHO_GSM.updateFeeStrategy(address(GHO_GSM_FIXED_FEE_STRATEGY));
-    GHO_GSM_4626.updateFeeStrategy(address(GHO_GSM_FIXED_FEE_STRATEGY));
-
     GHO_GSM.grantRole(GSM_LIQUIDATOR_ROLE, address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
     GHO_GSM.grantRole(GSM_SWAP_FREEZER_ROLE, address(GHO_GSM_SWAP_FREEZER));
+    vm.stopPrank();
+
+    vm.startPrank(GSM_4626_ADMIN);
+    GHO_GSM_4626.updateFeeStrategy(address(GHO_GSM_FIXED_FEE_STRATEGY));
     GHO_GSM_4626.grantRole(GSM_LIQUIDATOR_ROLE, address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
     GHO_GSM_4626.grantRole(GSM_SWAP_FREEZER_ROLE, address(GHO_GSM_SWAP_FREEZER));
+    vm.stopPrank();
 
     GHO_TOKEN.addFacilitator(FAUCET, 'Faucet Facilitator', type(uint128).max);
 
@@ -291,7 +295,7 @@ contract TestGhoBase is Test, Constants, Events {
     Gsm gsm = new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
     bytes memory initParams = abi.encodeWithSignature(
       'initialize(address,address,uint128,address)',
-      address(this),
+      GSM_ADMIN,
       TREASURY,
       exposureCap,
       reserve
@@ -312,7 +316,7 @@ contract TestGhoBase is Test, Constants, Events {
     Gsm4626 gsm = new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
     bytes memory initParams = abi.encodeWithSignature(
       'initialize(address,address,uint128,address)',
-      address(this),
+      GSM_4626_ADMIN,
       TREASURY,
       exposureCap,
       address(GHO_RESERVE)

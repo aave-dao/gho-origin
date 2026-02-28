@@ -29,8 +29,4 @@ contract MockGsmV2 is Gsm {
   function initialize() external reinitializer(2) {
     // Intentionally left blank
   }
-
-  function GSM_REVISION() public pure virtual override returns (uint256) {
-    return 2;
-  }
 }

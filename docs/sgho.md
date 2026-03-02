@@ -41,7 +41,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ## Role Management
 
-- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares:, including deposits, withdrawals and transfers.
+- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares: including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
 - `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
 
@@ -62,8 +62,6 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### Shortfall Risk
 
 The vault operates on a first-come, first-served basis. If the contract's GHO balance falls below the theoretical total assets, some users may be unable to withdraw their full balance until additional GHO is provided.
-
-## Precision
 
 ## Math
 

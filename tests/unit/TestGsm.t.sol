@@ -101,13 +101,13 @@ contract TestGsm is TestGhoBase {
   }
 
   function testRevertInitializeImplementation() public {
-    Gsm gsmImpl = new Gsm(
+    Gsm gsm = new Gsm(
       address(GHO_TOKEN),
       address(USDX_TOKEN),
       address(GHO_GSM_FIXED_PRICE_STRATEGY)
     );
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    gsmImpl.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
+    gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(GHO_RESERVE));
   }
 
   function testTypehash() public view {

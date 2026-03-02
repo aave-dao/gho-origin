@@ -35,22 +35,22 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ### Key Parameters
 
-- **Target Rate**: Annual percentage rate in basis points (max 50% = 5000)
+- **Target Rate**: Annual percentage rate in basis points (max 50% = 5000). Maximum rate can be higher with frequent updates.
 - **Rate Per Second**: Rate at which the index will increase for each second passed (calculated from the set Target Rate)
 - **Yield Index**: Index used for share/asset conversions
 
 ## Role Management
 
-- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause sGho deposits and withdrawals
+- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares: including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
-- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate
+- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
 
 ## Security Considerations
 
 ### Built-in Protections
 
 - **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield
+- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield.
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 
 ### Important Limitations
@@ -63,11 +63,16 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 The vault operates on a first-come, first-served basis. If the contract's GHO balance falls below the theoretical total assets, some users may be unable to withdraw their full balance until additional GHO is provided.
 
-## Precision
+## Math
 
-### Overview
+sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions.
+The following are key considerations for arithmetic precision in math operations:
 
-sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions. The contract employs the RAY precision unit (1e27) for internal yield calculations.
+- **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
+- **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
+- **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
+- **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
+  For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the [detailed precision analysis document](./sgho-precision-analysis/precision.md)\*\*
 
 ### Key Precision Considerations
 

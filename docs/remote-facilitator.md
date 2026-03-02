@@ -14,7 +14,7 @@ It holds GHO liquidity and allows authorized entities to use it up to a defined 
 
 Instead of granting facilitator rights directly on the GHO token to remote facilitators, they are registered as entities in the `GhoReserve`. This indirection is necessary because GHO can only be minted on Ethereum.
 
-A single `GhoReserve` instance can be shared across multiple remote faciltiators, or each remote facilitator can have a dedicated one. Both setups are functionally equivalent, though the shared approach is simpler.
+A single `GhoReserve` instance can be shared across multiple remote facilitators, or each remote facilitator can have a dedicated one. Both setups are functionally equivalent, though the shared approach is simpler.
 
 ### Remote Facilitators
 

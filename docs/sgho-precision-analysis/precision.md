@@ -40,7 +40,7 @@ yearly factor = step^(2,628,000) = 1.648721192279...
 effective APY = 64.872119...% (not 50%)
 ```
 
-> **Note:** Even if the target rate is set to the maximum (50% APR) and the yield is compounded daily for 100 years, the `yieldIndex` will not exceed the type(uint176).max (~aprox 1e53). This demonstrates that the system is robust against overflow and extreme long-term compounding scenarios.
+> **Note:** Even if the target rate is set to the maximum (50% APR) and the yield is compounded daily for 100 years, the `yieldIndex` will not exceed the type(uint176).max (~1e53). This demonstrates that the system is robust against overflow and extreme long-term compounding scenarios.
 
 ### Yield Index Update Formula
 

@@ -41,7 +41,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ## Role Management
 
-- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares: including deposits, withdrawals and transfers.
+- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
 - `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
 
@@ -72,25 +72,5 @@ The following are key considerations for arithmetic precision in math operations
 - **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
 - **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
 - **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
-  For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the [detailed precision analysis document](./sgho-precision-analysis/precision.md)\*\*
 
-### Key Precision Considerations
-
-- **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
-- **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
-- **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
-
-### Detailed Analysis
-
-For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the detailed precision analysis document:
-
-**[Precision Analysis](./docs/sgho-precision-analysis/precision.md)**
-
-This document covers:
-
-- Mathematical foundations of the yield mechanism
-- Precision loss scenarios and mitigations
-- Edge case handling for extreme values
-- Gas optimization considerations
-- Testing strategies for precision validation
+For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the [detailed precision analysis document](./sgho-precision-analysis/precision.md).

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {MarketReport} from 'aave-v3-origin/deployments/interfaces/IMarketReportTypes.sol';
 import {GhoFlashMinterProcedure} from 'src/deployments/contracts/procedures/GhoFlashMinterProcedure.sol';
 import {GhoReportTypes} from 'src/deployments/types/GhoReportTypes.sol';
 
@@ -11,13 +10,14 @@ contract GhoFlashMinterBatch is GhoFlashMinterProcedure {
   constructor(
     uint256 flashMinterFee,
     GhoReportTypes.GhoTokenReport memory ghoTokenReport,
-    MarketReport memory aaveV3MarketReport
+    address treasury,
+    address poolAddressesProvider
   ) {
     address ghoFlashMinter = _deployGhoFlashMinter({
       ghoToken: ghoTokenReport.ghoToken,
-      treasury: aaveV3MarketReport.treasury,
+      treasury: treasury,
       flashMinterFee: flashMinterFee,
-      poolAddressesProvider: aaveV3MarketReport.poolAddressesProvider
+      poolAddressesProvider: poolAddressesProvider
     });
 
     _ghoFlashMinterReport = GhoReportTypes.GhoFlashMinterReport({ghoFlashMinter: ghoFlashMinter});

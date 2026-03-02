@@ -6,6 +6,7 @@ import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataT
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
+import {MockPool} from './MockPool.sol';
 
 contract MockConfigurator {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
@@ -37,7 +38,7 @@ contract MockConfigurator {
   ) external {
     DataTypes.ReserveDataLegacy memory reserve = _pool.getReserveData(asset);
     address oldRateStrategyAddress = reserve.interestRateStrategyAddress;
-    _pool.setReserveInterestRateStrategyAddress(asset, newRateStrategyAddress);
+    MockPool(address(_pool)).setReserveInterestRateStrategyAddress(asset, newRateStrategyAddress);
     emit ReserveInterestRateStrategyChanged(asset, oldRateStrategyAddress, newRateStrategyAddress);
   }
 

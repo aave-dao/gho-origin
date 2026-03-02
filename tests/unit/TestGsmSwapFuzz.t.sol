@@ -88,8 +88,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
     deal(address(GHO_TOKEN), address(GHO_RESERVE), type(uint256).max);
@@ -174,8 +177,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
 
     // Get gho amount for selling assets
     (uint256 assetSold, , uint256 ghoMinted, ) = gsm.getGhoAmountForSellAsset(amount);
@@ -211,8 +217,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_TOKEN.addFacilitator(address(gsm), 'Test GSM', type(uint128).max);
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
@@ -252,8 +261,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
     deal(address(GHO_TOKEN), address(GHO_RESERVE), type(uint256).max);
@@ -304,8 +316,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
 
@@ -349,8 +364,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
 
@@ -394,8 +412,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
 
@@ -440,8 +461,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
@@ -486,8 +510,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, uint128(assetAmount), address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: uint128(assetAmount)
+    });
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
@@ -557,8 +584,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, uint128(assetAmount), address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: uint128(assetAmount)
+    });
 
     if (buyFeeBps > 0 || sellFeeBps > 0) {
       FixedFeeStrategy newFeeStrategy = new FixedFeeStrategy(buyFeeBps, sellFeeBps);
@@ -624,8 +654,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, uint128(assetAmount), address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: uint128(assetAmount)
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
 
@@ -723,8 +756,11 @@ contract TestGsmSwapFuzz is TestGhoBase {
       address(newToken),
       underlyingDecimals // decimals
     );
-    Gsm gsm = new Gsm(address(GHO_TOKEN), address(newToken), address(newPriceStrategy));
-    gsm.initialize(address(this), TREASURY, type(uint128).max, address(GHO_RESERVE));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(newToken),
+      priceStrategy: address(newPriceStrategy),
+      exposureCap: type(uint128).max
+    });
     GHO_RESERVE.addEntity(address(gsm));
     GHO_RESERVE.setLimit(address(gsm), type(uint128).max);
 

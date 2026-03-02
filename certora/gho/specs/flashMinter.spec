@@ -1,5 +1,4 @@
 using GhoToken as gho;
-using GhoAToken as atoken;
 using MockFlashBorrower as flashBorrower;
 
 methods{
@@ -22,7 +21,7 @@ methods{
     function gho.totalSupply() external returns (uint256) envfree;
     function gho.balanceOf(address) external returns (uint256) envfree;
 
-    function atoken.getGhoTreasury() external returns (address) envfree;
+    function getGhoTreasury() external returns (address) envfree;
 }
 
 // keeps track of users with pool admin permissions in order to return a consistent value per user
@@ -57,8 +56,10 @@ function ghoBalanceOfTwoUsersLETotalSupply(address user1, address user2, address
 rule balanceOfFlashMinterGrows(method f, env e, calldataarg args) 
     filtered { f -> f.selector != sig:distributeFeesToTreasury().selector }{
     
+    env e2;
+    
     // No overflow of gho is possible
-    ghoBalanceOfTwoUsersLETotalSupply(currentContract, e.msg.sender, atoken);
+    ghoBalanceOfTwoUsersLETotalSupply(currentContract, e.msg.sender, e2.msg.sender);
     flashLoanReqs(e);
     // excluding calls to distribute fees
     mathint action = assert_uint256(flashBorrower.action());
@@ -114,12 +115,13 @@ rule availableLiquidityDoesntChange(method f, address token){
  */
 rule integrityOfDistributeFeesToTreasury(){
     env e;
+    env e2;
     address treasury = getGhoTreasury(e);
     uint256 _facilitatorBalance = gho.balanceOf(currentContract);
     uint256 _treasuryBalance = gho.balanceOf(treasury);
 
     // No overflow of gho is possible
-    ghoBalanceOfTwoUsersLETotalSupply(currentContract, treasury, atoken);
+    ghoBalanceOfTwoUsersLETotalSupply(currentContract, treasury, e2.msg.sender);
     distributeFeesToTreasury(e);
 
     uint256 facilitatorBalance_ = gho.balanceOf(currentContract);
@@ -134,13 +136,14 @@ rule integrityOfDistributeFeesToTreasury(){
  */
 rule feeSimulationEqualsActualFee(address receiver, address token, uint256 amount, bytes data){
     env e;
+    env e2;
     mathint feeSimulationResult = flashFee(e, token, amount);
     uint256 _facilitatorBalance = gho.balanceOf(currentContract);
     
     flashLoanReqs(e);
-    require atoken.getGhoTreasury() != currentContract;
+    require getGhoTreasury() != currentContract;
     // No overflow of gho is possible
-    ghoBalanceOfTwoUsersLETotalSupply(currentContract, e.msg.sender, atoken);
+    ghoBalanceOfTwoUsersLETotalSupply(currentContract, e.msg.sender, e2.msg.sender);
     // Excluding call to distributeFeesToTreasury & calling another flashloan (which will generate another fee in recursion)
     mathint borrower_action = assert_uint256(flashBorrower.action());
     require borrower_action != 1 && borrower_action != 0;

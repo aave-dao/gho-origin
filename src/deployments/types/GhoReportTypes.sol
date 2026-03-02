@@ -3,23 +3,14 @@ pragma solidity ^0.8.10;
 
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
-import {GhoOracle} from 'src/contracts/facilitators/aave/oracle/GhoOracle.sol';
-import {GhoDiscountRateStrategy} from 'src/contracts/facilitators/aave/interestStrategy/GhoDiscountRateStrategy.sol';
-import {UiGhoDataProvider} from 'src/contracts/facilitators/aave/misc/UiGhoDataProvider.sol';
+import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 import {GhoFlashMinter} from 'src/contracts/facilitators/flashMinter/GhoFlashMinter.sol';
 
 library GhoReportTypes {
   struct GhoTokenReport {
     address ghoToken;
     address upgradeableGhoToken;
-  }
-
-  struct GhoAaveListingReport {
     address ghoOracle;
-    address ghoATokenImpl;
-    address ghoVariableDebtTokenImpl;
-    address ghoDiscountRateStrategy;
-    address uiGhoDataProvider;
   }
 
   struct GhoFlashMinterReport {
@@ -35,7 +26,6 @@ library GhoReportTypes {
 
   struct GhoReport {
     GhoTokenReport ghoTokenReport;
-    GhoAaveListingReport ghoAaveListingReport;
     GhoFlashMinterReport ghoFlashMinterReport;
   }
 
@@ -43,8 +33,6 @@ library GhoReportTypes {
     GhoToken ghoToken;
     UpgradeableGhoToken upgradeableGhoToken;
     GhoOracle ghoOracle;
-    GhoDiscountRateStrategy ghoDiscountRateStrategy;
-    UiGhoDataProvider uiGhoDataProvider;
     GhoFlashMinter ghoFlashMinter;
   }
 }

@@ -8,15 +8,15 @@ contract TestGsmFullFlow is TestGhoBase {
     GhoDirectFacilitator facilitator = new GhoDirectFacilitator(address(this), address(GHO_TOKEN));
     GHO_TOKEN.addFacilitator(address(facilitator), 'GhoDirectFacilitatorFlow', DEFAULT_CAPACITY);
 
-    GhoReserve reserve = new GhoReserve(address(GHO_TOKEN));
-    reserve.initialize(address(this));
+    GhoReserve reserve = _deployReserve();
 
-    Gsm gsm = new Gsm(
-      address(GHO_TOKEN),
-      address(USDX_TOKEN),
-      address(GHO_GSM_FIXED_PRICE_STRATEGY)
-    );
-    gsm.initialize(address(this), TREASURY, DEFAULT_GSM_USDX_EXPOSURE, address(reserve));
+    Gsm gsm = _deployGsmProxy({
+      underlyingToken: address(USDX_TOKEN),
+      priceStrategy: address(GHO_GSM_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE,
+      admin: address(this),
+      reserve: address(reserve)
+    });
 
     reserve.addEntity(address(gsm));
     reserve.setLimit(address(gsm), 5_000_000 ether);

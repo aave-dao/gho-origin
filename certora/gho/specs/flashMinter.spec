@@ -21,7 +21,7 @@ methods{
     function gho.totalSupply() external returns (uint256) envfree;
     function gho.balanceOf(address) external returns (uint256) envfree;
 
-    function atoken.getGhoTreasury() external returns (address) envfree;
+    function getGhoTreasury() external returns (address) envfree;
 }
 
 // keeps track of users with pool admin permissions in order to return a consistent value per user

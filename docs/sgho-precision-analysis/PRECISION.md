@@ -31,6 +31,17 @@ This document details how precision, rounding, and edge cases are handled in the
 - The target rate (`targetRate`) is set in **basis points** (1e4 = 100%).
 - The rate per second (`ratePerSecond`) is cached for gas efficiency.
 
+The configured annual rate is applied as a repeatedly compounded per-interval growth process, so effective annual yield depends on update frequency. For example, at the maximum rate of 50%, with updates every 12 seconds for a full year, the realized annual rate would be 64.87%, as shown below:
+
+```
+ratePerSecond = 15854895991882293252
+step factor = 1.000000190258751902587519024
+yearly factor = step^(2,628,000) = 1.648721192279...
+effective APY = 64.872119...% (not 50%)
+```
+
+If updates are too frequent, the annual rate can be lowered to compensate for this.
+
 > **Note:** Even if the target rate is set to the maximum (50% APR) and the yield is compounded daily for 100 years, the `yieldIndex` will not exceed the type(uint176).max (~aprox 1e53). This demonstrates that the system is robust against overflow and extreme long-term compounding scenarios.
 
 ### Yield Index Update Formula

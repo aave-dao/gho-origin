@@ -41,7 +41,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ## Role Management
 
-- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause sGho deposits and withdrawals. Transfers are also frozen when the contract is paused.
+- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares:, including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
 - `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
 
@@ -50,7 +50,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### Built-in Protections
 
 - **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield. Maximum rate can be higher with frequent updates.
+- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield.
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 
 ### Important Limitations
@@ -65,18 +65,16 @@ The vault operates on a first-come, first-served basis. If the contract's GHO ba
 
 ## Precision
 
-### Overview
+## Math
 
-sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions. The contract employs the RAY precision unit (1e27) for internal yield calculations. The configured annual rate is applied as a repeatedly compounded per-interval growth process, so effective annual yield depends on update frequency. For example, at the maximum rate of 50%, with updates every 12 seconds for a full year, the realized annual rate would be 64.87%, as shown below:
+sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions.
+The following are key considerations for arithmetic precision in math operations:
 
-```
-ratePerSecond = 15854895991882293252
-step factor = 1.000000190258751902587519024
-yearly factor = step^(2,628,000) = 1.648721192279...
-effective APY = 64.872119...% (not 50%)
-```
-
-If updates are too frequent, the annual rate can be lowered to compensate for this.
+- **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
+- **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
+- **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
+- **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
+  For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the [detailed precision analysis document](./sgho-precision-analysis/precision.md)\*\*
 
 ### Key Precision Considerations
 

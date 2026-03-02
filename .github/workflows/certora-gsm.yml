@@ -39,8 +39,7 @@ jobs:
             #certora/gsm/conf/gsm/balances-sell.conf --rule R3_sellAssetUpdatesAssetBalanceCorrectly   waiting for ticket CERT-9408
             #certora/gsm/conf/gsm/balances-sell.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly     waiting for ticket CERT-9408
             certora/gsm/conf/gsm/fees-buy.conf
-            certora/gsm/conf/gsm/fees-sell.conf --exclude_rule R3_estimatedSellFeeCanBeHigherThanActualSellFee
-            certora/gsm/conf/gsm/fees-sell.conf --rule R3_estimatedSellFeeCanBeHigherThanActualSellFee
+            certora/gsm/conf/gsm/fees-sell.conf 
             certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty_getAssetAmountForBuyAsset sellAssetInverse_all buyAssetInverse_all basicProperty_getGhoAmountForSellAsset basicProperty_getAssetAmountForSellAsset basicProperty_getGhoAmountForBuyAsset
             certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty2_getAssetAmountForBuyAsset
             certora/gsm/conf/gsm/optimality.conf --rule R3_optimalityOfSellAsset_v1 R1_optimalityOfBuyAsset_v1 R6a_externalOptimalityOfBuyAsset R5a_externalOptimalityOfSellAsset R2_optimalityOfBuyAsset_v2

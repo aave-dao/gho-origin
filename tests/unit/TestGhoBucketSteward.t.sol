@@ -5,6 +5,10 @@ import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewa
 import './TestGhoBase.t.sol';
 
 contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
+  address internal FACILITATOR_1 = makeAddr('facilitator1');
+  address internal FACILITATOR_2 = makeAddr('facilitator2');
+  address internal FACILITATOR_3 = makeAddr('facilitator3');
+
   function setUp() public {
     // Deploy Gho Bucket Steward
     GHO_BUCKET_STEWARD = GhoBucketSteward(
@@ -14,9 +18,14 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
         riskCouncil: RISK_COUNCIL
       })
     );
+
+    GHO_TOKEN.addFacilitator(FACILITATOR_1, 'Facilitator 1', DEFAULT_CAPACITY);
+    GHO_TOKEN.addFacilitator(FACILITATOR_2, 'Facilitator 2', DEFAULT_CAPACITY);
+    GHO_TOKEN.addFacilitator(FACILITATOR_3, 'Facilitator 3', DEFAULT_CAPACITY);
+
     address[] memory controlledFacilitators = new address[](2);
-    controlledFacilitators[0] = address(GHO_ATOKEN);
-    controlledFacilitators[1] = address(GHO_GSM);
+    controlledFacilitators[0] = FACILITATOR_1;
+    controlledFacilitators[1] = FACILITATOR_2;
     vm.prank(SHORT_EXECUTOR);
     GHO_BUCKET_STEWARD.setControlledFacilitator(controlledFacilitators, true);
 
@@ -71,93 +80,93 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
   }
 
   function testUpdateFacilitatorBucketCapacity() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     uint128 newBucketCapacity = uint128(currentBucketCapacity) + 1;
-    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(address(GHO_ATOKEN), newBucketCapacity);
-    (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(FACILITATOR_1, newBucketCapacity);
+    (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     assertEq(newBucketCapacity, capacity);
   }
 
   function testUpdateFacilitatorBucketCapacityMaxValue() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     uint128 newBucketCapacity = uint128(currentBucketCapacity * 2);
     vm.prank(RISK_COUNCIL);
-    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(address(GHO_ATOKEN), newBucketCapacity);
-    (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(FACILITATOR_1, newBucketCapacity);
+    (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     assertEq(capacity, newBucketCapacity);
   }
 
   function testUpdateFacilitatorBucketCapacityTimelock() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       uint128(currentBucketCapacity) + 1
     );
-    uint40 timelock = GHO_BUCKET_STEWARD.getFacilitatorBucketCapacityTimelock(address(GHO_ATOKEN));
+    uint40 timelock = GHO_BUCKET_STEWARD.getFacilitatorBucketCapacityTimelock(FACILITATOR_1);
     assertEq(timelock, block.timestamp);
   }
 
   function testUpdateFacilitatorBucketCapacityAfterTimelock() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     uint128 newBucketCapacity = uint128(currentBucketCapacity) + 1;
-    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(address(GHO_ATOKEN), newBucketCapacity);
+    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(FACILITATOR_1, newBucketCapacity);
     skip(GHO_BUCKET_STEWARD.MINIMUM_DELAY() + 1);
     uint128 newBucketCapacityAfterTimelock = newBucketCapacity + 1;
     vm.prank(RISK_COUNCIL);
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       newBucketCapacityAfterTimelock
     );
-    (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     assertEq(capacity, newBucketCapacityAfterTimelock);
   }
 
   function testRevertUpdateFacilitatorBucketCapacityIfUnauthorized() public {
     vm.expectRevert('INVALID_CALLER');
     vm.prank(ALICE);
-    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(address(GHO_ATOKEN), 123);
+    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(FACILITATOR_1, 123);
   }
 
   function testRevertUpdateFacilitatorBucketCapacityIfUpdatedTooSoon() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       uint128(currentBucketCapacity) + 1
     );
     vm.prank(RISK_COUNCIL);
     vm.expectRevert('DEBOUNCE_NOT_RESPECTED');
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       uint128(currentBucketCapacity) + 2
     );
   }
 
   function testRevertUpdateFacilitatorBucketCapacityNoChange() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     vm.expectRevert('NO_CHANGE_IN_BUCKET_CAPACITY');
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       uint128(currentBucketCapacity)
     );
   }
 
   function testRevertUpdateFacilitatorBucketCapacityIfFacilitatorNotInControl() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_GSM_4626));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_3);
     vm.prank(RISK_COUNCIL);
     vm.expectRevert('FACILITATOR_NOT_CONTROLLED');
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_GSM_4626),
+      FACILITATOR_3,
       uint128(currentBucketCapacity) + 1
     );
   }
 
   function testRevertUpdateFacilitatorBucketCapacityIfStewardLostBucketManagerRole() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     GHO_TOKEN.revokeRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, address(GHO_BUCKET_STEWARD));
     vm.expectRevert(
       AccessControlErrorsLib.MISSING_ROLE(
@@ -167,57 +176,57 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
     );
     vm.prank(RISK_COUNCIL);
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       uint128(currentBucketCapacity) + 1
     );
   }
 
   function testRevertUpdateFacilitatorBucketCapacityIfMoreThanDouble() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     vm.expectRevert('INVALID_BUCKET_CAPACITY_UPDATE');
     GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(
-      address(GHO_ATOKEN),
+      FACILITATOR_1,
       uint128(currentBucketCapacity * 2) + 1
     );
   }
 
   function testRevertUpdateFacilitatorBucketCapacityDecrement() public {
-    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_ATOKEN));
+    (uint256 currentBucketCapacity, ) = GHO_TOKEN.getFacilitatorBucket(FACILITATOR_1);
     vm.prank(RISK_COUNCIL);
     uint128 newBucketCapacity = uint128(currentBucketCapacity) - 1;
     vm.expectRevert('INVALID_BUCKET_CAPACITY_UPDATE');
-    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(address(GHO_ATOKEN), newBucketCapacity);
+    GHO_BUCKET_STEWARD.updateFacilitatorBucketCapacity(FACILITATOR_1, newBucketCapacity);
   }
 
   function testSetControlledFacilitatorAdd() public {
     address[] memory oldControlledFacilitators = GHO_BUCKET_STEWARD.getControlledFacilitators();
-    address[] memory newGsmList = new address[](1);
-    newGsmList[0] = address(GHO_GSM_4626);
+    address[] memory newFacilitatorList = new address[](1);
+    newFacilitatorList[0] = FACILITATOR_3;
     vm.prank(SHORT_EXECUTOR);
-    GHO_BUCKET_STEWARD.setControlledFacilitator(newGsmList, true);
+    GHO_BUCKET_STEWARD.setControlledFacilitator(newFacilitatorList, true);
     address[] memory newControlledFacilitators = GHO_BUCKET_STEWARD.getControlledFacilitators();
     assertEq(newControlledFacilitators.length, oldControlledFacilitators.length + 1);
-    assertTrue(_contains(newControlledFacilitators, address(GHO_GSM_4626)));
+    assertTrue(_contains(newControlledFacilitators, FACILITATOR_3));
   }
 
   function testSetControlledFacilitatorsRemove() public {
     address[] memory oldControlledFacilitators = GHO_BUCKET_STEWARD.getControlledFacilitators();
-    address[] memory disableGsmList = new address[](1);
-    disableGsmList[0] = address(GHO_GSM);
+    address[] memory disableList = new address[](1);
+    disableList[0] = FACILITATOR_2;
     vm.prank(SHORT_EXECUTOR);
-    GHO_BUCKET_STEWARD.setControlledFacilitator(disableGsmList, false);
+    GHO_BUCKET_STEWARD.setControlledFacilitator(disableList, false);
     address[] memory newControlledFacilitators = GHO_BUCKET_STEWARD.getControlledFacilitators();
     assertEq(newControlledFacilitators.length, oldControlledFacilitators.length - 1);
-    assertFalse(_contains(newControlledFacilitators, address(GHO_GSM)));
+    assertFalse(_contains(newControlledFacilitators, FACILITATOR_2));
   }
 
   function testRevertSetControlledFacilitatorIfUnauthorized() public {
     vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
     vm.prank(RISK_COUNCIL);
-    address[] memory newGsmList = new address[](1);
-    newGsmList[0] = address(GHO_GSM_4626);
-    GHO_BUCKET_STEWARD.setControlledFacilitator(newGsmList, true);
+    address[] memory newFacilitatorList = new address[](1);
+    newFacilitatorList[0] = FACILITATOR_3;
+    GHO_BUCKET_STEWARD.setControlledFacilitator(newFacilitatorList, true);
   }
 
   function testIsControlledFacilitator() public {

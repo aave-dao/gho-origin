@@ -48,7 +48,7 @@ jobs:
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForBuyAsset_correctness_bound1 getAssetAmountForBuyAsset_correctness_bound2 getGhoAmountForBuyAsset_correctness_bound1 getAssetAmountForSellAsset_correctness getAssetAmountForBuyAsset_optimality getAssetAmountForBuyAsset_correctness
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getGhoAmountForBuyAsset_optimality
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getGhoAmountForBuyAsset_correctness
-            certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForSellAsset_optimality getAssetAmountForBuyAsset_funcProperty
+            certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForSellAsset_optimality getAssetAmountForBuyAsset_funcProperty --prover_args "-destructiveOptimizations twostage"
             certora/gsm/conf/gsm4626/finishedRules-4626.conf --rule cantBuyOrSellWhenSeized cantBuyOrSellWhenFrozen sellAssetIncreasesExposure buyAssetDecreasesExposure rescuingAssetKeepsAccruedFees rescuingGhoKeepsAccruedFees giftingGhoDoesntAffectStorageSIMPLE correctnessOfBuyAsset giftingUnderlyingDoesntAffectStorageSIMPLE sellAssetSameAsGetGhoAmountForSellAsset correctnessOfSellAsset giftingGhoDoesntCreateExcessOrDearth backWithGhoDoesntCreateExcess getAssetAmountForSellAsset_correctness collectedSellFeeIsAtLeastAsRequired collectedBuyFeePlus2IsAtLeastAsRequired collectedBuyFeePlus1IsAtLeastAsRequired collectedBuyFeeIsAtLeastAsRequired sellingDoesntExceedExposureCap whoCanChangeAccruedFees whoCanChangeExposure
             certora/gsm/conf/gsm4626/finishedRules-4626.conf --rule giftingUnderlyingDoesntCreateExcessOrDearth
           solc-versions: 0.8.20

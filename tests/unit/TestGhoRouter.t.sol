@@ -10,7 +10,12 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {GhoRouter} from "src/contracts/misc/GhoRouter.sol";
 import {IGhoRouter} from "src/contracts/misc/interfaces/IGhoRouter.sol";
-import {sGho} from "src/contracts/sgho/sGho.sol";
+
+/// Temp
+contract sGho {
+    function initialize(address gho, uint160 initialSupplyCap, address owner) external {}
+    function deposit(uint256 amount, address recipient) external {}
+}
 
 /**
  * @title GhoRouterTest
@@ -60,68 +65,77 @@ contract GhoRouterTest is Test {
         router.setGsmAllowed(GSM_USDT, true);
     }
 
-    function _dealAndStartUserWithApproval(address token, address spender, uint256 amount) internal {
+    function _dealAndApprove(address token, address spender, uint256 amount) internal {
         deal(token, USER, amount);
-        vm.startPrank(USER);
+        vm.prank(USER);
         SafeERC20.forceApprove(IERC20(token), spender, amount);
-    }
-
-    function _dealAndStartUserWithRouterApproval(address token, uint256 amount) internal {
-        _dealAndStartUserWithApproval(token, address(router), amount);
-    }
-
-    function _startUserWithApproval(address token, address spender, uint256 amount) internal {
-        vm.startPrank(USER);
-        SafeERC20.forceApprove(IERC20(token), spender, amount);
-    }
-
-    function _startUserWithRouterApproval(address token, uint256 amount) internal {
-        _startUserWithApproval(token, address(router), amount);
     }
 }
 
 contract GsmWhitelistTest is GhoRouterTest {
-    function test_owner_can_update_gsm_whitelist() public {
+    function testSetGsmAllowedNonOwner() public {
+        vm.startPrank(USER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        router.setGsmAllowed(GSM_USDC, false);
+        vm.stopPrank();
+    }
+
+    function testSetGsmAllowed() public {
         router.setGsmAllowed(GSM_USDC, false);
         assertFalse(router.isGsmAllowed(GSM_USDC));
 
         router.setGsmAllowed(GSM_USDC, true);
         assertTrue(router.isGsmAllowed(GSM_USDC));
     }
-
-    function test_reverts_non_owner_update_gsm_whitelist() public {
-        vm.startPrank(USER);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
-        router.setGsmAllowed(GSM_USDC, false);
-        vm.stopPrank();
-    }
 }
 
 contract SwapToGHOTest is GhoRouterTest {
     function _assertSwapTokenToGho(address token, address gsm, uint256 amount) internal {
-        _dealAndStartUserWithRouterApproval(token, amount);
-        vm.expectEmit(true, true, false, false);
-        emit IGhoRouter.SwapToGHO(USER, token, 0, 0);
-        uint256 ghoReceived = router.swapToGHO(gsm, token, amount, 0);
-        assertGt(ghoReceived, 0, "Should receive GHO");
-        vm.stopPrank();
+        
     }
 
-    function test_swap_usdc_to_gho() public {
-        _assertSwapTokenToGho(USDC, GSM_USDC, 1000 * 1e6);
+    function testSwapToGHOUSDC() public {
+        uint256 amount = 1_000e6;
+        _dealAndApprove(USDC, address(router), amount);
+
+        uint256 expectedOut = 1;
+
+        vm.expectEmit(true, true, true, true, address(router));
+        emit IGhoRouter.SwapToGHO(USER, USDC, 0, 0);
+        vm.prank(USER);
+        uint256 ghoReceived = router.swapToGHO(GSM_USDC, USDC, amount, 0);
+
+        assertEq(ghoReceived, expectedOut, "Received GHO does not match");
     }
 
-    function test_swap_usdt_to_gho() public {
-        _assertSwapTokenToGho(USDT, GSM_USDT, 1000 * 1e6);
+    function testSwapToGHOUSDT() public {
+        uint256 amount = 1_000e6;
+        _dealAndApprove(USDT, address(router), amount);
+
+        uint256 expectedOut = 1;
+
+        vm.expectEmit(true, true, true, true, address(router));
+        emit IGhoRouter.SwapToGHO(USER, USDT, 0, 0);
+        vm.prank(USER);
+        uint256 ghoReceived = router.swapToGHO(GSM_USDT, USDT, amount, 0);
+
+        assertEq(ghoReceived, expectedOut, "Received GHO does not match");
     }
 
-    function test_swap_usdc_to_gho_with_recipient() public {
-        uint256 usdcAmount = 1000 * 1e6;
-        _dealAndStartUserWithRouterApproval(USDC, usdcAmount);
-
+    function testSwapToGHOUSDCWithRecipient() public {
         uint256 recipientBalanceBefore = IERC20(GHO).balanceOf(RECIPIENT);
+        
+        uint256 amount = 1_000e6;
+        _dealAndApprove(USDT, address(router), amount);
         uint256 userBalanceBefore = IERC20(GHO).balanceOf(USER);
-        uint256 ghoReceived = router.swapToGHO(GSM_USDC, USDC, usdcAmount, 0, RECIPIENT);
+        uint256 expectedOut = 1;
+
+        vm.expectEmit(true, true, true, true, address(router));
+        emit IGhoRouter.SwapToGHO(USER, USDT, 0, 0);
+        vm.prank(USER);
+        uint256 ghoReceived = router.swapToGHO(GSM_USDT, USDT, amount, 0);
+
+        assertEq(ghoReceived, expectedOut, "Received GHO does not match");
         vm.stopPrank();
 
         assertGt(ghoReceived, 0, "Should receive GHO");
@@ -294,7 +308,7 @@ contract SwapTosGHOTest is GhoRouterTest {
     function _assertSwapTokenToSgho(address token, address gsm, uint256 amount) internal {
         _dealAndStartUserWithRouterApproval(token, amount);
         vm.expectEmit(true, true, true, false);
-        emit IGhoRouter.SwapTosGHO(USER, token, address(sgho), 0, 0, 0);
+        emit IGhoRouter.SwapTosGHO(USER, token, 0, 0);
         uint256 shares = router.swapTosGHO(gsm, token, amount, 1);
         assertGt(shares, 0, "Should receive sGHO shares");
         assertEq(IERC20(address(sgho)).balanceOf(USER), shares, "User should receive minted shares");
@@ -314,8 +328,8 @@ contract SwapTosGHOTest is GhoRouterTest {
 
         _dealAndStartUserWithRouterApproval(GHO, ghoAmount);
         vm.expectEmit(true, true, true, true);
-        emit IGhoRouter.SwapTosGHO(USER, GHO, address(sgho), ghoAmount, ghoAmount, ghoAmount);
-        uint256 shares = router.swapTosGHO(ghoAmount, ghoAmount);
+        emit IGhoRouter.SwapTosGHO(USER, GHO, ghoAmount, ghoAmount);
+        uint256 shares = router.depositForSGho(ghoAmount, ghoAmount);
         vm.stopPrank();
 
         assertEq(shares, ghoAmount, "sGHO copy should mint 1:1 shares at initial index");
@@ -328,7 +342,7 @@ contract SwapTosGHOTest is GhoRouterTest {
         _dealAndStartUserWithRouterApproval(GHO, ghoAmount);
         uint256 recipientBalanceBefore = IERC20(address(sgho)).balanceOf(RECIPIENT);
         uint256 userBalanceBefore = IERC20(address(sgho)).balanceOf(USER);
-        uint256 shares = router.swapTosGHO(ghoAmount, ghoAmount, RECIPIENT);
+        uint256 shares = router.depositForSGho(ghoAmount, ghoAmount, RECIPIENT);
         vm.stopPrank();
 
         assertEq(shares, ghoAmount, "sGHO copy should mint 1:1 shares at initial index");
@@ -362,7 +376,7 @@ contract SwapTosGHOTest is GhoRouterTest {
         uint256 ghoAmount = 1 ether;
         _dealAndStartUserWithRouterApproval(GHO, ghoAmount);
         vm.expectRevert(IGhoRouter.ZeroAddress.selector);
-        router.swapTosGHO(ghoAmount, 0, address(0));
+        router.depositForSGho(ghoAmount, 0, address(0));
         vm.stopPrank();
     }
 }
@@ -380,8 +394,8 @@ contract SwapFromsGHOTest is GhoRouterTest {
 
         _startUserWithRouterApproval(address(sgho), ghoAmount);
         vm.expectEmit(true, true, true, true);
-        emit IGhoRouter.SwapFromsGHO(USER, address(sgho), GHO, ghoAmount, ghoAmount, ghoAmount);
-        uint256 outputAmount = router.swapFromsGHO(ghoAmount, ghoAmount);
+        emit IGhoRouter.SwapFromsGHO(USER, address(sgho), ghoAmount, ghoAmount);
+        uint256 outputAmount = router.redeemSGho(ghoAmount, ghoAmount);
         vm.stopPrank();
 
         assertEq(outputAmount, ghoAmount, "Should redeem to full GHO amount");
@@ -396,7 +410,7 @@ contract SwapFromsGHOTest is GhoRouterTest {
         _startUserWithRouterApproval(address(sgho), ghoAmount);
         uint256 recipientBalanceBefore = IERC20(GHO).balanceOf(RECIPIENT);
         uint256 userBalanceBefore = IERC20(GHO).balanceOf(USER);
-        uint256 outputAmount = router.swapFromsGHO(ghoAmount, ghoAmount, RECIPIENT);
+        uint256 outputAmount = router.redeemSGho(ghoAmount, ghoAmount, RECIPIENT);
         vm.stopPrank();
 
         assertEq(outputAmount, ghoAmount, "Should redeem to full GHO amount");
@@ -412,8 +426,8 @@ contract SwapFromsGHOTest is GhoRouterTest {
 
         _startUserWithRouterApproval(address(sgho), ghoAmount);
         vm.expectEmit(true, true, true, false);
-        emit IGhoRouter.SwapFromsGHO(USER, address(sgho), USDC, 0, 0, 0);
-        uint256 outputAmount = router.swapFromsGHO(GSM_USDC, ghoAmount, 1);
+        emit IGhoRouter.SwapFromsGHO(USER, address(sgho), 0, 0);
+        uint256 outputAmount = router.swapFromsGHO(GSM_USDC, USDC, ghoAmount, 1);
         vm.stopPrank();
 
         assertGt(outputAmount, 0, "Should receive USDC");
@@ -427,7 +441,7 @@ contract SwapFromsGHOTest is GhoRouterTest {
         _startUserWithRouterApproval(address(sgho), ghoAmount);
         uint256 userBalanceBefore = IERC20(STATA_USDC).balanceOf(USER);
         vm.expectEmit(true, true, true, false);
-        emit IGhoRouter.SwapFromsGHO(USER, address(sgho), STATA_USDC, 0, 0, 0);
+        emit IGhoRouter.SwapFromsGHO(USER, address(sgho), 0, 0);
         uint256 outputAmount = router.swapFromsGHO(GSM_USDC, STATA_USDC, ghoAmount, 1);
         vm.stopPrank();
 

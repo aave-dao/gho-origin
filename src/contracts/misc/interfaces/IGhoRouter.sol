@@ -59,18 +59,14 @@ interface IGhoRouter {
     /**
      * @notice Emitted when a swap from sGHO is completed
      * @param user The address of the user who initiated the swap
-     * @param sgho The address of the sGHO vault token
-     * @param outputToken The address of the token bought (GHO/underlying token/static aToken)
+     * @param recipient The address of the recipient of the acquired token
      * @param sghoAmount The amount of sGHO shares burned
-     * @param ghoAmount The amount of GHO redeemed/sold from the vault
      * @param outputAmount The amount of output tokens received
      */
     event SwapFromsGHO(
         address indexed user,
-        address indexed sgho,
-        address indexed outputToken,
+        address indexed recipient,
         uint256 sghoAmount,
-        uint256 ghoAmount,
         uint256 outputAmount
     );
 
@@ -179,7 +175,7 @@ interface IGhoRouter {
      * @param minSGHOAmount Minimum amount of sGHO shares to receive (slippage protection)
      * @return Amount of sGHO shares received
      */
-    function swapTosGHO(uint256 ghoAmount, uint256 minSGHOAmount) external returns (uint256);
+    function depositForSGho(uint256 ghoAmount, uint256 minSGHOAmount) external returns (uint256);
 
     /**
      * @notice Swap GHO directly to sGHO and send output to recipient
@@ -188,28 +184,7 @@ interface IGhoRouter {
      * @param recipient Address that receives sGHO shares
      * @return Amount of sGHO shares received
      */
-    function swapTosGHO(uint256 ghoAmount, uint256 minSGHOAmount, address recipient) external returns (uint256);
-
-    /**
-     * @notice Swap sGHO back through a GSM path
-     * @param gsm GSM address used for the swap path
-     * @param sghoAmount Amount of sGHO shares to redeem
-     * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-     * @return Amount of output token received
-     */
-    function swapFromsGHO(address gsm, uint256 sghoAmount, uint256 minOutputAmount) external returns (uint256);
-
-    /**
-     * @notice Swap sGHO back through a GSM path and send output to recipient
-     * @param gsm GSM address used for the swap path
-     * @param sghoAmount Amount of sGHO shares to redeem
-     * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-     * @param recipient Address that receives output token
-     * @return Amount of output token received
-     */
-    function swapFromsGHO(address gsm, uint256 sghoAmount, uint256 minOutputAmount, address recipient)
-        external
-        returns (uint256);
+    function depositForSGho(uint256 ghoAmount, uint256 minSGHOAmount, address recipient) external returns (uint256);
 
     /**
      * @notice Swap sGHO back through a GSM path and choose output token (underlying token or static aToken)
@@ -242,7 +217,7 @@ interface IGhoRouter {
      * @param minOutputAmount Minimum amount of GHO to receive (slippage protection)
      * @return Amount of GHO received
      */
-    function swapFromsGHO(uint256 sghoAmount, uint256 minOutputAmount) external returns (uint256);
+    function redeemSGho(uint256 sghoAmount, uint256 minOutputAmount) external returns (uint256);
 
     /**
      * @notice Redeem sGHO directly to GHO and send output to recipient
@@ -251,7 +226,7 @@ interface IGhoRouter {
      * @param recipient Address that receives GHO
      * @return Amount of GHO received
      */
-    function swapFromsGHO(uint256 sghoAmount, uint256 minOutputAmount, address recipient) external returns (uint256);
+    function redeemSGho(uint256 sghoAmount, uint256 minOutputAmount, address recipient) external returns (uint256);
 
     /**
      * @notice Updates GSM whitelist status
@@ -379,6 +354,4 @@ interface IGhoRouter {
      * @return ghoAmount Expected amount of GHO to receive
      */
     function previewSwapFromsGHO(uint256 sghoAmount) external view returns (uint256 ghoAmount);
-
-    
 }

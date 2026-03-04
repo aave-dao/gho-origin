@@ -11,17 +11,12 @@ It is intended for integrators, operators, and reviewers.
 
 `GhoRouter` orchestrates six flows:
 
-- `swapToGHO(gsm, token, amount, minGHOAmount[, recipient])` for GSM token -> GHO
-- `swapFromGHO(gsm[, token], ghoAmount, minOutputAmount[, recipient])` for GHO -> GSM underlying token/static aToken
-- `swapTosGHO(gsm, token, amount, minSGHOAmount[, recipient])` for GSM token -> sGHO
-- `swapTosGHO(ghoAmount, minSGHOAmount[, recipient])` for direct GHO -> sGHO
-- `swapFromsGHO(gsm[, token], sghoAmount, minOutputAmount[, recipient])` for sGHO -> GSM underlying token/static aToken
-- `swapFromsGHO(sghoAmount, minOutputAmount[, recipient])` for direct sGHO -> GHO
-
-Notes on overload behavior:
-
-- On output paths, overloads without `token` default to the GSM underlying token.
-- Token-aware overloads enforce `token` as either GSM underlying token or static aToken.
+- `swapToGho(gsm, token, amount, minGHOAmount[, recipient])` for GSM token -> GHO
+- `swapFromGho(gsm, token, ghoAmount, minOutputAmount[, recipient])` for GHO -> GSM underlying token/static aToken
+- `swapToSGho(gsm, token, amount, minSGHOAmount[, recipient])` for GSM token -> sGHO
+- `depositForSGho(ghoAmount, minSGHOAmount[, recipient])` for direct GHO -> sGHO
+- `swapFromsGHO(gsm, token, sghoAmount, minOutputAmount[, recipient])` for sGHO -> GSM underlying token/static aToken
+- `redeemSGho(sghoAmount, minOutputAmount[, recipient])` for direct sGHO -> GHO
 
 Important shape of the current design:
 
@@ -43,7 +38,6 @@ Important shape of the current design:
     - `IStaticAToken(stataToken).asset() != address(0)`
 - Swap enforcement:
   - All GSM swap overloads require `isGsmAllowed[gsm] == true`.
-  - Direct `GHO <-> sGHO` overloads do not use allowlist checks.
 - Observability: `GsmAllowedUpdated(gsm, allowed)` is emitted on every update.
 
 ## Runtime route composition
@@ -76,7 +70,7 @@ The current implementation assumes:
   - `minGHOAmount`, `minOutputAmount`, `minSGHOAmount`
 - Recipient is validated as non-zero on all write flows.
 - GSM write flows are gated by `isGsmAllowed`.
-- Token-aware GSM write flows enforce output/input token compatibility (`underlying` or `static aToken`).
+- SM write flows enforce output/input token compatibility (`underlying` or `static aToken`).
 - Partial sell handling exists on GSM sell paths:
   - If `sellAsset` consumes less than requested shares, remaining shares are redeemed to `msg.sender`.
 - `rescueToken` is `onlyOwner`.
@@ -194,7 +188,7 @@ Current mitigation:
 
 What can happen:
 
-- `swapTosGHO`/`swapFromsGHO` paths may revert or behave unexpectedly.
+- `swapToSGho`/`swapFromsGHO` paths may revert or behave unexpectedly.
 
 Why:
 

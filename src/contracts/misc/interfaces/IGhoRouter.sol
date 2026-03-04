@@ -31,7 +31,7 @@ interface IGhoRouter {
      * @param inputAmount The amount of input tokens sold
      * @param ghoAmount The amount of GHO received
      */
-    event SwapToGHO(address indexed user, address indexed recipient, uint256 inputAmount, uint256 ghoAmount);
+    event SwapToGho(address indexed user, address indexed recipient, uint256 inputAmount, uint256 ghoAmount);
 
     /**
      * @notice Emitted when a swap from GHO is completed
@@ -40,7 +40,7 @@ interface IGhoRouter {
      * @param ghoAmount The amount of GHO sold
      * @param outputAmount The amount of output tokens received
      */
-    event SwapFromGHO(address indexed user, address indexed recipient, uint256 ghoAmount, uint256 outputAmount);
+    event SwapFromGho(address indexed user, address indexed recipient, uint256 ghoAmount, uint256 outputAmount);
 
     /**
      * @notice Emitted when a swap to sGHO is completed
@@ -49,7 +49,7 @@ interface IGhoRouter {
      * @param inputAmount The amount of input tokens sold
      * @param sghoAmount The amount of sGHO shares minted
      */
-    event SwapTosGHO(
+    event SwapToSGho(
         address indexed user,
         address indexed recipient,
         uint256 inputAmount,
@@ -63,7 +63,7 @@ interface IGhoRouter {
      * @param sghoAmount The amount of sGHO shares burned
      * @param outputAmount The amount of output tokens received
      */
-    event SwapFromsGHO(
+    event SwapFromSGho(
         address indexed user,
         address indexed recipient,
         uint256 sghoAmount,
@@ -85,7 +85,7 @@ interface IGhoRouter {
      * @param minGHOAmount Minimum amount of GHO to receive (slippage protection)
      * @return Amount of GHO received
      */
-    function swapToGHO(address gsm, address token, uint256 amount, uint256 minGHOAmount) external returns (uint256);
+    function swapToGho(address gsm, address token, uint256 amount, uint256 minGHOAmount) external returns (uint256);
 
     /**
      * @notice Swap token to GHO through a GSM path and send output to recipient
@@ -96,28 +96,7 @@ interface IGhoRouter {
      * @param recipient Address that receives GHO
      * @return Amount of GHO received
      */
-    function swapToGHO(address gsm, address token, uint256 amount, uint256 minGHOAmount, address recipient)
-        external
-        returns (uint256);
-
-    /**
-     * @notice Swap GHO back to GSM underlying token
-     * @param gsm GSM address used for the swap path
-     * @param ghoAmount Amount of GHO to swap
-     * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-     * @return Amount of output token received
-     */
-    function swapFromGHO(address gsm, uint256 ghoAmount, uint256 minOutputAmount) external returns (uint256);
-
-    /**
-     * @notice Swap GHO back to GSM underlying token and send output to recipient
-     * @param gsm GSM address used for the swap path
-     * @param ghoAmount Amount of GHO to swap
-     * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-     * @param recipient Address that receives output token
-     * @return Amount of output token received
-     */
-    function swapFromGHO(address gsm, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
+    function swapToGho(address gsm, address token, uint256 amount, uint256 minGHOAmount, address recipient)
         external
         returns (uint256);
 
@@ -129,7 +108,7 @@ interface IGhoRouter {
      * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
      * @return Amount of output token received
      */
-    function swapFromGHO(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount)
+    function swapFromGho(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount)
         external
         returns (uint256);
 
@@ -142,7 +121,7 @@ interface IGhoRouter {
      * @param recipient Address that receives output token
      * @return Amount of output token received
      */
-    function swapFromGHO(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
+    function swapFromGho(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
         external
         returns (uint256);
 
@@ -154,7 +133,7 @@ interface IGhoRouter {
      * @param minSGHOAmount Minimum amount of sGHO shares to receive (slippage protection)
      * @return Amount of sGHO shares received
      */
-    function swapTosGHO(address gsm, address token, uint256 amount, uint256 minSGHOAmount) external returns (uint256);
+    function swapToSGho(address gsm, address token, uint256 amount, uint256 minSGHOAmount) external returns (uint256);
 
     /**
      * @notice Swap token to sGHO through a GSM path and send output to recipient
@@ -165,7 +144,7 @@ interface IGhoRouter {
      * @param recipient Address that receives sGHO shares
      * @return Amount of sGHO shares received
      */
-    function swapTosGHO(address gsm, address token, uint256 amount, uint256 minSGHOAmount, address recipient)
+    function swapToSGho(address gsm, address token, uint256 amount, uint256 minSGHOAmount, address recipient)
         external
         returns (uint256);
 
@@ -271,20 +250,10 @@ interface IGhoRouter {
      * @return ghoAmount Expected amount of GHO to receive
      * @return fee Fee amount charged by the GSM
      */
-    function previewSwapToGHO(address gsm, address token, uint256 amount)
+    function previewSwapToGho(address gsm, address token, uint256 amount)
         external
         view
         returns (uint256 ghoAmount, uint256 fee);
-
-    /**
-     * @notice Preview the amount of output token received for a given GHO amount
-     * @dev This is an estimation and actual results may vary slightly due to interest accrual
-     * @param gsm GSM address used for the swap path
-     * @param ghoAmount Amount of GHO to sell
-     * @return assetAmount Expected amount of output token to receive
-     * @return fee Fee amount charged by the GSM
-     */
-    function previewSwapFromGHO(address gsm, uint256 ghoAmount) external view returns (uint256 assetAmount, uint256 fee);
 
     /**
      * @notice Preview the amount of chosen output token received for a given GHO amount
@@ -295,7 +264,7 @@ interface IGhoRouter {
      * @return assetAmount Expected amount of output token to receive
      * @return fee Fee amount charged by the GSM
      */
-    function previewSwapFromGHO(address gsm, address token, uint256 ghoAmount)
+    function previewSwapFromGho(address gsm, address token, uint256 ghoAmount)
         external
         view
         returns (uint256 assetAmount, uint256 fee);
@@ -309,7 +278,7 @@ interface IGhoRouter {
      * @return sghoAmount Expected amount of sGHO shares to receive
      * @return fee Fee amount charged by the GSM path
      */
-    function previewSwapTosGHO(address gsm, address token, uint256 amount)
+    function previewSwapToSGho(address gsm, address token, uint256 amount)
         external
         view
         returns (uint256 sghoAmount, uint256 fee);
@@ -319,20 +288,7 @@ interface IGhoRouter {
      * @param ghoAmount Amount of GHO to deposit
      * @return sghoAmount Expected amount of sGHO shares to receive
      */
-    function previewSwapTosGHO(uint256 ghoAmount) external view returns (uint256 sghoAmount);
-
-    /**
-     * @notice Preview the amount of output token received for a given sGHO amount through a GSM path
-     * @dev This is an estimation and actual results may vary slightly due to interest accrual
-     * @param gsm GSM address used for the swap path
-     * @param sghoAmount Amount of sGHO shares to redeem
-     * @return outputAmount Expected amount of output token to receive
-     * @return fee Fee amount charged by the GSM path
-     */
-    function previewSwapFromsGHO(address gsm, uint256 sghoAmount)
-        external
-        view
-        returns (uint256 outputAmount, uint256 fee);
+    function previewDepositForSGho(uint256 ghoAmount) external view returns (uint256 sghoAmount);
 
     /**
      * @notice Preview the amount of chosen output token received for a given sGHO amount through a GSM path
@@ -343,7 +299,7 @@ interface IGhoRouter {
      * @return outputAmount Expected amount of output token to receive
      * @return fee Fee amount charged by the GSM path
      */
-    function previewSwapFromsGHO(address gsm, address token, uint256 sghoAmount)
+    function previewSwapFromSGho(address gsm, address token, uint256 sghoAmount)
         external
         view
         returns (uint256 outputAmount, uint256 fee);
@@ -353,5 +309,5 @@ interface IGhoRouter {
      * @param sghoAmount Amount of sGHO shares to redeem
      * @return ghoAmount Expected amount of GHO to receive
      */
-    function previewSwapFromsGHO(uint256 sghoAmount) external view returns (uint256 ghoAmount);
+    function previewRedeemSGho(uint256 sghoAmount) external view returns (uint256 ghoAmount);
 }

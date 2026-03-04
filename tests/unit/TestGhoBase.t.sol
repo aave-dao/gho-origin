@@ -60,6 +60,9 @@ import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
 
+// SGHO contracts
+import {sGho} from 'src/contracts/sgho/sGho.sol';
+
 // GSM contracts
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
@@ -81,6 +84,9 @@ import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFre
 import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
 import {IGelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/interfaces/IGelatoOracleSwapFreezer.sol';
 
+// GhoRouter contracts
+import {GhoRouter} from 'src/contracts/misc/GhoRouter.sol';
+
 // CCIP contracts
 import {MockUpgradeableLockReleaseTokenPool} from '../mocks/MockUpgradeableLockReleaseTokenPool.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
@@ -96,6 +102,7 @@ contract TestGhoBase is Test, Constants, Events {
     keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
 
   GhoToken GHO_TOKEN;
+  sGho SGHO;
   TestnetERC20 AAVE_TOKEN;
   TestnetERC20 USDX_TOKEN;
   MockERC4626 USDX_4626_TOKEN;
@@ -121,6 +128,7 @@ contract TestGhoBase is Test, Constants, Events {
   GhoGsmSteward GHO_GSM_STEWARD;
   GhoBucketSteward GHO_BUCKET_STEWARD;
   MockPoolDataProvider MOCK_POOL_DATA_PROVIDER;
+  GhoRouter GHO_ROUTER;
 
   FixedFeeStrategyFactory FIXED_FEE_STRATEGY_FACTORY;
   MockUpgradeableLockReleaseTokenPool GHO_TOKEN_POOL;
@@ -275,6 +283,23 @@ contract TestGhoBase is Test, Constants, Events {
     });
     vm.prank(OWNER);
     GHO_TOKEN_POOL.applyChainUpdates(chainUpdate);
+
+    address sghoImpl = address(new sGho());
+    SGHO = sGho(
+      address(
+        new TransparentUpgradeableProxy(
+          sghoImpl,
+          PROXY_ADMIN_OWNER,
+          abi.encodeWithSelector(
+            sGho.initialize.selector,
+            address(GHO_TOKEN),
+            DEFAULT_SGHO_SUPPLY_CAP,
+            address(this)
+          )
+        )
+      )
+    );
+    GHO_ROUTER = new GhoRouter(address(this), address(GHO_TOKEN), address(SGHO));
   }
 
   function ghoFaucet(address to, uint256 amount) public {

@@ -42,56 +42,56 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /// @inheritdoc IGhoRouter
-    function swapToGHO(address gsm, address token, uint256 amount, uint256 minGHOAmount) external returns (uint256) {
-        return _swapToGHO(gsm, token, amount, minGHOAmount, msg.sender);
+    function swapToGho(address gsm, address token, uint256 amount, uint256 minGHOAmount) external returns (uint256) {
+        return _swapToGho(gsm, token, amount, minGHOAmount, msg.sender);
     }
 
     /// @inheritdoc IGhoRouter
-    function swapToGHO(address gsm, address token, uint256 amount, uint256 minGHOAmount, address recipient)
+    function swapToGho(address gsm, address token, uint256 amount, uint256 minGHOAmount, address recipient)
         external
         returns (uint256)
     {
-        return _swapToGHO(gsm, token, amount, minGHOAmount, recipient);
+        return _swapToGho(gsm, token, amount, minGHOAmount, recipient);
     }
 
     /// @inheritdoc IGhoRouter
-    function swapFromGHO(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount)
+    function swapFromGho(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount)
         external
         returns (uint256)
     {
-        return _swapFromGHO(gsm, token, ghoAmount, minOutputAmount, msg.sender);
+        return _swapFromGho(gsm, token, ghoAmount, minOutputAmount, msg.sender);
     }
 
 
     /// @inheritdoc IGhoRouter
-    function swapFromGHO(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
+    function swapFromGho(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
         external
         returns (uint256)
     {
-        return _swapFromGHO(gsm, token, ghoAmount, minOutputAmount, recipient);
+        return _swapFromGho(gsm, token, ghoAmount, minOutputAmount, recipient);
     }
 
     /// @inheritdoc IGhoRouter
-    function swapTosGHO(address gsm, address token, uint256 amount, uint256 minSGHOAmount) external returns (uint256) {
-        return _swapTosGHO(gsm, token, amount, minSGHOAmount, msg.sender);
+    function swapToSGho(address gsm, address token, uint256 amount, uint256 minSGHOAmount) external returns (uint256) {
+        return _swapToSGho(gsm, token, amount, minSGHOAmount, msg.sender);
     }
 
     /// @inheritdoc IGhoRouter
-    function swapTosGHO(address gsm, address token, uint256 amount, uint256 minSGHOAmount, address recipient)
+    function swapToSGho(address gsm, address token, uint256 amount, uint256 minSGHOAmount, address recipient)
         external
         returns (uint256)
     {
-        return _swapTosGHO(gsm, token, amount, minSGHOAmount, recipient);
+        return _swapToSGho(gsm, token, amount, minSGHOAmount, recipient);
     }
 
     /// @inheritdoc IGhoRouter
     function depositForSGho(uint256 ghoAmount, uint256 minSGHOAmount) external returns (uint256) {
-        return _depositForSGHO(ghoAmount, minSGHOAmount, msg.sender);
+        return _depositForSGho(ghoAmount, minSGHOAmount, msg.sender);
     }
 
     /// @inheritdoc IGhoRouter
     function depositForSGho(uint256 ghoAmount, uint256 minSGHOAmount, address recipient) external returns (uint256) {
-        return _depositForSGHO(ghoAmount, minSGHOAmount, recipient);
+        return _depositForSGho(ghoAmount, minSGHOAmount, recipient);
     }
 
     /// @inheritdoc IGhoRouter
@@ -99,7 +99,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         external
         returns (uint256)
     {
-        return _swapFromsGHO(gsm, token, sghoAmount, minOutputAmount, msg.sender);
+        return _swapFromSGho(gsm, token, sghoAmount, minOutputAmount, msg.sender);
     }
 
     /// @inheritdoc IGhoRouter
@@ -107,7 +107,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         external
         returns (uint256)
     {
-        return _swapFromsGHO(gsm, token, sghoAmount, minOutputAmount, recipient);
+        return _swapFromSGho(gsm, token, sghoAmount, minOutputAmount, recipient);
     }
 
     /// @inheritdoc IGhoRouter
@@ -140,7 +140,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /// @inheritdoc IGhoRouter
-    function previewSwapToGHO(address gsm, address token, uint256 amount) external view returns (uint256, uint256) {
+    function previewSwapToGho(address gsm, address token, uint256 amount) external view returns (uint256, uint256) {
         require(amount > 0, InvalidAmount());
 
         address stata = IGsm(gsm).UNDERLYING_ASSET();
@@ -151,7 +151,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /// @inheritdoc IGhoRouter
-    function previewSwapFromGHO(address gsm, address token, uint256 amount)
+    function previewSwapFromGho(address gsm, address token, uint256 amount)
         external
         view
         returns (uint256, uint256)
@@ -162,7 +162,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /// @inheritdoc IGhoRouter
-    function previewSwapTosGHO(address gsm, address token, uint256 amount) external view returns (uint256, uint256) {
+    function previewSwapToSGho(address gsm, address token, uint256 amount) external view returns (uint256, uint256) {
         require(amount > 0, InvalidAmount());
 
         address stata = IGsm(gsm).UNDERLYING_ASSET();
@@ -174,13 +174,13 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /// @inheritdoc IGhoRouter
-    function previewDeposit(uint256 amount) external view returns (uint256) {
+    function previewDepositForSGho(uint256 amount) external view returns (uint256) {
         require(amount > 0, InvalidAmount());
         return IERC4626(sGHO).previewDeposit(amount);
     }
 
     /// @inheritdoc IGhoRouter
-    function previewSwapFromsGHO(address gsm, address token, uint256 amount)
+    function previewSwapFromSGho(address gsm, address token, uint256 amount)
         external
         view
         returns (uint256, uint256)
@@ -191,7 +191,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /// @inheritdoc IGhoRouter
-    function previewRedeem(uint256 amount) external view returns (uint256) {
+    function previewRedeemSGho(uint256 amount) external view returns (uint256) {
         require(amount > 0, InvalidAmount());
         return IERC4626(sGHO).previewRedeem(amount);
     }
@@ -205,7 +205,7 @@ contract GhoRouter is Ownable, IGhoRouter {
      * @param recipient Address that receives the resulting GHO.
      * @return ghoAmount Amount of GHO sent to `recipient`.
      */
-    function _swapToGHO(address gsm, address token, uint256 amount, uint256 minGHOAmount, address recipient)
+    function _swapToGho(address gsm, address token, uint256 amount, uint256 minGHOAmount, address recipient)
         internal
         returns (uint256)
     {
@@ -215,7 +215,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         (uint256 assetSold, uint256 ghoAmount) = _sellTokenForGho(gsm, token, amount, minGHOAmount);
         IERC20(GHO).safeTransfer(recipient, ghoAmount);
 
-        emit SwapToGHO(msg.sender, recipient, assetSold, ghoAmount);
+        emit SwapToGho(msg.sender, recipient, assetSold, ghoAmount);
 
         return ghoAmount;
     }
@@ -229,7 +229,7 @@ contract GhoRouter is Ownable, IGhoRouter {
      * @param recipient Address that receives the resulting token.
      * @return outputAmount Amount of output tokens sent to `recipient`.
      */
-    function _swapFromGHO(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
+    function _swapFromGho(address gsm, address token, uint256 ghoAmount, uint256 minOutputAmount, address recipient)
         internal
         returns (uint256)
     {
@@ -238,7 +238,7 @@ contract GhoRouter is Ownable, IGhoRouter {
 
         (uint256 outputAmount, uint256 ghoSold) =
             _buyTokenWithGho(gsm, token, ghoAmount, recipient, minOutputAmount);
-        emit SwapFromGHO(msg.sender, recipient, ghoSold, outputAmount);
+        emit SwapFromGho(msg.sender, recipient, ghoSold, outputAmount);
 
         return outputAmount;
     }
@@ -252,7 +252,7 @@ contract GhoRouter is Ownable, IGhoRouter {
      * @param recipient Address that receives the minted sGHO shares.
      * @return sghoAmount Amount of sGHO shares minted to `recipient`.
      */
-    function _swapTosGHO(address gsm, address token, uint256 amount, uint256 minSGHOAmount, address recipient)
+    function _swapToSGho(address gsm, address token, uint256 amount, uint256 minSGHOAmount, address recipient)
         internal
         returns (uint256)
     {
@@ -260,8 +260,8 @@ contract GhoRouter is Ownable, IGhoRouter {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         (uint256 amountUsed, uint256 ghoAmount) = _sellTokenForGho(gsm, token, amount, 0);
-        uint256 sghoAmount = _depositForSGHO(ghoAmount, minSGHOAmount, recipient);
-        emit SwapTosGHO(msg.sender, recipient, amountUsed, sghoAmount);
+        uint256 sghoAmount = _depositForSGho(ghoAmount, minSGHOAmount, recipient);
+        emit SwapToSGho(msg.sender, recipient, amountUsed, sghoAmount);
 
         return sghoAmount;
     }
@@ -273,12 +273,12 @@ contract GhoRouter is Ownable, IGhoRouter {
      * @param recipient Address that receives the minted sGHO shares.
      * @return sghoAmount Amount of sGHO shares minted to `recipient`.
      */
-    function _depositForSGHO(uint256 ghoAmount, uint256 minSGHOAmount, address recipient) internal returns (uint256) {
+    function _depositForSGho(uint256 ghoAmount, uint256 minSGHOAmount, address recipient) internal returns (uint256) {
         _validateInputs(ghoAmount, recipient);
 
         IERC20(GHO).safeTransferFrom(msg.sender, address(this), ghoAmount);
         uint256 sghoAmount = _depositGho(ghoAmount, recipient, minSGHOAmount);
-        emit SwapTosGHO(msg.sender, recipient, ghoAmount, sghoAmount);
+        emit SwapToSGho(msg.sender, recipient, ghoAmount, sghoAmount);
 
         return sghoAmount;
     }
@@ -292,7 +292,7 @@ contract GhoRouter is Ownable, IGhoRouter {
      * @param recipient Address that receives the resulting token.
      * @return outputAmount Amount of output tokens sent to `recipient`.
      */
-    function _swapFromsGHO(
+    function _swapFromSGho(
         address gsm,
         address token,
         uint256 sghoAmount,
@@ -302,9 +302,9 @@ contract GhoRouter is Ownable, IGhoRouter {
         _validateInputs(sghoAmount, recipient, gsm);
         uint256 ghoAmount = _redeemGho(sghoAmount, 0);
 
-        (uint256 outputAmount, uint256 ghoSold) =
+        (uint256 outputAmount, ) =
             _buyTokenWithGho(gsm, token, ghoAmount, recipient, minOutputAmount);
-        emit SwapFromsGHO(msg.sender, recipient, sghoAmount, outputAmount);
+        emit SwapFromSGho(msg.sender, recipient, sghoAmount, outputAmount);
 
         return outputAmount;
     }
@@ -321,7 +321,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         uint256 ghoAmount = _redeemGho(sghoAmount, minOutputAmount);
 
         IERC20(GHO).safeTransfer(recipient, ghoAmount);
-        emit SwapFromsGHO(msg.sender, recipient, sghoAmount, ghoAmount);
+        emit SwapFromSGho(msg.sender, recipient, sghoAmount, ghoAmount);
 
         return ghoAmount;
     }

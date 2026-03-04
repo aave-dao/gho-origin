@@ -42,11 +42,19 @@ contract TestGsm4626 is TestGhoBase {
 
   function testInitialize() public {
     vm.expectEmit(true, true, true, true);
+    emit Initialized(type(uint64).max);
+    vm.expectEmit(true, true, true, true);
     emit RoleGranted(DEFAULT_ADMIN_ROLE, GSM_4626_ADMIN, address(this));
+    vm.expectEmit(true, true, true, true);
+    emit RoleGranted(GSM_CONFIGURATOR_ROLE, GSM_4626_ADMIN, address(this));
     vm.expectEmit(true, true, false, true);
     emit GhoTreasuryUpdated(address(0), address(TREASURY));
     vm.expectEmit(true, true, false, true);
     emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
+    vm.expectEmit(true, true, false, true);
+    emit GhoReserveUpdated(address(0), address(GHO_RESERVE));
+    vm.expectEmit(true, true, true, true);
+    emit Initialized(1);
 
     Gsm4626 gsm = _deployGsm4626({
       underlyingToken: address(USDX_4626_TOKEN),

@@ -16,6 +16,19 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testInitialize() public {
+    vm.expectEmit(true, true, true, true);
+    emit Initialized(type(uint64).max);
+    vm.expectEmit(true, true, true, true);
+    emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
+    vm.expectEmit(true, true, true, true);
+    emit RoleGranted(ENTITY_MANAGER_ROLE, address(this), address(this));
+    vm.expectEmit(true, true, true, true);
+    emit RoleGranted(LIMIT_MANAGER_ROLE, address(this), address(this));
+    vm.expectEmit(true, true, true, true);
+    emit RoleGranted(TRANSFER_ROLE, address(this), address(this));
+    vm.expectEmit(true, true, true, true);
+    emit Initialized(1);
+
     GhoReserve reserve = _deployReserve();
 
     assertTrue(reserve.hasRole(DEFAULT_ADMIN_ROLE, address(this)));

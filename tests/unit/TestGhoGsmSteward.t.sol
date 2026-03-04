@@ -57,6 +57,21 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
     new GhoGsmSteward(address(0x001), address(0));
   }
 
+  function testInitializeFixedFeeStrategyFactory() public {
+    vm.expectEmit(true, true, true, true);
+    emit Initialized(type(uint64).max);
+    vm.expectEmit(true, true, true, true);
+    emit Initialized(1);
+
+    FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
+    bytes memory factoryInitParams = abi.encodeWithSignature(
+      'initialize(address[])',
+      new address[](0)
+    );
+    address proxyAdmin = makeAddr('PROXY_ADMIN_2');
+    new TransparentUpgradeableProxy(address(factoryImpl), proxyAdmin, factoryInitParams);
+  }
+
   function testRevertInitializeFixedFeeStrategyFactoryImplementation() public {
     FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
     vm.expectRevert(Initializable.InvalidInitialization.selector);

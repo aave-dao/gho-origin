@@ -98,6 +98,7 @@ interface Events {
   );
   event FeeStrategyUpdated(address indexed oldFeeStrategy, address indexed newFeeStrategy);
   event ExposureCapUpdated(uint256 oldExposureCap, uint256 newExposureCap);
+  event GhoReserveUpdated(address oldReserve, address newReserve);
   event TokensRescued(
     address indexed tokenRescued,
     address indexed recipient,
@@ -127,6 +128,7 @@ interface Events {
 
   // Upgrades
   event Upgraded(address indexed implementation);
+  event Initialized(uint64 version);
 
   // GhoReserve
   event EntityAdded(address indexed entity);

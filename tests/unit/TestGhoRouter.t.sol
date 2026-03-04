@@ -41,11 +41,35 @@ contract GhoRouterTest is TestGhoBase {
     }
 }
 
+contract ConstructorTest is TestGhoBase {
+    function testConstructorZeroAddressGHO() public {
+        vm.expectRevert(IGhoRouter.ZeroAddress.selector);
+        new GhoRouter(address(this), address(0), address(SGHO));
+    }
+
+    function testConstructorZeroAddressSGHO() public {
+        vm.expectRevert(IGhoRouter.ZeroAddress.selector);
+        new GhoRouter(address(this), address(GHO_TOKEN), address(0));
+    }
+
+    function testConstructor() public {
+        GhoRouter router = new GhoRouter(address(this), address(GHO_TOKEN), address(SGHO));
+        assertEq(router.GHO(), address(GHO_TOKEN));
+        assertEq(router.sGHO(), address(SGHO));
+    }
+}
+
 contract GsmWhitelistTest is GhoRouterTest {
     function testSetGsmAllowedNonOwner() public {
         vm.startPrank(USER);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
         GHO_ROUTER.setGsmAllowed(address(GHO_GSM_4626), false);
+        vm.stopPrank();
+    }
+
+    function testSetGsmAllowedZeroAddress() public {
+        vm.expectRevert(IGhoRouter.ZeroAddress.selector);
+        GHO_ROUTER.setGsmAllowed(address(0), false);
         vm.stopPrank();
     }
 
@@ -212,7 +236,7 @@ contract SwapTosGHOTest is GhoRouterTest {
     }
 
     function testSwapToSGHOUnderlying() public {
-        uint256 expectedOut = 1;
+        uint256 expectedOut = 9900 ether;
         uint256 amount = 1_000e6;
         _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), 1_000 ether); // Adjust for GHO decimals
 
@@ -223,6 +247,21 @@ contract SwapTosGHOTest is GhoRouterTest {
 
         assertEq(shares, expectedOut, "Should receive sGHO shares");
         assertEq(IERC20(address(SGHO)).balanceOf(USER), shares, "User should receive minted shares");
+    }
+
+    function testSwapToSGHOUnderlyingWithRecipient() public {
+        uint256 expectedOut = 9900 ether;
+        uint256 amount = 1_000e6;
+        _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), 1_000 ether); // Adjust for GHO decimals
+
+        vm.prank(USER);
+        vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+        emit IGhoRouter.SwapToSGho(USER, RECIPIENT, amount, expectedOut);
+        uint256 shares = GHO_ROUTER.swapToSGho(address(GHO_GSM_4626), address(USDX_TOKEN), amount, 1, RECIPIENT);
+
+        assertEq(shares, expectedOut, "Should receive sGHO shares");
+        assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, "User should receive zero shares");
+        assertEq(IERC20(address(SGHO)).balanceOf(RECIPIENT), shares, "Recipient should receive minted shares");
     }
 }
 
@@ -305,6 +344,26 @@ contract DepositForSGhoTest is GhoRouterTest {
         assertEq(IERC20(address(SGHO)).balanceOf(USER), amount, "User should receive all shares");
     }
 
+    function testDepositForSGHOSlippageExceeded() public {
+        uint256 amount = 100 ether;
+
+        _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+        vm.expectRevert(IGhoRouter.SlippageExceeded.selector);
+        vm.startPrank(USER);
+        GHO_ROUTER.depositForSGho(amount, amount + 1);
+        vm.stopPrank();
+    }
+
+    function testDepositForSGHOZeroAmount() public {
+        uint256 amount = 100 ether;
+
+        _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+        vm.expectRevert(IGhoRouter.InvalidAmount.selector);
+        vm.startPrank(USER);
+        GHO_ROUTER.depositForSGho(0, amount + 1);
+        vm.stopPrank();
+    }
+
     function testDepositForSGHOWithRecipient() public {
         uint256 amount = 100 ether;
 
@@ -345,6 +404,30 @@ contract RedeemSGhoTest is GhoRouterTest {
         assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, "User should spend all sGHO");
     }
 
+    function testRedeemSGHOSlippageExceeded() public {
+        uint256 amount = 100 ether;
+        _mintSgho(amount);
+
+        
+        vm.startPrank(USER);
+        SGHO.approve(address(GHO_ROUTER), amount);
+        vm.expectRevert(IGhoRouter.SlippageExceeded.selector);
+        GHO_ROUTER.redeemSGho(amount, amount + 1);
+        vm.stopPrank();
+    }
+
+    function testRedeemSGHOZeroAmount() public {
+        uint256 amount = 100 ether;
+        _mintSgho(amount);
+
+        
+        vm.startPrank(USER);
+        SGHO.approve(address(GHO_ROUTER), amount);
+        vm.expectRevert(IGhoRouter.InvalidAmount.selector);
+        GHO_ROUTER.redeemSGho(0, amount + 1);
+        vm.stopPrank();
+    }
+
     function testRedeemSGHOWithRecipient() public {
         uint256 amount = 100 ether;
         _mintSgho(amount);
@@ -365,6 +448,31 @@ contract RedeemSGhoTest is GhoRouterTest {
             IERC20(GHO_TOKEN).balanceOf(RECIPIENT) - recipientBalanceBefore, outputAmount, "Recipient should receive GHO"
         );
         assertEq(IERC20(GHO_TOKEN).balanceOf(USER), userBalanceBefore, "Caller should not receive GHO");
+    }
+}
+
+contract RescueTokenTest is GhoRouterTest {
+    function testRescueTokenZeroAddressToken() public {
+        vm.expectRevert(IGhoRouter.ZeroAddress.selector);
+        GHO_ROUTER.rescueToken(address(0), RECIPIENT, 1);
+    }
+
+    function testRescueTokenZeroAddressRecipient() public {
+        vm.expectRevert(IGhoRouter.ZeroAddress.selector);
+        GHO_ROUTER.rescueToken(address(GHO_TOKEN), address(0), 1);
+    }
+
+    function testRescueToken() public {
+        uint256 amount = 1_000 ether;
+        deal(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+
+        assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), amount);
+        assertEq(GHO_TOKEN.balanceOf(RECIPIENT), 0);
+
+        GHO_ROUTER.rescueToken(address(GHO_TOKEN), RECIPIENT, amount);
+
+        assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), 0);
+        assertEq(GHO_TOKEN.balanceOf(RECIPIENT), amount);
     }
 }
 

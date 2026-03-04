@@ -260,7 +260,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         (uint256 amountUsed, uint256 ghoAmount) = _sellTokenForGho(gsm, token, amount, 0);
-        uint256 sghoAmount = _depositForSGho(ghoAmount, minSGHOAmount, recipient);
+        uint256 sghoAmount = _depositGho(ghoAmount, recipient, minSGHOAmount);
         emit SwapToSGho(msg.sender, recipient, amountUsed, sghoAmount);
 
         return sghoAmount;
@@ -451,6 +451,16 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /**
+     * @dev Validates non zero inputs.
+     * @param amount Input amount that must be non-zero.
+     * @param recipient Recipient address that must be non-zero.
+     */
+    function _validateInputs(uint256 amount, address recipient) internal pure {
+        require(amount > 0, InvalidAmount());
+        require(recipient != address(0), ZeroAddress());
+    }
+
+    /**
      * @dev Validates GSM swap inputs.
      * @param amount Input amount that must be non-zero.
      * @param recipient Recipient address that must be non-zero.
@@ -460,15 +470,5 @@ contract GhoRouter is Ownable, IGhoRouter {
         require(amount > 0, InvalidAmount());
         require(recipient != address(0), ZeroAddress());
         require(isGsmAllowed[gsm], GsmNotAllowed());
-    }
-
-    /**
-     * @dev Validates non zero inputs.
-     * @param amount Input amount that must be non-zero.
-     * @param recipient Recipient address that must be non-zero.
-     */
-    function _validateInputs(uint256 amount, address recipient) internal pure {
-        require(amount > 0, InvalidAmount());
-        require(recipient != address(0), ZeroAddress());
     }
 }

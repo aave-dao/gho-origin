@@ -144,6 +144,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         require(amount > 0, InvalidAmount());
 
         address stata = IGsm(gsm).UNDERLYING_ASSET();
+        require(token == stata || token == IERC4626(stata).asset(), InvalidToken());
         uint256 sharesAmount = token == stata ? amount : IERC4626(stata).previewDeposit(amount);
 
         (, uint256 ghoAmount,, uint256 fee) = IGsm(gsm).getGhoAmountForSellAsset(sharesAmount);
@@ -166,6 +167,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         require(amount > 0, InvalidAmount());
 
         address stata = IGsm(gsm).UNDERLYING_ASSET();
+        require(token == stata || token == IERC4626(stata).asset(), InvalidToken());
         uint256 sharesAmount = token == stata ? amount : IERC4626(stata).previewDeposit(amount);
         (, uint256 ghoAmount,, uint256 fee) = IGsm(gsm).getGhoAmountForSellAsset(sharesAmount);
 
@@ -369,6 +371,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         address stata = IGsm(gsm).UNDERLYING_ASSET();
         uint256 stataAmount = amount;
         if (token != stata) {
+            require(token == IERC4626(stata).asset(), InvalidToken());
             IERC20(token).forceApprove(stata, amount);
             stataAmount = IERC4626(stata).deposit(amount, address(this));
         }
@@ -411,6 +414,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         if (token == stata) {
             IERC20(stata).safeTransfer(outputReceiver, stataAmount);
         } else {
+            require(token == IERC4626(stata).asset(), InvalidToken());
             outputAmount = IERC4626(stata).redeem(stataAmount, outputReceiver, address(this));
         }
         require(outputAmount >= minOutputAmount, SlippageExceeded());
@@ -431,6 +435,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         returns (uint256, uint256)
     {
         address stata = IGsm(gsm).UNDERLYING_ASSET();
+        require(token == stata || token == IERC4626(stata).asset(), InvalidToken());
         (uint256 assetAmount,,, uint256 pathFee) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
         uint256 outputAmount = token == stata ? assetAmount : IERC4626(stata).previewRedeem(assetAmount);
         return (outputAmount, pathFee);
@@ -451,7 +456,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     }
 
     /**
-     * @dev Validates non zero inputs.
+     * @dev Validates non-zero inputs.
      * @param amount Input amount that must be non-zero.
      * @param recipient Recipient address that must be non-zero.
      */

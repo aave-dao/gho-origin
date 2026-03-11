@@ -426,7 +426,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         require(outputAmount >= minOutputAmount, SlippageExceeded());
 
         if (ghoAmount > ghoSold) {
-            IERC20(GHO).transfer(msg.sender, ghoAmount - ghoSold);
+            IERC20(GHO).safeTransfer(msg.sender, ghoAmount - ghoSold);
         }
 
         return (outputAmount, ghoSold);

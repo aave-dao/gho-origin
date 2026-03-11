@@ -48,6 +48,7 @@ import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interface
 // non-GHO contracts
 import {AdminUpgradeabilityProxy} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
 import {ERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/ERC20.sol';
+import {ERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol';
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 

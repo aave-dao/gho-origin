@@ -138,6 +138,62 @@ contract SwapToGHOTest is GhoRouterTest {
         assertEq(ghoReceived, expectedOut, "Received GHO does not match");
     }
 
+    function testSwapToGHOLeftOverTokens() public {
+        uint256 amount = 1_000e6;
+        _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
+
+        uint256 expectedOut = 9900000000000000000000;
+
+        vm.mockCall(
+            address(GHO_GSM_4626),
+            abi.encodeWithSelector(IGsm.sellAsset.selector),
+            abi.encode(amount / 4 * 3, expectedOut)
+        );
+
+        // Redeem at 1:1 ratio
+        vm.mockCall(
+            address(USDX_4626_TOKEN),
+            abi.encodeWithSelector(ERC4626.redeem.selector),
+            abi.encode(amount / 4)
+        );
+
+        // Give ERC4626 extr USDX for withdrawl interest
+        deal(address(USDX_TOKEN), address(USDX_4626_TOKEN), amount * 5);
+
+        // Deal Token as sellAsset call is mocked
+        deal(address(GHO_TOKEN), address(GHO_ROUTER), expectedOut);
+
+        vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+        emit IGhoRouter.SwapToGho(USER, USER, amount / 4 * 3, expectedOut);
+        vm.prank(USER);
+        uint256 ghoReceived = GHO_ROUTER.swapToGho(address(GHO_GSM_4626), address(USDX_TOKEN), amount, 0);
+
+        assertEq(ghoReceived, expectedOut, "Received GHO does not match");
+    }
+
+    function testSwapToGHOLeftOverTokensTokenIsStata() public {
+        uint256 amount = 1_000e6;
+        _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
+
+        uint256 expectedOut = 9900000000000000000000;
+
+        vm.mockCall(
+            address(GHO_GSM_4626),
+            abi.encodeWithSelector(IGsm.sellAsset.selector),
+            abi.encode(amount / 4 * 3, expectedOut)
+        );
+
+        // Deal Token as sellAsset call is mocked
+        deal(address(GHO_TOKEN), address(GHO_ROUTER), expectedOut);
+
+        vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+        emit IGhoRouter.SwapToGho(USER, USER, amount / 4 * 3, expectedOut);
+        vm.prank(USER);
+        uint256 ghoReceived = GHO_ROUTER.swapToGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), amount, 0);
+
+        assertEq(ghoReceived, expectedOut, "Received GHO does not match");
+    }
+
     function testSwapToGHOWithRecipient() public {
         uint256 recipientBalanceBefore = IERC20(GHO_TOKEN).balanceOf(RECIPIENT);
         
@@ -205,6 +261,27 @@ contract SwapFromGHOTest is GhoRouterTest {
         vm.stopPrank();
     }
 
+    function testSwapFromGHOToUSDX_4626_TOKEN_GSMUsesLessGho() public {
+        uint256 expectedAmount = 90909090;
+        uint256 amount = 100 ether;
+        _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+
+        vm.mockCall(
+            address(GHO_GSM_4626),
+            abi.encodeWithSelector(IGsm.buyAsset.selector),
+            abi.encode(expectedAmount, amount / 2)
+        );
+
+        // Deal Token as buyAsset call is mocked
+        deal(address(USDX_4626_TOKEN), address(GHO_ROUTER), expectedAmount);
+
+        vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+        emit IGhoRouter.SwapFromGho(USER, USER, amount / 2, expectedAmount); // 1 ether diff in input
+        vm.prank(USER);
+        uint256 outputAmount = GHO_ROUTER.swapFromGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), amount, 0);
+        assertEq(outputAmount, expectedAmount, "Should receive output token");
+    }
+
     function testSwapFromGHOToUSDX_4626_TOKEN() public {
         uint256 expectedAmount = 90909090;
         uint256 amount = 100 ether;
@@ -235,7 +312,7 @@ contract SwapFromGHOTest is GhoRouterTest {
 
 }
 
-contract SwapTosGHOTest is GhoRouterTest {
+contract SwapToSGhoTest is GhoRouterTest {
     function testSwapToSGHOGSMNotAllowed() public {
         GHO_ROUTER.setGsmAllowed(address(GHO_GSM_4626), false);
 
@@ -290,11 +367,11 @@ contract SwapTosGHOTest is GhoRouterTest {
     }
 }
 
-contract SwapFromsGHOTest is GhoRouterTest {
+contract SwapFromSGhoTest is GhoRouterTest {
     function testSwapFromSGHOZeroAmount() public {
         vm.startPrank(USER);
         vm.expectRevert(IGhoRouter.InvalidAmount.selector);
-        GHO_ROUTER.swapFromsGHO(address(GHO_GSM_4626), address(USDX_4626_TOKEN), 0, 0);
+        GHO_ROUTER.swapFromSGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), 0, 0);
         vm.stopPrank();
     }
 
@@ -304,20 +381,20 @@ contract SwapFromsGHOTest is GhoRouterTest {
         vm.startPrank(USER);
         SGHO.approve(address(GHO_ROUTER), amount);
         vm.expectRevert(IGhoRouter.InvalidToken.selector);
-        GHO_ROUTER.swapFromsGHO(address(GHO_GSM_4626), address(WETH), amount, 0);
+        GHO_ROUTER.swapFromSGho(address(GHO_GSM_4626), address(WETH), amount, 0);
         vm.stopPrank();
     }
 
     function testSwapFromSGHOZeroAddressRecipient() public {
         vm.expectRevert(IGhoRouter.ZeroAddress.selector);
-        GHO_ROUTER.swapFromsGHO(address(GHO_GSM_4626), address(USDX_4626_TOKEN), 1 ether, 1 ether, address(0));
+        GHO_ROUTER.swapFromSGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), 1 ether, 1 ether, address(0));
         vm.stopPrank();
     }
 
     function testSwapFromSGHOGSMNotAllowed() public {
         GHO_ROUTER.setGsmAllowed(address(GHO_GSM_4626), false);
         vm.expectRevert(IGhoRouter.GsmNotAllowed.selector);
-        GHO_ROUTER.swapFromsGHO(address(GHO_GSM_4626), address(USDX_4626_TOKEN), 100 ether, 0);
+        GHO_ROUTER.swapFromSGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), 100 ether, 0);
         vm.stopPrank();
     }
 
@@ -331,7 +408,7 @@ contract SwapFromsGHOTest is GhoRouterTest {
 
         vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
         emit IGhoRouter.SwapFromSGho(USER, USER, amount, expectedOut);
-        uint256 outputAmount = GHO_ROUTER.swapFromsGHO(address(GHO_GSM_4626), address(USDX_TOKEN), amount, 1);
+        uint256 outputAmount = GHO_ROUTER.swapFromSGho(address(GHO_GSM_4626), address(USDX_TOKEN), amount, 1);
         vm.stopPrank();
 
         assertEq(outputAmount, expectedOut, "Should receive USDX_4626_TOKEN");
@@ -351,7 +428,7 @@ contract SwapFromsGHOTest is GhoRouterTest {
         vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
         emit IGhoRouter.SwapFromSGho(USER, USER, amount, expectedOut);
 
-        uint256 outputAmount = GHO_ROUTER.swapFromsGHO(address(GHO_GSM_4626), address(USDX_4626_TOKEN), amount, 1);
+        uint256 outputAmount = GHO_ROUTER.swapFromSGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), amount, 1);
         vm.stopPrank();
 
         assertEq(outputAmount, expectedOut, "Should receive static aToken");

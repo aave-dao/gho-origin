@@ -173,7 +173,7 @@ interface IGhoRouter {
      * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
      * @return Amount of output token received
      */
-    function swapFromsGHO(address gsm, address token, uint256 sghoAmount, uint256 minOutputAmount)
+    function swapFromSGho(address gsm, address token, uint256 sghoAmount, uint256 minOutputAmount)
         external
         returns (uint256);
 
@@ -186,7 +186,7 @@ interface IGhoRouter {
      * @param recipient Address that receives output token
      * @return Amount of output token received
      */
-    function swapFromsGHO(address gsm, address token, uint256 sghoAmount, uint256 minOutputAmount, address recipient)
+    function swapFromSGho(address gsm, address token, uint256 sghoAmount, uint256 minOutputAmount, address recipient)
         external
         returns (uint256);
 

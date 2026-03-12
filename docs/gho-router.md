@@ -3,7 +3,7 @@
 This document captures trust assumptions and failure modes for the current
 router implementation at:
 
-- `src/GhoRouter.sol`
+- `src/contracts/misc/GhoRouter.sol`
 
 It is intended for integrators, operators, and reviewers.
 
@@ -15,7 +15,7 @@ It is intended for integrators, operators, and reviewers.
 - `swapFromGho(gsm, token, ghoAmount, minOutputAmount[, recipient])` for GHO -> GSM underlying token/static aToken
 - `swapToSGho(gsm, token, amount, minSGHOAmount[, recipient])` for GSM token -> sGHO
 - `depositForSGho(ghoAmount, minSGHOAmount[, recipient])` for direct GHO -> sGHO
-- `swapFromsGHO(gsm, token, sghoAmount, minOutputAmount[, recipient])` for sGHO -> GSM underlying token/static aToken
+- `swapFromSGho(gsm, token, sghoAmount, minOutputAmount[, recipient])` for sGHO -> GSM underlying token/static aToken
 - `redeemSGho(sghoAmount, minOutputAmount[, recipient])` for direct sGHO -> GHO
 
 Important shape of the current design:

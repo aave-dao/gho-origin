@@ -68,6 +68,11 @@ contract ConstructorTest is TestGhoBase {
         new GhoRouter(address(this), address(GHO_TOKEN), address(0));
     }
 
+    function testConstructorInvalidSGho() public {
+        vm.expectRevert(IGhoRouter.InvalidToken.selector);
+        new GhoRouter(address(this), address(GHO_TOKEN), address(USDX_4626_TOKEN));
+    }
+
     function testConstructor() public {
         GhoRouter router = new GhoRouter(address(this), address(GHO_TOKEN), address(SGHO));
         assertEq(router.GHO(), address(GHO_TOKEN));
@@ -339,20 +344,18 @@ contract SwapFromGHOTest is GhoRouterTest {
         assertEq(outputAmount, expectedAmount, "Should receive output token");
     }
 
-    function testSwapFromGHOToStataUSDX_4626_TOKEN() public {
+    function testSwapFromGHOToStataUSDX_4626_TOKENWithRecipient() public {
         uint256 expectedAmount = 90909090;
         uint256 amount = 100 ether;
         _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
 
-        uint256 userBalanceBefore = IERC20(address(USDX_4626_TOKEN)).balanceOf(USER);
-
         vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
-        emit IGhoRouter.SwapFromGho(USER, USER, 99999999000000000000, expectedAmount); // 1 ether diff in input
+        emit IGhoRouter.SwapFromGho(USER, RECIPIENT, 99999999000000000000, expectedAmount); // 1 ether diff in input
         vm.prank(USER);
-        uint256 outputAmount = GHO_ROUTER.swapFromGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), amount, 1);
+        uint256 outputAmount = GHO_ROUTER.swapFromGho(address(GHO_GSM_4626), address(USDX_4626_TOKEN), amount, 1, RECIPIENT);
         assertEq(outputAmount, expectedAmount, "Should receive output token");
 
-        assertEq(IERC20(address(USDX_4626_TOKEN)).balanceOf(USER) - userBalanceBefore, outputAmount, "User gets static aToken");
+        assertEq(IERC20(address(USDX_4626_TOKEN)).balanceOf(RECIPIENT), outputAmount, "User gets static aToken");
     }
 
 }

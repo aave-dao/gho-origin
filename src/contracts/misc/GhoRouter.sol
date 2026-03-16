@@ -36,6 +36,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     constructor(address initialOwner, address gho, address sgho) Ownable(initialOwner) {
         require(gho != address(0), ZeroAddress());
         require(sgho != address(0), ZeroAddress());
+        require(IERC4626(sgho).asset() == gho, InvalidToken());
 
         GHO = gho;
         sGHO = sgho;
@@ -369,7 +370,7 @@ contract GhoRouter is Ownable, IGhoRouter {
         address stata = IGsm(gsm).UNDERLYING_ASSET();
         uint256 stataAmount = amount;
         if (token != stata) {
-            require(token == IERC4626(stata).asset(), InvalidToken());
+            _validateTokens(token, stata);
             IERC20(token).forceApprove(stata, amount);
             stataAmount = IERC4626(stata).deposit(amount, address(this));
         }

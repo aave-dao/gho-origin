@@ -82,7 +82,6 @@ Limitations of current implementation:
 - No on-swap revalidation of GSM `GHO_TOKEN`.
 - Preview methods can return quotes for non-allowlisted GSMs.
 - The router does not explicitly reset allowances to zero after each operation.
-- On GSM buy paths, if `buyAsset` spends less than transferred GHO, leftover GHO can remain in the router.
 
 ## Documented failure modes
 
@@ -168,7 +167,6 @@ Current mitigation:
 What can happen:
 
 - Requested amounts are not fully consumed by downstream contracts.
-- Leftover router balances may appear (especially GHO on buy paths).
 
 Why:
 
@@ -176,13 +174,15 @@ Why:
 
 Impact:
 
-- Accounting mismatch vs requested input and potential stranded funds in router.
+- Accounting mismatch vs requested input.
 
 Current mitigation:
 
 - Slippage checks on outputs.
 - Owner-operated `rescueToken` for recovery.
 - Balance monitoring by operators.
+- Refund mechanism.
+- Set approvals to zero.
 
 ### 6) sGHO compatibility or misconfiguration
 

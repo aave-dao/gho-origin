@@ -381,11 +381,11 @@ contract GhoRouter is Ownable, IGhoRouter {
         if (assetSold < stataAmount) {
             if (token == stata) {
                 IERC20(stata).safeTransfer(msg.sender, stataAmount - assetSold);
-                IERC20(stata).forceApprove(gsm, 0);
             } else {
                 uint256 redeemed = IERC4626(stata).redeem(stataAmount - assetSold, msg.sender, address(this));
                 amount = amount - redeemed;
             }
+            IERC20(stata).forceApprove(gsm, 0);
         }
 
         require(ghoAmount >= minGhoAmount, SlippageExceeded());

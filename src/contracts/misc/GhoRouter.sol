@@ -235,10 +235,15 @@ contract GhoRouter is Ownable, IGhoRouter {
         returns (uint256)
     {
         _validateInputs(ghoAmount, recipient, gsm);
-        IERC20(GHO).safeTransferFrom(msg.sender, address(this), ghoAmount);
+        address stata = IGsm(gsm).UNDERLYING_ASSET();
+        _validateTokens(token, stata);
+
+        (uint256 stataAmountToBuy, uint256 ghoUsed,,) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
+
+        IERC20(GHO).safeTransferFrom(msg.sender, address(this), ghoUsed);
 
         (uint256 outputAmount, uint256 ghoSold) =
-            _buyTokenWithGho(gsm, token, ghoAmount, recipient, minOutputAmount);
+            _buyTokenWithGho(gsm, token, stata, ghoUsed, stataAmountToBuy, recipient, minOutputAmount);
         emit SwapFromGho(msg.sender, recipient, token, ghoSold, outputAmount);
 
         return outputAmount;
@@ -302,9 +307,12 @@ contract GhoRouter is Ownable, IGhoRouter {
     ) internal returns (uint256) {
         _validateInputs(sghoAmount, recipient, gsm);
         uint256 ghoAmount = _redeemGho(sghoAmount, 0);
+        address stata = IGsm(gsm).UNDERLYING_ASSET();
+        _validateTokens(token, stata);
 
+        (uint256 stataAmountToBuy, uint256 ghoUsed,,) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
         (uint256 outputAmount, ) =
-            _buyTokenWithGho(gsm, token, ghoAmount, recipient, minOutputAmount);
+            _buyTokenWithGho(gsm, token, stata, ghoUsed, stataAmountToBuy, recipient, minOutputAmount);
         emit SwapFromSGho(msg.sender, recipient, token, sghoAmount, outputAmount);
 
         return outputAmount;
@@ -385,7 +393,9 @@ contract GhoRouter is Ownable, IGhoRouter {
      * @dev Buys GSM static aTokens with GHO, then returns either static or underlying output based on `token`.
      * @param gsm Whitelisted GSM used for the buy path.
      * @param token Output token requested by the caller (underlying token or static aToken).
-     * @param ghoAmount GHO budget used to acquire static aTokens.
+     * @param stata Address of the stata token used by the GSM.
+     * @param ghoUsed GHO budget used to acquire static aTokens.
+     * @param stataAmountToBuy Amount of stata token to acquire from the GSM.
      * @param outputReceiver Address receiving output tokens.
      * @param minOutputAmount Minimum acceptable output amount.
      * @return outputAmount Amount of output tokens sent to `outputReceiver`.
@@ -394,15 +404,12 @@ contract GhoRouter is Ownable, IGhoRouter {
     function _buyTokenWithGho(
         address gsm,
         address token,
-        uint256 ghoAmount,
+        address stata,
+        uint256 ghoUsed,
+        uint256 stataAmountToBuy,
         address outputReceiver,
         uint256 minOutputAmount
     ) internal returns (uint256, uint256) {
-        address stata = IGsm(gsm).UNDERLYING_ASSET();
-        _validateTokens(token, stata);
-
-        (uint256 stataAmountToBuy, uint256 ghoUsed,,) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
-
         IERC20(GHO).forceApprove(gsm, ghoUsed);
         (uint256 stataAmount, uint256 ghoSold) = IGsm(gsm).buyAsset(stataAmountToBuy, address(this));
 

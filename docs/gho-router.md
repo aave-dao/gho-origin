@@ -71,8 +71,6 @@ The current implementation assumes:
 - Recipient is validated as non-zero on all write flows.
 - GSM write flows are gated by `isGsmAllowed`.
 - SM write flows enforce output/input token compatibility (`underlying` or `static aToken`).
-- Partial sell handling exists on GSM sell paths:
-  - If `sellAsset` consumes less than requested shares, remaining shares are redeemed to `msg.sender`.
 - `rescueToken` is `onlyOwner`.
 
 Limitations of current implementation:
@@ -170,11 +168,11 @@ What can happen:
 
 Why:
 
-- GSM buy/sell paths can partially fill based on external conditions.
+- GSM buy/sell paths can partially fill based on external conditions (rounding error).
 
 Impact:
 
-- Accounting mismatch vs requested input.
+- A tiny portion could be lost but the gas used to return funds would be more expensive than the funds (rounding error).
 
 Current mitigation:
 

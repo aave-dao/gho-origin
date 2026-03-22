@@ -28,30 +28,57 @@ interface IGhoRouter {
      * @notice Emitted when a swap to GHO is completed
      * @param user The address of the user who initiated the swap
      * @param recipient The address of the recipient of the acquired GHO
+     * @param ghoAmount The amount of GHO tokens deposited
+     * @param sghoAmount The amount of sGHO received
+     */
+    event DepositForSGho(address indexed user, address indexed recipient, uint256 ghoAmount, uint256 sghoAmount);
+
+    /**
+     * @notice Emitted when a swap from sGHO is completed
+     * @param user The address of the user who initiated the swap
+     * @param recipient The address of the recipient of the acquired token
+     * @param sghoAmount The amount of sGHO shares burned
+     * @param ghoAmount The amount of GHO tokens received
+     */
+    event RedeemFromSGho(
+        address indexed user,
+        address indexed recipient,
+        uint256 sghoAmount,
+        uint256 ghoAmount
+    );
+
+    /**
+     * @notice Emitted when a swap to GHO is completed
+     * @param user The address of the user who initiated the swap
+     * @param recipient The address of the recipient of the acquired GHO
+     * @param token The address of the token that was swapped
      * @param inputAmount The amount of input tokens sold
      * @param ghoAmount The amount of GHO received
      */
-    event SwapToGho(address indexed user, address indexed recipient, uint256 inputAmount, uint256 ghoAmount);
+    event SwapToGho(address indexed user, address indexed recipient, address indexed token, uint256 inputAmount, uint256 ghoAmount);
 
     /**
      * @notice Emitted when a swap from GHO is completed
      * @param user The address of the user who initiated the swap
      * @param recipient The address of the recipient of the acquired token
+     * @param token The address of the token that was swapped to
      * @param ghoAmount The amount of GHO sold
      * @param outputAmount The amount of output tokens received
      */
-    event SwapFromGho(address indexed user, address indexed recipient, uint256 ghoAmount, uint256 outputAmount);
+    event SwapFromGho(address indexed user, address indexed recipient, address indexed token, uint256 ghoAmount, uint256 outputAmount);
 
     /**
      * @notice Emitted when a swap to sGHO is completed
      * @param user The address of the user who initiated the swap
      * @param recipient The address of the recipient of the acquired token
+     * * @param token The address of the token that was swapped
      * @param inputAmount The amount of input tokens sold
      * @param sghoAmount The amount of sGHO shares minted
      */
     event SwapToSGho(
         address indexed user,
         address indexed recipient,
+        address indexed token,
         uint256 inputAmount,
         uint256 sghoAmount
     );
@@ -60,12 +87,14 @@ interface IGhoRouter {
      * @notice Emitted when a swap from sGHO is completed
      * @param user The address of the user who initiated the swap
      * @param recipient The address of the recipient of the acquired token
+     * @param token The address of the token that was swapped to
      * @param sghoAmount The amount of sGHO shares burned
      * @param outputAmount The amount of output tokens received
      */
     event SwapFromSGho(
         address indexed user,
         address indexed recipient,
+        address indexed token,
         uint256 sghoAmount,
         uint256 outputAmount
     );

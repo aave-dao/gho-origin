@@ -179,8 +179,6 @@ Current mitigation:
 - Slippage checks on outputs.
 - Owner-operated `rescueToken` for recovery.
 - Balance monitoring by operators.
-- Refund mechanism.
-- Set approvals to zero.
 
 ### 6) sGHO compatibility or misconfiguration
 
@@ -190,7 +188,7 @@ What can happen:
 
 Why:
 
-- Constructor checks only `sgho != address(0)` and does not verify vault asset compatibility.
+- Constructor checks only `sgho != address(0)` and checks underlying is GHO.
 
 Impact:
 

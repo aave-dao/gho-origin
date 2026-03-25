@@ -56,7 +56,7 @@ interface IGhoRouter {
    * @notice Emitted when a swap to GHO is completed
    * @param user The address of the user who initiated the swap
    * @param recipient The address of the recipient of the acquired GHO
-   * @param token The address of the token that was swapped
+   * @param token The address of the input token
    * @param inputAmount The amount of input tokens sold
    * @param ghoAmount The amount of GHO received
    */
@@ -72,7 +72,7 @@ interface IGhoRouter {
    * @notice Emitted when a swap from GHO is completed
    * @param user The address of the user who initiated the swap
    * @param recipient The address of the recipient of the acquired token
-   * @param token The address of the token that was swapped to
+   * @param token The address of the output token
    * @param ghoAmount The amount of GHO sold
    * @param outputAmount The amount of output tokens received
    */
@@ -88,7 +88,7 @@ interface IGhoRouter {
    * @notice Emitted when a swap to sGHO is completed
    * @param user The address of the user who initiated the swap
    * @param recipient The address of the recipient of the acquired token
-   * * @param token The address of the token that was swapped
+   * @param token The address of the input token
    * @param inputAmount The amount of input tokens sold
    * @param sghoAmount The amount of sGHO shares minted
    */
@@ -104,7 +104,7 @@ interface IGhoRouter {
    * @notice Emitted when a swap from sGHO is completed
    * @param user The address of the user who initiated the swap
    * @param recipient The address of the recipient of the acquired token
-   * @param token The address of the token that was swapped to
+   * @param token The address of the output token
    * @param sghoAmount The amount of sGHO shares burned
    * @param outputAmount The amount of output tokens received
    */

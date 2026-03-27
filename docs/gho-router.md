@@ -58,11 +58,10 @@ The current implementation assumes:
 
 1. Owner securely manages `isGsmAllowed` and curates safe GSM addresses.
 2. `IGSM`, `IStaticAToken`, and `sGHO` dependencies are interface-compatible and non-malicious.
-3. `sGHO` is a valid ERC4626 vault over GHO (constructor does not enforce `asset() == GHO`).
-4. External dependency return values are correct (router accounting uses returned values).
-5. Underlying tokens involved in selected routes have ERC20 semantics compatible with `SafeERC20`.
-6. Users/integrators set realistic slippage bounds.
-7. Owner key management is trusted for `rescueToken`.
+3. External dependency return values are correct (router accounting uses returned values).
+4. Underlying tokens involved in selected routes have ERC20 semantics compatible with `SafeERC20`.
+5. Users/integrators set realistic slippage bounds.
+6. Owner key management is trusted for `rescueToken`.
 
 ## Security properties in the current implementation
 

@@ -179,25 +179,7 @@ Current mitigation:
 - Owner-operated `rescueToken` for recovery.
 - Balance monitoring by operators.
 
-### 6) sGHO compatibility or misconfiguration
-
-What can happen:
-
-- `swapToSGho`/`swapFromsGHO` paths may revert or behave unexpectedly.
-
-Why:
-
-- Constructor checks only `sgho != address(0)` and checks underlying is GHO.
-
-Impact:
-
-- Broken path or fund-loss risk if deployed with an incompatible vault.
-
-Current mitigation:
-
-- Deployment hygiene and post-deploy validation.
-
-### 7) Non-standard token behavior
+### 6) Non-standard token behavior
 
 What can happen:
 
@@ -215,7 +197,7 @@ Current mitigation:
 
 - `SafeERC20` and known-asset route curation.
 
-### 8) Residual allowance risk
+### 7) Residual allowance risk
 
 What can happen:
 
@@ -235,7 +217,7 @@ Current mitigation:
 - Monitor allowances and balances.
 - Use `rescueToken` under controlled governance.
 
-### 9) Owner rescue authority
+### 8) Owner rescue authority
 
 What can happen:
 

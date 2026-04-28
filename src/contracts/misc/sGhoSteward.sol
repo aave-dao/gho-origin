@@ -46,13 +46,13 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     _sGho = IsGho(sGho);
     MAX_RATE = _sGho.MAX_SAFE_RATE();
 
-    _grantRole(DEFAULT_ADMIN_ROLE, riskCouncil);
+    _grantRole(DEFAULT_ADMIN_ROLE, owner);
 
-    // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `owner`
-    _grantRole(AMPLIFICATION_MANAGER_ROLE, owner);
-    _grantRole(FLOAT_RATE_MANAGER_ROLE, owner);
-    _grantRole(FIXED_RATE_MANAGER_ROLE, owner);
-    _grantRole(SUPPLY_CAP_MANAGER_ROLE, owner);
+    // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `riskCouncil`
+    _grantRole(AMPLIFICATION_MANAGER_ROLE, riskCouncil);
+    _grantRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil);
+    _grantRole(FIXED_RATE_MANAGER_ROLE, riskCouncil);
+    _grantRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil);
   }
 
   /// @inheritdoc IsGhoSteward

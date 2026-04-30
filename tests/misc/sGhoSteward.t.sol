@@ -63,9 +63,7 @@ contract sGhoStewardTest is TestSGhoBase {
   function test_riskCouncilCannotGrantRoles() public {
     address user = makeAddr('user');
 
-    vm.expectRevert(
-      'AccessControl: account 0xaea5d4e83aec0b085ee8d3a6f48cf765622b09b0 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000'
-    );
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
     vm.prank(riskCouncil);
     AccessControl(steward).grantRole(AMPLIFICATION_MANAGER_ROLE, user);
   }
@@ -204,7 +202,6 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(sgho.targetRate(), 500);
 
     vm.prank(governance);
-
     steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil);
 
     newConfig = IsGhoSteward.RateConfig({
@@ -214,7 +211,6 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.startPrank(riskCouncil);
-
     vm.expectRevert(_craftError(riskCouncil, FLOAT_RATE_MANAGER_ROLE));
     steward.setRateConfig(newConfig);
   }

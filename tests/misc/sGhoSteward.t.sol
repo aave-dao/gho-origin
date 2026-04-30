@@ -52,7 +52,22 @@ contract sGhoStewardTest is TestSGhoBase {
     assertTrue(steward.hasRole(FIXED_RATE_MANAGER_ROLE, riskCouncil));
     assertTrue(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil));
 
+    assertFalse(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(FIXED_RATE_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, governance));
+
     assertEq(address(steward.sGHO()), address(sgho));
+  }
+
+  function test_riskCouncilCannotGrantRoles() public {
+    address user = makeAddr('user');
+
+    vm.expectRevert(
+      'AccessControl: account 0xaea5d4e83aec0b085ee8d3a6f48cf765622b09b0 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000'
+    );
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(AMPLIFICATION_MANAGER_ROLE, user);
   }
 
   function test_setRateConfig() public {
@@ -62,14 +77,13 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(initialConfig.floatRate, 0);
     assertEq(initialConfig.fixedRate, 0);
 
-    vm.startPrank(riskCouncil);
-
     IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
       amplification: 100_00, // AMPLIFICATION_NUMERATOR
       floatRate: 200, // 2%
       fixedRate: 200 // 2%
     });
 
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
@@ -274,8 +288,6 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(initialConfig.floatRate, 0);
     assertEq(initialConfig.fixedRate, 0);
 
-    vm.startPrank(riskCouncil);
-
     IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
       amplification: 0,
       floatRate: 0,
@@ -283,6 +295,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateUnchanged.selector));
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
   }
 

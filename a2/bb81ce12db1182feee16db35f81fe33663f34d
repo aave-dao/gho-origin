@@ -1,0 +1,14 @@
+tests/misc/sGhoSteward.t.sol
+  h_e42aa0fb58e660 69-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a2bb81ce12db1182feee16db35f81fe33663f34d",
+  "prompts": {},
+  "humans": {
+    "h_e42aa0fb58e660": {
+      "author": "Alexandru Niculae"
+    }
+  }
+}

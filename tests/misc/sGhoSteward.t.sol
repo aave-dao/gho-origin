@@ -66,6 +66,18 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
     vm.prank(riskCouncil);
     AccessControl(steward).grantRole(AMPLIFICATION_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(FLOAT_RATE_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(FIXED_RATE_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(SUPPLY_CAP_MANAGER_ROLE, user);
   }
 
   function test_setRateConfig() public {

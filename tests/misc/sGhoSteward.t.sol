@@ -14,7 +14,7 @@ contract sGhoStewardTest is TestSGhoBase {
   sGhoSteward public steward;
 
   address public riskCouncil = makeAddr('riskCouncil');
-  address public ghoCommittee = makeAddr('ghoCommittee');
+  address public governance = makeAddr('governance');
 
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
 
@@ -28,7 +28,7 @@ contract sGhoStewardTest is TestSGhoBase {
   function setUp() public override {
     super.setUp();
 
-    steward = new sGhoSteward(ghoCommittee, riskCouncil, address(sgho));
+    steward = new sGhoSteward(governance, riskCouncil, address(sgho));
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
   }
 
@@ -37,22 +37,47 @@ contract sGhoStewardTest is TestSGhoBase {
     new sGhoSteward(address(0), riskCouncil, address(sgho));
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(ghoCommittee, address(0), address(sgho));
+    new sGhoSteward(governance, address(0), address(sgho));
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(ghoCommittee, riskCouncil, address(0));
+    new sGhoSteward(governance, riskCouncil, address(0));
   }
 
   function test_initial() public view {
-    assertTrue(steward.hasRole(DEFAULT_ADMIN_ROLE, riskCouncil));
-    assertFalse(steward.hasRole(DEFAULT_ADMIN_ROLE, ghoCommittee));
+    assertTrue(steward.hasRole(DEFAULT_ADMIN_ROLE, governance));
+    assertFalse(steward.hasRole(DEFAULT_ADMIN_ROLE, riskCouncil));
 
-    assertTrue(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee));
-    assertTrue(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee));
-    assertTrue(steward.hasRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee));
-    assertTrue(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee));
+    assertTrue(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, riskCouncil));
+    assertTrue(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil));
+    assertTrue(steward.hasRole(FIXED_RATE_MANAGER_ROLE, riskCouncil));
+    assertTrue(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil));
+
+    assertFalse(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(FIXED_RATE_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, governance));
 
     assertEq(address(steward.sGHO()), address(sgho));
+  }
+
+  function test_riskCouncilCannotGrantRoles() public {
+    address user = makeAddr('user');
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(AMPLIFICATION_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(FLOAT_RATE_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(FIXED_RATE_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(SUPPLY_CAP_MANAGER_ROLE, user);
   }
 
   function test_setRateConfig() public {
@@ -62,14 +87,13 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(initialConfig.floatRate, 0);
     assertEq(initialConfig.fixedRate, 0);
 
-    vm.startPrank(ghoCommittee);
-
     IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
       amplification: 100_00, // AMPLIFICATION_NUMERATOR
       floatRate: 200, // 2%
       fixedRate: 200 // 2%
     });
 
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
@@ -94,7 +118,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // 2%
     });
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
@@ -103,10 +127,10 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(configAfterUpdate.floatRate, 2_00);
     assertEq(configAfterUpdate.fixedRate, 2_00);
 
-    vm.startPrank(riskCouncil);
+    vm.startPrank(governance);
 
-    steward.revokeRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee);
-    steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee);
+    steward.revokeRole(FIXED_RATE_MANAGER_ROLE, riskCouncil);
+    steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil);
 
     vm.stopPrank();
 
@@ -116,7 +140,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // default
     });
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     configAfterUpdate = steward.getRateConfig();
@@ -127,9 +151,9 @@ contract sGhoStewardTest is TestSGhoBase {
 
     assertEq(sgho.targetRate(), 6_00);
 
-    vm.prank(riskCouncil);
+    vm.prank(governance);
 
-    steward.revokeRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee);
+    steward.revokeRole(AMPLIFICATION_MANAGER_ROLE, riskCouncil);
 
     newConfig = IsGhoSteward.RateConfig({
       amplification: 300_00, // new
@@ -137,9 +161,9 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // default
     });
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
-    vm.expectRevert(_craftError(ghoCommittee, AMPLIFICATION_MANAGER_ROLE));
+    vm.expectRevert(_craftError(riskCouncil, AMPLIFICATION_MANAGER_ROLE));
     steward.setRateConfig(newConfig);
   }
 
@@ -156,7 +180,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // 2%
     });
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
@@ -165,10 +189,10 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(configAfterUpdate.floatRate, 2_00);
     assertEq(configAfterUpdate.fixedRate, 2_00);
 
-    vm.startPrank(riskCouncil);
+    vm.startPrank(governance);
 
-    steward.revokeRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee);
-    steward.revokeRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee);
+    steward.revokeRole(AMPLIFICATION_MANAGER_ROLE, riskCouncil);
+    steward.revokeRole(FIXED_RATE_MANAGER_ROLE, riskCouncil);
 
     vm.stopPrank();
 
@@ -178,7 +202,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // default
     });
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     configAfterUpdate = steward.getRateConfig();
@@ -189,9 +213,8 @@ contract sGhoStewardTest is TestSGhoBase {
 
     assertEq(sgho.targetRate(), 500);
 
-    vm.prank(riskCouncil);
-
-    steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee);
+    vm.prank(governance);
+    steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil);
 
     newConfig = IsGhoSteward.RateConfig({
       amplification: 100_00, // default
@@ -199,9 +222,8 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // default
     });
 
-    vm.startPrank(ghoCommittee);
-
-    vm.expectRevert(_craftError(ghoCommittee, FLOAT_RATE_MANAGER_ROLE));
+    vm.startPrank(riskCouncil);
+    vm.expectRevert(_craftError(riskCouncil, FLOAT_RATE_MANAGER_ROLE));
     steward.setRateConfig(newConfig);
   }
 
@@ -218,7 +240,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 2_00 // 2%
     });
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
@@ -227,10 +249,10 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(configAfterUpdate.floatRate, 2_00);
     assertEq(configAfterUpdate.fixedRate, 2_00);
 
-    vm.startPrank(riskCouncil);
+    vm.startPrank(governance);
 
-    steward.revokeRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee);
-    steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee);
+    steward.revokeRole(AMPLIFICATION_MANAGER_ROLE, riskCouncil);
+    steward.revokeRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil);
 
     vm.stopPrank();
 
@@ -240,7 +262,7 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 3_00 // new
     });
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
 
     configAfterUpdate = steward.getRateConfig();
@@ -251,9 +273,9 @@ contract sGhoStewardTest is TestSGhoBase {
 
     assertEq(sgho.targetRate(), 500);
 
-    vm.prank(riskCouncil);
+    vm.prank(governance);
 
-    steward.revokeRole(FIXED_RATE_MANAGER_ROLE, ghoCommittee);
+    steward.revokeRole(FIXED_RATE_MANAGER_ROLE, riskCouncil);
 
     newConfig = IsGhoSteward.RateConfig({
       amplification: 100_00, // default
@@ -261,9 +283,9 @@ contract sGhoStewardTest is TestSGhoBase {
       fixedRate: 4_00 // new
     });
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
-    vm.expectRevert(_craftError(ghoCommittee, FIXED_RATE_MANAGER_ROLE));
+    vm.expectRevert(_craftError(riskCouncil, FIXED_RATE_MANAGER_ROLE));
     steward.setRateConfig(newConfig);
   }
 
@@ -274,8 +296,6 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(initialConfig.floatRate, 0);
     assertEq(initialConfig.fixedRate, 0);
 
-    vm.startPrank(ghoCommittee);
-
     IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
       amplification: 0,
       floatRate: 0,
@@ -283,6 +303,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateUnchanged.selector));
+    vm.prank(riskCouncil);
     steward.setRateConfig(newConfig);
   }
 
@@ -290,18 +311,18 @@ contract sGhoStewardTest is TestSGhoBase {
     uint256 initialSupplyCap = sgho.supplyCap();
     assertEq(initialSupplyCap, SUPPLY_CAP);
 
-    vm.prank(ghoCommittee);
+    vm.prank(riskCouncil);
     steward.setSupplyCap(type(uint160).max);
 
     uint256 supplyCapAfterUpdate = sgho.supplyCap();
     assertEq(supplyCapAfterUpdate, type(uint160).max);
 
-    vm.prank(riskCouncil);
-    steward.revokeRole(SUPPLY_CAP_MANAGER_ROLE, ghoCommittee);
+    vm.prank(governance);
+    steward.revokeRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil);
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
-    vm.expectRevert(_craftError(ghoCommittee, SUPPLY_CAP_MANAGER_ROLE));
+    vm.expectRevert(_craftError(riskCouncil, SUPPLY_CAP_MANAGER_ROLE));
     steward.setSupplyCap(1e18);
   }
 
@@ -311,7 +332,7 @@ contract sGhoStewardTest is TestSGhoBase {
     uint256 initialSupplyCap = sgho.supplyCap();
     assertEq(initialSupplyCap, SUPPLY_CAP);
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
     steward.setSupplyCap(type(uint160).max);
 
@@ -329,7 +350,7 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.assume((uint256(ampl) * float) / 1e4 + fix < 5e3);
     vm.assume(ampl != 0 || float != 0 || fix != 0);
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
     IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
       amplification: ampl,
@@ -361,7 +382,7 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(initialConfig.floatRate, 0);
     assertEq(initialConfig.fixedRate, 0);
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
     uint256 fuzzTarget = (uint256(fuzzConfig.amplification) * fuzzConfig.floatRate) /
       1e4 +
@@ -392,7 +413,7 @@ contract sGhoStewardTest is TestSGhoBase {
   function test_setRateMoreThanMax(uint16 ampl, uint16 float, uint16 fix) public {
     vm.assume((uint256(ampl) * float) / 1e4 + fix > 5e3);
 
-    vm.startPrank(ghoCommittee);
+    vm.startPrank(riskCouncil);
 
     IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
       amplification: ampl,

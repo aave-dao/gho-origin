@@ -7,7 +7,7 @@ pragma solidity 0.8.27;
  */
 interface IGhoRouter {
   /// @dev GSM is not whitelisted for swaps
-  error GsmNotAllowed();
+  error GsmNotConfigured();
 
   /// @dev Amount must be greater than zero
   error InvalidAmount();
@@ -15,11 +15,17 @@ interface IGhoRouter {
   /// @dev GSM not configured for the given token
   error InvalidGsm();
 
+  /// @dev Invalid path for token swap
+  error InvalidPath();
+
   /// @dev Unsupported token provided
   error InvalidToken();
 
   /// @dev Swap amount is lower than minimum expected amount
   error SlippageExceeded();
+
+  /// @dev The token to GSM mapping is not set
+  error TokenToGsmNotSet();
 
   /// @dev Zero address is not allowed
   error ZeroAddress();
@@ -117,188 +123,50 @@ interface IGhoRouter {
   );
 
   /**
-   * @notice Emitted when a GSM whitelist status is updated
-   * @param gsm GSM address whose allowlist status changed
-   * @param allowed Whether the GSM is allowed for swap paths
+   * @notice Emitted when a token to GSM mapping is added
+   * @param token Address of the token that can swap via the specified GSM
+   * @param gsm GSM address
    */
-  event GsmAllowedUpdated(address indexed gsm, bool allowed);
+  event TokenToGsmAdded(address indexed token, address gsm);
 
   /**
-   * @notice Swap token to GHO through a GSM path
-   * @param gsm GSM address used for the swap path
-   * @param token Input token address (GSM underlying token or static aToken)
-   * @param amount Amount of input token to swap
-   * @param minGHOAmount Minimum amount of GHO to receive (slippage protection)
-   * @return Amount of GHO received
+   * @notice Emitted when a token to GSM mapping is removed
+   * @param token Address of the token that can swap via the specified GSM
+   * @param gsm GSM address
    */
-  function swapToGho(
-    address gsm,
-    address token,
-    uint256 amount,
-    uint256 minGHOAmount
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap token to GHO through a GSM path and send output to recipient
-   * @param gsm GSM address used for the swap path
-   * @param token Input token address (GSM underlying token or static aToken)
-   * @param amount Amount of input token to swap
-   * @param minGHOAmount Minimum amount of GHO to receive (slippage protection)
-   * @param recipient Address that receives GHO
-   * @return Amount of GHO received
-   */
-  function swapToGho(
-    address gsm,
-    address token,
-    uint256 amount,
-    uint256 minGHOAmount,
-    address recipient
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap GHO through a GSM path and choose output token (underlying token or static aToken)
-   * @param gsm GSM address used for the swap path
-   * @param token Output token address (GSM underlying token or static aToken)
-   * @param ghoAmount Amount of GHO to swap
-   * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-   * @return Amount of output token received
-   */
-  function swapFromGho(
-    address gsm,
-    address token,
-    uint256 ghoAmount,
-    uint256 minOutputAmount
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap GHO through a GSM path, choose output token, and send output to recipient
-   * @param gsm GSM address used for the swap path
-   * @param token Output token address (GSM underlying token or static aToken)
-   * @param ghoAmount Amount of GHO to swap
-   * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-   * @param recipient Address that receives output token
-   * @return Amount of output token received
-   */
-  function swapFromGho(
-    address gsm,
-    address token,
-    uint256 ghoAmount,
-    uint256 minOutputAmount,
-    address recipient
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap token to sGHO through a GSM path
-   * @param gsm GSM address used for the swap path
-   * @param token Input token address (GSM underlying token or static aToken)
-   * @param amount Amount of input token to swap
-   * @param minSGHOAmount Minimum amount of sGHO shares to receive (slippage protection)
-   * @return Amount of sGHO shares received
-   */
-  function swapToSGho(
-    address gsm,
-    address token,
-    uint256 amount,
-    uint256 minSGHOAmount
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap token to sGHO through a GSM path and send output to recipient
-   * @param gsm GSM address used for the swap path
-   * @param token Input token address (GSM underlying token or static aToken)
-   * @param amount Amount of input token to swap
-   * @param minSGHOAmount Minimum amount of sGHO shares to receive (slippage protection)
-   * @param recipient Address that receives sGHO shares
-   * @return Amount of sGHO shares received
-   */
-  function swapToSGho(
-    address gsm,
-    address token,
-    uint256 amount,
-    uint256 minSGHOAmount,
-    address recipient
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap GHO directly to sGHO
-   * @param ghoAmount Amount of GHO to deposit into sGHO
-   * @param minSGHOAmount Minimum amount of sGHO shares to receive (slippage protection)
-   * @return Amount of sGHO shares received
-   */
-  function depositForSGho(uint256 ghoAmount, uint256 minSGHOAmount) external returns (uint256);
-
-  /**
-   * @notice Swap GHO directly to sGHO and send output to recipient
-   * @param ghoAmount Amount of GHO to deposit into sGHO
-   * @param minSGHOAmount Minimum amount of sGHO shares to receive (slippage protection)
-   * @param recipient Address that receives sGHO shares
-   * @return Amount of sGHO shares received
-   */
-  function depositForSGho(
-    uint256 ghoAmount,
-    uint256 minSGHOAmount,
-    address recipient
-  ) external returns (uint256);
-
-  /**
-   * @notice Swap sGHO back through a GSM path and choose output token (underlying token or static aToken)
-   * @param gsm GSM address used for the swap path
-   * @param token Output token address (GSM underlying token or static aToken)
-   * @param sghoAmount Amount of sGHO shares to redeem
-   * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
-   * @return Amount of output token received
-   */
-  function swapFromSGho(
-    address gsm,
-    address token,
-    uint256 sghoAmount,
-    uint256 minOutputAmount
-  ) external returns (uint256);
+  event TokenToGsmRemoved(address indexed token, address gsm);
 
   /**
    * @notice Swap sGHO back through a GSM path, choose output token, and send output to recipient
-   * @param gsm GSM address used for the swap path
-   * @param token Output token address (GSM underlying token or static aToken)
-   * @param sghoAmount Amount of sGHO shares to redeem
-   * @param minOutputAmount Minimum amount of output token to receive (slippage protection)
+   * @param tokenIn Input token to swap from
+   * @param tokenOut Output token address to swap to
+   * @param amountIn Amount of tokens to swap
+   * @param minAmountOut Minimum amount of output token to receive (slippage protection)
    * @param recipient Address that receives output token
+   * @param deadline Maximum timestamp swap can be executed
    * @return Amount of output token received
    */
-  function swapFromSGho(
-    address gsm,
-    address token,
-    uint256 sghoAmount,
-    uint256 minOutputAmount,
-    address recipient
+  function swap(
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    uint256 minAmountOut,
+    address recipient,
+    uint256 deadline
   ) external returns (uint256);
 
   /**
-   * @notice Redeem sGHO directly to GHO
-   * @param sghoAmount Amount of sGHO shares to redeem
-   * @param minOutputAmount Minimum amount of GHO to receive (slippage protection)
-   * @return Amount of GHO received
-   */
-  function redeemSGho(uint256 sghoAmount, uint256 minOutputAmount) external returns (uint256);
-
-  /**
-   * @notice Redeem sGHO directly to GHO and send output to recipient
-   * @param sghoAmount Amount of sGHO shares to redeem
-   * @param minOutputAmount Minimum amount of GHO to receive (slippage protection)
-   * @param recipient Address that receives GHO
-   * @return Amount of GHO received
-   */
-  function redeemSGho(
-    uint256 sghoAmount,
-    uint256 minOutputAmount,
-    address recipient
-  ) external returns (uint256);
-
-  /**
-   * @notice Updates GSM whitelist status
+   * @notice Sets a token to corresponding GSM mapping
+   * @param token Address of the token that uses the GSM
    * @param gsm GSM address to update
-   * @param allowed Whether this GSM should be allowed for swap paths
    */
-  function setGsmAllowed(address gsm, bool allowed) external;
+  function setTokenToGsm(address token, address gsm) external;
+
+  /**
+   * @notice Removes a token to GSM mapping
+   * @param token Address of the token to remove mapping for
+   */
+  function removeTokenToGsm(address token) external;
 
   /**
    * @notice Rescue ERC20 token from the contract
@@ -321,83 +189,24 @@ interface IGhoRouter {
   function sGHO() external view returns (address);
 
   /**
-   * @notice Returns whether a GSM address is whitelisted for swap paths
-   * @param gsm GSM address to check
-   * @return True if the GSM is allowed for swap paths
+   * @notice Returns the corresponding GSM a token should use for swapping
+   * @param token Address of the token to check
+   * @return Address of the corresponding GSM
    */
-  function isGsmAllowed(address gsm) external view returns (bool);
+  function gsms(address token) external view returns (address);
 
   /**
-   * @notice Preview the amount of GHO received for a given input amount
-   * @dev This is an estimation and actual results may vary slightly due to interest accrual
-   * @param gsm GSM address used for the swap path
-   * @param token Input token address (GSM underlying token or static aToken)
-   * @param amount Amount of input token to sell
-   * @return ghoAmount Expected amount of GHO to receive
-   * @return fee Fee amount charged by the GSM
+   * @notice Preview the amount of tokens received for a given input amount
+   * @dev This is an estimation and actual results may vary slightly
+   * @param tokenIn Input token address
+   * @param tokenOut Output token address
+   * @param amountIn Amount of input token to sell
+   * @return Expected amount of tokenOut from swap
    */
-  function previewSwapToGho(
-    address gsm,
-    address token,
-    uint256 amount
-  ) external view returns (uint256 ghoAmount, uint256 fee);
+  function previewSwap(
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+  ) external view returns (uint256);
 
-  /**
-   * @notice Preview the amount of chosen output token received for a given GHO amount
-   * @dev This is an estimation and actual results may vary slightly due to interest accrual
-   * @param gsm GSM address used for the swap path
-   * @param token Output token address (GSM underlying token or static aToken)
-   * @param ghoAmount Amount of GHO to sell
-   * @return assetAmount Expected amount of output token to receive
-   * @return fee Fee amount charged by the GSM
-   */
-  function previewSwapFromGho(
-    address gsm,
-    address token,
-    uint256 ghoAmount
-  ) external view returns (uint256 assetAmount, uint256 fee);
-
-  /**
-   * @notice Preview the amount of sGHO received for a given input amount through a GSM path
-   * @dev This is an estimation and actual results may vary slightly due to interest accrual
-   * @param gsm GSM address used for the swap path
-   * @param token Input token address (GSM underlying token or static aToken)
-   * @param amount Amount of input token to sell
-   * @return sghoAmount Expected amount of sGHO shares to receive
-   * @return fee Fee amount charged by the GSM path
-   */
-  function previewSwapToSGho(
-    address gsm,
-    address token,
-    uint256 amount
-  ) external view returns (uint256 sghoAmount, uint256 fee);
-
-  /**
-   * @notice Preview the amount of sGHO received for a direct GHO deposit
-   * @param ghoAmount Amount of GHO to deposit
-   * @return sghoAmount Expected amount of sGHO shares to receive
-   */
-  function previewDepositForSGho(uint256 ghoAmount) external view returns (uint256 sghoAmount);
-
-  /**
-   * @notice Preview the amount of chosen output token received for a given sGHO amount through a GSM path
-   * @dev This is an estimation and actual results may vary slightly due to interest accrual
-   * @param gsm GSM address used for the swap path
-   * @param token Output token address (GSM underlying token or static aToken)
-   * @param sghoAmount Amount of sGHO shares to redeem
-   * @return outputAmount Expected amount of output token to receive
-   * @return fee Fee amount charged by the GSM path
-   */
-  function previewSwapFromSGho(
-    address gsm,
-    address token,
-    uint256 sghoAmount
-  ) external view returns (uint256 outputAmount, uint256 fee);
-
-  /**
-   * @notice Preview the amount of GHO received for direct sGHO redemption
-   * @param sghoAmount Amount of sGHO shares to redeem
-   * @return ghoAmount Expected amount of GHO to receive
-   */
-  function previewRedeemSGho(uint256 sghoAmount) external view returns (uint256 ghoAmount);
 }

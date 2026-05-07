@@ -6,6 +6,9 @@ pragma solidity 0.8.27;
  * @notice Interface for GhoRouter contract
  */
 interface IGhoRouter {
+  /// @dev Deadline for performing swap has expired
+  error DeadlineExpired();
+
   /// @dev GSM is not whitelisted for swaps
   error GsmNotConfigured();
 
@@ -24,6 +27,9 @@ interface IGhoRouter {
   /// @dev Swap amount is lower than minimum expected amount
   error SlippageExceeded();
 
+  /// @dev The token to GSM mapping is already set
+  error TokenToGsmAlreadySet();
+
   /// @dev The token to GSM mapping is not set
   error TokenToGsmNotSet();
 
@@ -31,95 +37,19 @@ interface IGhoRouter {
   error ZeroAddress();
 
   /**
-   * @notice Emitted when a swap to GHO is completed
-   * @param user The address of the user who initiated the swap
-   * @param recipient The address of the recipient of the acquired GHO
-   * @param ghoAmount The amount of GHO tokens deposited
-   * @param sghoAmount The amount of sGHO received
+   * @notice Emitted when a swap is completed
+   * @param tokenIn The address of the token to swap from
+   * @param tokenOut The address of the token to swap to
+   * @param amountIn The amount of tokenIn swapped
+   * @param amountOut The amount of tokenOut received
+   * @param recipient The address of the recipient of tokenOut
    */
-  event DepositForSGho(
-    address indexed user,
-    address indexed recipient,
-    uint256 ghoAmount,
-    uint256 sghoAmount
-  );
-
-  /**
-   * @notice Emitted when a swap from sGHO is completed
-   * @param user The address of the user who initiated the swap
-   * @param recipient The address of the recipient of the acquired token
-   * @param sghoAmount The amount of sGHO shares burned
-   * @param ghoAmount The amount of GHO tokens received
-   */
-  event RedeemFromSGho(
-    address indexed user,
-    address indexed recipient,
-    uint256 sghoAmount,
-    uint256 ghoAmount
-  );
-
-  /**
-   * @notice Emitted when a swap to GHO is completed
-   * @param user The address of the user who initiated the swap
-   * @param recipient The address of the recipient of the acquired GHO
-   * @param token The address of the input token
-   * @param inputAmount The amount of input tokens sold
-   * @param ghoAmount The amount of GHO received
-   */
-  event SwapToGho(
-    address indexed user,
-    address indexed recipient,
-    address indexed token,
-    uint256 inputAmount,
-    uint256 ghoAmount
-  );
-
-  /**
-   * @notice Emitted when a swap from GHO is completed
-   * @param user The address of the user who initiated the swap
-   * @param recipient The address of the recipient of the acquired token
-   * @param token The address of the output token
-   * @param ghoAmount The amount of GHO sold
-   * @param outputAmount The amount of output tokens received
-   */
-  event SwapFromGho(
-    address indexed user,
-    address indexed recipient,
-    address indexed token,
-    uint256 ghoAmount,
-    uint256 outputAmount
-  );
-
-  /**
-   * @notice Emitted when a swap to sGHO is completed
-   * @param user The address of the user who initiated the swap
-   * @param recipient The address of the recipient of the acquired token
-   * @param token The address of the input token
-   * @param inputAmount The amount of input tokens sold
-   * @param sghoAmount The amount of sGHO shares minted
-   */
-  event SwapToSGho(
-    address indexed user,
-    address indexed recipient,
-    address indexed token,
-    uint256 inputAmount,
-    uint256 sghoAmount
-  );
-
-  /**
-   * @notice Emitted when a swap from sGHO is completed
-   * @param user The address of the user who initiated the swap
-   * @param recipient The address of the recipient of the acquired token
-   * @param token The address of the output token
-   * @param sghoAmount The amount of sGHO shares burned
-   * @param outputAmount The amount of output tokens received
-   */
-  event SwapFromSGho(
-    address indexed user,
-    address indexed recipient,
-    address indexed token,
-    uint256 sghoAmount,
-    uint256 outputAmount
+  event Swap(
+    address indexed tokenIn,
+    address indexed tokenOut,
+    uint256 amountIn,
+    uint256 amountOut,
+    address indexed recipient
   );
 
   /**
@@ -208,5 +138,4 @@ interface IGhoRouter {
     address tokenOut,
     uint256 amountIn
   ) external view returns (uint256);
-
 }

@@ -40,14 +40,14 @@ interface IGhoRouter {
    * @notice Emitted when a swap is completed
    * @param tokenIn The address of the token to swap from
    * @param tokenOut The address of the token to swap to
-   * @param amountIn The amount of tokenIn swapped
+   * @param exactAmountIn The amount of tokenIn swapped
    * @param amountOut The amount of tokenOut received
    * @param recipient The address of the recipient of tokenOut
    */
   event Swap(
     address indexed tokenIn,
     address indexed tokenOut,
-    uint256 amountIn,
+    uint256 exactAmountIn,
     uint256 amountOut,
     address indexed recipient
   );
@@ -70,16 +70,16 @@ interface IGhoRouter {
    * @notice Swap sGHO back through a GSM path, choose output token, and send output to recipient
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
-   * @param amountIn Amount of tokens to swap
+   * @param exactAmountIn Amount of tokens to swap
    * @param minAmountOut Minimum amount of output token to receive (slippage protection)
    * @param recipient Address that receives output token
-   * @param deadline Maximum timestamp swap can be executed
+   * @param deadline Maximum timestamp at which the swap can be executed
    * @return Amount of output token received
    */
   function swap(
     address tokenIn,
     address tokenOut,
-    uint256 amountIn,
+    uint256 exactAmountIn,
     uint256 minAmountOut,
     address recipient,
     uint256 deadline
@@ -130,12 +130,12 @@ interface IGhoRouter {
    * @dev This is an estimation and actual results may vary slightly
    * @param tokenIn Input token address
    * @param tokenOut Output token address
-   * @param amountIn Amount of input token to sell
+   * @param exactAmountIn Amount of input token to sell
    * @return Expected amount of tokenOut from swap
    */
   function previewSwap(
     address tokenIn,
     address tokenOut,
-    uint256 amountIn
+    uint256 exactAmountIn
   ) external view returns (uint256);
 }

@@ -8,7 +8,7 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
 
-contract BadGsm is Test {
+contract BadGsm {
   address public immutable GHO_TOKEN;
   address public immutable UNDERLYING_ASSET;
 
@@ -18,7 +18,7 @@ contract BadGsm is Test {
   }
 }
 
-contract BadStata is Test {
+contract BadStata {
   function asset() external pure returns (address) {
     return address(0);
   }
@@ -33,6 +33,7 @@ contract GhoRouterTest is TestGhoBase {
   // Test user address
   address constant USER = address(0xF00DBA11);
   address constant RECIPIENT = address(0xCAFEF00D);
+  uint256 public constant EXPECTED_OUT_GHO_TO_TOKEN = 909090909;
 
   function setUp() public {
     uint256 amount = 10_000e6;
@@ -174,14 +175,17 @@ contract PreviewSwapsTest is GhoRouterTest {
   }
 
   function testPreviewSwapToGHO() public view {
-    uint256 amount = 1000e6;
+    uint256 amount = 1_000e6;
     uint256 ghoAmount = GHO_ROUTER.previewSwap(
       address(USDX_4626_TOKEN),
       address(GHO_TOKEN),
       amount
     );
 
-    assertGt(ghoAmount, 0, 'Should preview GHO amount');
+    uint256 fee = amount / 10; // 10% fee
+    uint256 expectedOut = ((amount - fee) * 1e18) / 1e6;
+
+    assertEq(ghoAmount, expectedOut, 'Should preview GHO amount');
   }
 
   function testPreviewSwapToGHOInconsistentTokens() public {
@@ -198,7 +202,7 @@ contract PreviewSwapsTest is GhoRouterTest {
       amount
     );
 
-    assertGt(outputAmount, 0, 'Should preview output amount');
+    assertEq(outputAmount, EXPECTED_OUT_GHO_TO_TOKEN, 'Should preview output amount');
   }
 
   function testPreviewSwapFromGHOInconsistentTokens() public {
@@ -208,21 +212,24 @@ contract PreviewSwapsTest is GhoRouterTest {
   }
 
   function testPreviewSwapFromGHOToStataUSDX_4626_TOKEN() public view {
-    uint256 amount = 1000 * 1e18;
+    uint256 amount = 1_000 ether;
     uint256 outputAmount = GHO_ROUTER.previewSwap(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
       amount
     );
 
-    assertGt(outputAmount, 0, 'Should preview static aToken output amount');
+    assertEq(outputAmount, EXPECTED_OUT_GHO_TO_TOKEN, 'Should preview static aToken output amount');
   }
 
   function testPreviewSwapToSGHO() public view {
-    uint256 amount = 1000 * 1e6;
+    uint256 amount = 1_000e6;
     uint256 sghoAmount = GHO_ROUTER.previewSwap(address(USDX_4626_TOKEN), address(SGHO), amount);
 
-    assertGt(sghoAmount, 0, 'Should preview sGHO amount');
+    uint256 fee = amount / 10; // 10% fee
+    uint256 expectedOut = ((amount - fee) * 1e18) / 1e6;
+
+    assertEq(sghoAmount, expectedOut, 'Should preview sGHO amount');
   }
 
   function testPreviewSwapToSGHOInconsistentTokens() public {
@@ -232,17 +239,17 @@ contract PreviewSwapsTest is GhoRouterTest {
   }
 
   function testPreviewDepositForSGHO() public view {
-    uint256 amount = 100 ether;
+    uint256 amount = 1_000 ether;
     uint256 outputAmount = GHO_ROUTER.previewSwap(address(GHO_TOKEN), address(SGHO), amount);
 
     assertEq(outputAmount, amount, 'sGHO copy preview should be 1:1 at initial index');
   }
 
   function testPreviewSwapFromSGHOUSDX_4626_TOKEN() public view {
-    uint256 amount = 100 ether;
+    uint256 amount = 1_000 ether;
     uint256 outputAmount = GHO_ROUTER.previewSwap(address(SGHO), address(USDX_4626_TOKEN), amount);
 
-    assertGt(outputAmount, 0, 'Should preview USDX_4626_TOKEN output');
+    assertEq(outputAmount, EXPECTED_OUT_GHO_TO_TOKEN, 'Should preview USDX_4626_TOKEN output');
   }
 
   function testPreviewSwapFromSGHOInconsistentTokens() public {
@@ -252,14 +259,14 @@ contract PreviewSwapsTest is GhoRouterTest {
   }
 
   function testPreviewSwapFromSGHOStataUSDX_4626_TOKEN() public view {
-    uint256 amount = 100 ether;
+    uint256 amount = 1_000 ether;
     uint256 outputAmount = GHO_ROUTER.previewSwap(address(SGHO), address(USDX_4626_TOKEN), amount);
 
-    assertGt(outputAmount, 0, 'Should preview static aToken output');
+    assertEq(outputAmount, EXPECTED_OUT_GHO_TO_TOKEN, 'Should preview static aToken output');
   }
 
   function testPreviewRedeemSGho() public view {
-    uint256 amount = 100 ether;
+    uint256 amount = 1_000 ether;
     uint256 outputAmount = GHO_ROUTER.previewSwap(address(SGHO), address(GHO_TOKEN), amount);
 
     assertEq(outputAmount, amount, 'Should preview static aToken output');

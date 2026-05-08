@@ -248,7 +248,7 @@ contract SwapFromGHOTest is GhoRouterSwapTest {
     emit IGhoRouter.Swap(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
-      amount / 2,
+      amount,
       expectedAmount,
       USER
     ); // 1 ether diff in input
@@ -273,7 +273,7 @@ contract SwapFromGHOTest is GhoRouterSwapTest {
     emit IGhoRouter.Swap(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
-      99999999000000000000,
+      amount,
       expectedAmount,
       USER
     ); // 1 ether diff in input
@@ -298,7 +298,7 @@ contract SwapFromGHOTest is GhoRouterSwapTest {
     emit IGhoRouter.Swap(
       address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
-      99999999000000000000,
+      amount,
       expectedAmount,
       RECIPIENT
     ); // 1 ether diff in input

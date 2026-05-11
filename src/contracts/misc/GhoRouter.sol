@@ -184,24 +184,25 @@ contract GhoRouter is Ownable, IGhoRouter {
 
   /**
    * @dev Swaps a GSM-supported token into GHO and forwards output to the recipient.
+   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param token Input token (either GSM underlying token or its static aToken).
-   * @param amount Amount of input tokens pulled from the caller.
+   * @param exactAmountIn Amount of input tokens pulled from the caller.
    * @param minGHOAmount Minimum acceptable GHO output for slippage protection.
    * @param recipient Address that receives the resulting GHO.
    * @return ghoAmount Amount of GHO sent to `recipient`.
    */
   function _swapToGho(
     address token,
-    uint256 amount,
+    uint256 exactAmountIn,
     uint256 minGHOAmount,
     address recipient
   ) internal returns (uint256) {
     address gsm = gsms[token];
     require(gsm != address(0), GsmNotConfigured());
 
-    IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    IERC20(token).safeTransferFrom(msg.sender, address(this), exactAmountIn);
 
-    (, uint256 ghoAmount) = _sellTokenForGho(gsm, token, amount, minGHOAmount);
+    (, uint256 ghoAmount) = _sellTokenForGho(gsm, token, exactAmountIn, minGHOAmount);
     IERC20(GHO).safeTransfer(recipient, ghoAmount);
 
     return ghoAmount;
@@ -209,26 +210,24 @@ contract GhoRouter is Ownable, IGhoRouter {
 
   /**
    * @dev Swaps GHO into a caller-selected GSM token (underlying or static aToken) and forwards output.
+   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param token Output token (either GSM underlying token or its static aToken).
-   * @param ghoAmount Amount of GHO pulled from the caller.
+   * @param exactAmountIn Amount of GHO pulled from the caller.
    * @param minOutputAmount Minimum acceptable output-token amount.
    * @param recipient Address that receives the resulting token.
    * @return outputAmount Amount of output tokens sent to `recipient`.
    */
   function _swapFromGho(
     address token,
-    uint256 ghoAmount,
+    uint256 exactAmountIn,
     uint256 minOutputAmount,
     address recipient
   ) internal returns (uint256) {
     address gsm = gsms[token];
     require(gsm != address(0), GsmNotConfigured());
 
-    address stata = IGsm(gsm).UNDERLYING_ASSET();
-    _validateTokens(token, stata);
-
     (uint256 stataAmountToBuy, uint256 ghoUsed, , ) = IGsm(gsm).getAssetAmountForBuyAsset(
-      ghoAmount
+      exactAmountIn
     );
 
     IERC20(GHO).safeTransferFrom(msg.sender, address(this), ghoUsed);
@@ -236,7 +235,6 @@ contract GhoRouter is Ownable, IGhoRouter {
     (, uint256 outputAmount) = _buyTokenWithGho(
       gsm,
       token,
-      stata,
       ghoUsed,
       stataAmountToBuy,
       recipient,
@@ -249,23 +247,23 @@ contract GhoRouter is Ownable, IGhoRouter {
   /**
    * @dev Swaps a GSM-supported token into GHO and deposits the result into sGHO.
    * @param token Input token (either GSM underlying token or its static aToken).
-   * @param amount Amount of input tokens pulled from the caller.
+   * @param exactAmountIn Amount of input tokens pulled from the caller.
    * @param minSGHOAmount Minimum acceptable sGHO shares minted.
    * @param recipient Address that receives the minted sGHO shares.
    * @return sghoAmount Amount of sGHO shares minted to `recipient`.
    */
   function _swapToSGho(
     address token,
-    uint256 amount,
+    uint256 exactAmountIn,
     uint256 minSGHOAmount,
     address recipient
   ) internal returns (uint256) {
     address gsm = gsms[token];
     require(gsm != address(0), GsmNotConfigured());
 
-    IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    IERC20(token).safeTransferFrom(msg.sender, address(this), exactAmountIn);
 
-    (, uint256 ghoAmount) = _sellTokenForGho(gsm, token, amount, 0);
+    (, uint256 ghoAmount) = _sellTokenForGho(gsm, token, exactAmountIn, 0);
     uint256 sghoAmount = _depositGho(ghoAmount, recipient, minSGHOAmount);
 
     return sghoAmount;
@@ -291,6 +289,7 @@ contract GhoRouter is Ownable, IGhoRouter {
 
   /**
    * @dev Redeems sGHO into GHO, then swaps through GSM into a caller-selected token.
+   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param token Output token (either GSM static aToken or aToken's underlying).
    * @param exactAmountIn Amount of sGHO shares pulled from the caller.
    * @param minOutputAmount Minimum acceptable output-token amount.
@@ -307,8 +306,6 @@ contract GhoRouter is Ownable, IGhoRouter {
     require(gsm != address(0), GsmNotConfigured());
 
     uint256 ghoAmount = _redeemGho(exactAmountIn, 0);
-    address stata = IGsm(gsm).UNDERLYING_ASSET();
-    _validateTokens(token, stata);
 
     (uint256 stataAmountToBuy, uint256 ghoUsed, , ) = IGsm(gsm).getAssetAmountForBuyAsset(
       ghoAmount
@@ -316,7 +313,6 @@ contract GhoRouter is Ownable, IGhoRouter {
     (, uint256 outputAmount) = _buyTokenWithGho(
       gsm,
       token,
-      stata,
       ghoUsed,
       stataAmountToBuy,
       recipient,
@@ -407,9 +403,9 @@ contract GhoRouter is Ownable, IGhoRouter {
 
   /**
    * @dev Buys GSM static aTokens with GHO, then returns either static or underlying output based on `token`.
+   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param gsm Whitelisted GSM used for the buy path.
    * @param token Output token requested by the caller (underlying token or static aToken).
-   * @param stata Address of the stata token used by the GSM.
    * @param exactAmountIn GHO budget used to acquire static aTokens.
    * @param stataAmountToBuy Amount of stata token to acquire from the GSM.
    * @param outputReceiver Address receiving output tokens.
@@ -420,12 +416,14 @@ contract GhoRouter is Ownable, IGhoRouter {
   function _buyTokenWithGho(
     address gsm,
     address token,
-    address stata,
     uint256 exactAmountIn,
     uint256 stataAmountToBuy,
     address outputReceiver,
     uint256 minOutputAmount
   ) internal returns (uint256, uint256) {
+    address stata = IGsm(gsm).UNDERLYING_ASSET();
+    _validateTokens(token, stata);
+
     IERC20(GHO).forceApprove(gsm, exactAmountIn);
     (uint256 stataAmount, uint256 ghoSold) = IGsm(gsm).buyAsset(stataAmountToBuy, address(this));
 

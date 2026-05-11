@@ -9,13 +9,13 @@ interface IGhoRouter {
   /// @dev Deadline for performing swap has expired
   error DeadlineExpired();
 
-  /// @dev GSM is not whitelisted for swaps
+  /// @dev GSM not configured for the given token
   error GsmNotConfigured();
 
   /// @dev Amount must be greater than zero
   error InvalidAmount();
 
-  /// @dev GSM not configured for the given token
+  /// @dev GSM is not whitelisted for swaps
   error InvalidGsm();
 
   /// @dev Invalid path for token swap
@@ -67,7 +67,7 @@ interface IGhoRouter {
   event TokenToGsmRemoved(address indexed token, address gsm);
 
   /**
-   * @notice Swap sGHO back through a GSM path, choose output token, and send output to recipient
+   * @notice Swap tokenIn for tokenOut and send output to recipient
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
    * @param exactAmountIn Amount of tokens to swap

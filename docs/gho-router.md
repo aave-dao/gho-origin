@@ -225,7 +225,7 @@ Current mitigation:
 
 - `SafeERC20` and known-asset route curation.
 
-### 8) Residual allowance risk
+### 7) Residual allowance risk
 
 What can happen:
 
@@ -245,7 +245,7 @@ Current mitigation:
 - Monitor allowances and balances.
 - Use `rescueToken` under controlled governance.
 
-### 9) Owner rescue authority
+### 8) Owner rescue authority
 
 What can happen:
 

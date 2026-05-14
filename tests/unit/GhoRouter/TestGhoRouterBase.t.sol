@@ -16,12 +16,11 @@ import {BadStata} from '../../mocks/MockBadStataToken.sol';
  * @dev Run with: forge test --match-path test/unit/GhoRouter/GhoRouterTest.t.sol -vvv
  */
 contract TestGhoRouterBase is TestGhoBase {
-  // Test user address
-  address constant USER = address(0xF00DBA11);
-  address constant RECIPIENT = address(0xCAFEF00D);
-  uint256 public constant EXPECTED_OUT_GHO_TO_TOKEN = 909090909;
   uint256 public constant MAX_FUZZ_AMOUNT_6_DECIMALS = 10_000_000e6;
   uint256 public constant MAX_FUZZ_AMOUNT_18_DECIMALS = 10_000_000 ether;
+
+  address public immutable USER = makeAddr('0xF00DBA11');
+  address public immutable RECIPIENT = makeAddr('0xCAFEF00D');
 
   function setUp() public {
     GHO_ROUTER.setTokenToGsm(address(USDX_4626_TOKEN), address(GHO_GSM_4626));

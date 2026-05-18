@@ -48,7 +48,13 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   RateConfig internal _rateConfig;
 
   constructor(address owner, address riskCouncil, address sGho, address gho, address collector) {
-    if (owner == address(0) || riskCouncil == address(0) || sGho == address(0) || collector == address(0)) {
+    if (
+      owner == address(0) ||
+      riskCouncil == address(0) ||
+      sGho == address(0) ||
+      gho == address(0) ||
+      collector == address(0)
+    ) {
       revert ZeroAddress();
     }
 
@@ -57,14 +63,14 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     COLLECTOR = ICollector(collector);
     GHO = IERC20(gho);
 
-    _grantRole(DEFAULT_ADMIN_ROLE, riskCouncil);
-    _grantRole(SGHO_FUNDING_ROLE, riskCouncil);
+    _grantRole(DEFAULT_ADMIN_ROLE, owner);
 
-    // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `owner`
-    _grantRole(AMPLIFICATION_MANAGER_ROLE, owner);
-    _grantRole(FLOAT_RATE_MANAGER_ROLE, owner);
-    _grantRole(FIXED_RATE_MANAGER_ROLE, owner);
-    _grantRole(SUPPLY_CAP_MANAGER_ROLE, owner);
+    // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `riskCouncil`
+    _grantRole(AMPLIFICATION_MANAGER_ROLE, riskCouncil);
+    _grantRole(FLOAT_RATE_MANAGER_ROLE, riskCouncil);
+    _grantRole(FIXED_RATE_MANAGER_ROLE, riskCouncil);
+    _grantRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil);
+    _grantRole(SGHO_FUNDING_ROLE, riskCouncil);
   }
 
   /// @inheritdoc IsGhoSteward

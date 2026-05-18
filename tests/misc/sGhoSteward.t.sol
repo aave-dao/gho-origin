@@ -15,6 +15,7 @@ contract sGhoStewardTest is TestSGhoBase {
 
   address public riskCouncil = makeAddr('riskCouncil');
   address public ghoCommittee = makeAddr('ghoCommittee');
+  address public collector = makeAddr('collector');
 
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
 
@@ -24,11 +25,12 @@ contract sGhoStewardTest is TestSGhoBase {
   bytes32 public constant FLOAT_RATE_MANAGER_ROLE = keccak256('FLOAT_RATE_MANAGER_ROLE');
   bytes32 public constant FIXED_RATE_MANAGER_ROLE = keccak256('FIXED_RATE_MANAGER_ROLE');
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
+  bytes32 public constant SGHO_FUNDING_ROLE = keccak256('SGHO_FUNDING_ROLE');
 
   function setUp() public override {
     super.setUp();
 
-    steward = new sGhoSteward(ghoCommittee, riskCouncil, address(sgho));
+    steward = new sGhoSteward(ghoCommittee, riskCouncil, address(sgho), collector);
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
   }
 
@@ -41,11 +43,16 @@ contract sGhoStewardTest is TestSGhoBase {
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
     new sGhoSteward(ghoCommittee, riskCouncil, address(0));
+
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
+    new sGhoSteward(ghoCommittee, riskCouncil, address(sgho), address(0));
   }
 
   function test_initial() public view {
     assertTrue(steward.hasRole(DEFAULT_ADMIN_ROLE, riskCouncil));
     assertFalse(steward.hasRole(DEFAULT_ADMIN_ROLE, ghoCommittee));
+
+    assertTrue(steward.hasRole(SGHO_FUNDING_ROLE, riskCouncil));
 
     assertTrue(steward.hasRole(AMPLIFICATION_MANAGER_ROLE, ghoCommittee));
     assertTrue(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, ghoCommittee));
@@ -406,6 +413,8 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
     steward.setRateConfig(newConfig);
   }
+
+  function test_
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {
     return

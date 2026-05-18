@@ -128,11 +128,6 @@ interface IsGhoSteward {
   function sGHO() external view returns (IsGho);
 
   /**
-   * @notice Returns `COLLECTOR` address, wrapped in interface.
-   */
-  function COLLECTOR() external view returns (ICollector);
-
-  /**
    * @notice Returns the max `targetRate` that can be set.
    */
   function MAX_RATE() external view returns (uint16);

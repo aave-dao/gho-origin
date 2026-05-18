@@ -58,6 +58,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     GHO = IERC20(gho);
 
     _grantRole(DEFAULT_ADMIN_ROLE, riskCouncil);
+    _grantRole(SGHO_FUNDING_ROLE, riskCouncil);
 
     // Initially all roles except `DEFAULT_ADMIN_ROLE` will be granted to the `owner`
     _grantRole(AMPLIFICATION_MANAGER_ROLE, owner);

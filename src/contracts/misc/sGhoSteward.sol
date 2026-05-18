@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 import {IsGhoSteward} from 'src/contracts/misc/interfaces/IsGhoSteward.sol';
 
@@ -30,21 +32,30 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
 
   /// @inheritdoc IsGhoSteward
+  bytes32 public constant SGHO_FUNDING_ROLE = keccak256('SGHO_FUNDING_ROLE');
+
+  /// @inheritdoc IsGhoSteward
   uint16 public immutable MAX_RATE;
 
   /// @notice sGho contract address
   IsGho internal immutable _sGho;
 
+  ICollector internal immutable COLLECTOR;
+
+  IERC20 internal immutable GHO;
+
   /// @notice Current rate parameters
   RateConfig internal _rateConfig;
 
-  constructor(address owner, address riskCouncil, address sGho) {
-    if (owner == address(0) || riskCouncil == address(0) || sGho == address(0)) {
+  constructor(address owner, address riskCouncil, address sGho, address gho, address collector) {
+    if (owner == address(0) || riskCouncil == address(0) || sGho == address(0) || collector == address(0)) {
       revert ZeroAddress();
     }
 
     _sGho = IsGho(sGho);
     MAX_RATE = _sGho.MAX_SAFE_RATE();
+    COLLECTOR = ICollector(collector);
+    GHO = IERC20(gho);
 
     _grantRole(DEFAULT_ADMIN_ROLE, riskCouncil);
 
@@ -98,6 +109,12 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
     _sGho.setSupplyCap(supplyCap.toUint160());
     emit SupplyCapUpdated(msg.sender, supplyCap);
+  }
+
+  /// @inheritdoc IsGhoSteward
+  function fundSGho(uint256 amount) external onlyRole(SGHO_FUNDING_ROLE) {
+    COLLECTOR.transfer(GHO, address(_sGho), amount);
+    emit SGhoFunded(amount);
   }
 
   /// @inheritdoc IsGhoSteward

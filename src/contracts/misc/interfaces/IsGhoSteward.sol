@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IsGho} from '../../sgho/interfaces/IsGho.sol';
 
 /**
@@ -38,6 +39,12 @@ interface IsGhoSteward {
     uint16 floatRate,
     uint16 fixedRate
   );
+
+  /**
+   * @dev Event is emitted whenever `GHO` token is sent to `sGHO`.
+   * @param amount Amount of `GHO` sent to `sGHO`.
+   */
+  event SGhoFunded(uint256 amount);
 
   /**
    * @dev Event is emitted whenever the `supplyCap` is updated.
@@ -95,6 +102,14 @@ interface IsGhoSteward {
   function setSupplyCap(uint256 supplyCap_) external;
 
   /**
+   * @notice Sends specified amount of `GHO` token to `sGHO`.
+   * @dev Specified amount must be held in the collector or will revert.
+   * Only callable by `SGHO_FUNDING_ROLE`.
+   * @param amount Amount of GHO token to send.
+   */
+  function fundSGho(uint256 amount) external;
+
+  /**
    * @notice Calculates `targetRate` using `rateConfig_` struct.
    * @dev Reverts if new `targetRate` exceeds `MAX_RATE`.
    * @param rateConfig_ Set of parameters for calculating `targetRate`
@@ -111,6 +126,11 @@ interface IsGhoSteward {
    * @notice Returns `sGHO` address, wrapped in interface.
    */
   function sGHO() external view returns (IsGho);
+
+  /**
+   * @notice Returns `COLLECTOR` address, wrapped in interface.
+   */
+  function COLLECTOR() external view returns (ICollector);
 
   /**
    * @notice Returns the max `targetRate` that can be set.
@@ -141,4 +161,9 @@ interface IsGhoSteward {
    * @notice Returns role that can update the `supplyCap` parameter.
    */
   function SUPPLY_CAP_MANAGER_ROLE() external view returns (bytes32);
+
+  /**
+   * @notice Returns role that can send `GHO` from collector to `sGHO`.
+   */
+  function SGHO_FUNDING_ROLE() external view returns (bytes32);
 }

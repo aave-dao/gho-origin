@@ -47,12 +47,11 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   /// @notice Current rate parameters
   RateConfig internal _rateConfig;
 
-  constructor(address owner, address riskCouncil, address sGho, address gho, address collector) {
+  constructor(address owner, address riskCouncil, address sGho, address collector) {
     if (
       owner == address(0) ||
       riskCouncil == address(0) ||
       sGho == address(0) ||
-      gho == address(0) ||
       collector == address(0)
     ) {
       revert ZeroAddress();
@@ -61,7 +60,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     _sGho = IsGho(sGho);
     MAX_RATE = _sGho.MAX_SAFE_RATE();
     COLLECTOR = ICollector(collector);
-    GHO = IERC20(gho);
+    GHO = IERC20(_sGho.GHO());
 
     _grantRole(DEFAULT_ADMIN_ROLE, owner);
 

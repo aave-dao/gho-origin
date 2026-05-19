@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
-import {MockCollector} from '../mocks/MockCollector.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
+import {Collector} from 'aave-v3-origin/contracts/treasury/Collector.sol';
 import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
@@ -11,13 +10,14 @@ import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contrac
 
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
+import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 contract sGhoStewardTest is TestSGhoBase {
   sGhoSteward public steward;
 
   address public riskCouncil = makeAddr('riskCouncil');
   address public governance = makeAddr('governance');
-  MockCollector public collector;
+  Collector public collector;
 
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
 
@@ -32,8 +32,8 @@ contract sGhoStewardTest is TestSGhoBase {
   function setUp() public override {
     super.setUp();
 
-    address collectorImpl = address(new MockCollector());
-    collector = MockCollector(
+    address collectorImpl = address(new Collector());
+    collector = Collector(
       payable(
         new TransparentUpgradeableProxy(
           collectorImpl,
@@ -47,31 +47,22 @@ contract sGhoStewardTest is TestSGhoBase {
       )
     );
 
-    steward = new sGhoSteward(
-      governance,
-      riskCouncil,
-      address(sgho),
-      address(gho),
-      address(collector)
-    );
+    steward = new sGhoSteward(governance, riskCouncil, address(sgho), address(collector));
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
   }
 
   function test_wrongSetUp() public {
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(address(0), riskCouncil, address(sgho), address(gho), address(collector));
+    new sGhoSteward(address(0), riskCouncil, address(sgho), address(collector));
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, address(0), address(sgho), address(gho), address(collector));
+    new sGhoSteward(governance, address(0), address(sgho), address(collector));
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, riskCouncil, address(0), address(gho), address(collector));
+    new sGhoSteward(governance, riskCouncil, address(0), address(collector));
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, riskCouncil, address(sgho), address(0), address(collector));
-
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, riskCouncil, address(sgho), address(gho), address(0));
+    new sGhoSteward(governance, riskCouncil, address(sgho), address(0));
   }
 
   function test_initial() public view {

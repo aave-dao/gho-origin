@@ -475,6 +475,12 @@ contract sGhoStewardTest is TestSGhoBase {
     steward.fundSGho(100_000 ether);
   }
 
+  function test_fundSGhoZeroAmount() public {
+    vm.expectRevert(IsGhoSteward.ZeroAmount.selector);
+    vm.prank(riskCouncil);
+    steward.fundSGho(0);
+  }
+
   function test_fundSGho(uint256 amount) public {
     collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
     amount = bound(amount, 1, 1_000_000 ether);

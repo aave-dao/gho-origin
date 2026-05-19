@@ -59,6 +59,11 @@ interface IsGhoSteward {
   error ZeroAddress();
 
   /**
+   * @dev Attempted to transfer zero amount.
+   */
+  error ZeroAmount();
+
+  /**
    * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
    */
   error MaxRateExceeded();
@@ -105,6 +110,7 @@ interface IsGhoSteward {
    * @notice Sends specified amount of `GHO` token to `sGHO`.
    * @dev Specified amount must be held in the collector or will revert.
    * Only callable by `SGHO_FUNDING_ROLE`.
+   * This contract must be granted `FUNDS_ADMIN_ROLE` from the collector.
    * @param amount Amount of GHO token to send.
    */
   function fundSGho(uint256 amount) external;

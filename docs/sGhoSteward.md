@@ -8,6 +8,7 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 ## Key features
 
 - Allows updating of `targetRate` and `supplyCap` of `sGHO` through this contract.
+- Allows funding `sGHO` yield by transfering `GHO` from the Aave Collector.
 - Implements the `targetRate` formula as a composition of three parameters (with `AMPLIFICATION_DENOMINATOR` fixed at 100_00):
 
   `targetRate = AmplificationFactor / AMPLIFICATION_DENOMINATOR * FloatRate + FixedRate`
@@ -21,16 +22,17 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 
 The `DEFAULT_ADMIN_ROLE` is set exclusively for governance initially, which has full authority to delegate, assign, or revoke roles for specific addresses.
 
-In addition to the admin role, there are four specialized manager roles:
+In addition to the admin role, there are five specialized manager roles:
 
-| Role                       | Description                                    |
-| :------------------------- | :--------------------------------------------- |
-| AMPLIFICATION_MANAGER_ROLE | Authorized to update the Amplification Factor. |
-| FLOAT_RATE_MANAGER_ROLE    | Authorized to update the Float Rate.           |
-| FIXED_RATE_MANAGER_ROLE    | Authorized to update the Fixed Rate.           |
-| SUPPLY_CAP_MANAGER_ROLE    | Authorized to update the Supply Cap.           |
+| Role                       | Description                                        |
+| :------------------------- | :------------------------------------------------- |
+| AMPLIFICATION_MANAGER_ROLE | Authorized to update the Amplification Factor.     |
+| FLOAT_RATE_MANAGER_ROLE    | Authorized to update the Float Rate.               |
+| FIXED_RATE_MANAGER_ROLE    | Authorized to update the Fixed Rate.               |
+| SUPPLY_CAP_MANAGER_ROLE    | Authorized to update the Supply Cap.               |
+| SGHO_FUNDING_ROLE          | Authorized to transfer GHO from collector to sGHO. |
 
-Initially, the four roles mentioned above (rate config) are assigned to the `riskCouncil`, a 3-of-4 multisig composed of service providers.
+Initially, the five roles mentioned above (rate config, funding) are assigned to the `riskCouncil`, a 3-of-4 multisig composed of service providers.
 Over time, **Aave DAO** may choose to delegate or reassign these roles to other addresses as it deems appropriate - for example, allowing oracles to control certain components while councils or other entities manage others.
 
 ## Target Rate Configuration

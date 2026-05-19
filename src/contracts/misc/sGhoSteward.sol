@@ -38,7 +38,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   uint16 public immutable MAX_RATE;
 
   /// @notice sGho contract address
-  IsGho internal immutable _sGho;
+  IsGho internal immutable SGHO;
 
   ICollector internal immutable COLLECTOR;
 
@@ -57,10 +57,10 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       revert ZeroAddress();
     }
 
-    _sGho = IsGho(sGho);
-    MAX_RATE = _sGho.MAX_SAFE_RATE();
+    SGHO = IsGho(sGho);
+    MAX_RATE = SGHO.MAX_SAFE_RATE();
     COLLECTOR = ICollector(collector);
-    GHO = IERC20(_sGho.GHO());
+    GHO = IERC20(SGHO.GHO());
 
     _grantRole(DEFAULT_ADMIN_ROLE, owner);
 
@@ -107,19 +107,21 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function setSupplyCap(uint256 supplyCap) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
-    uint256 currentSupplyCap = _sGho.supplyCap();
+    uint256 currentSupplyCap = SGHO.supplyCap();
 
     if (currentSupplyCap == supplyCap) {
       revert SupplyCapUnchanged();
     }
 
-    _sGho.setSupplyCap(supplyCap.toUint160());
+    SGHO.setSupplyCap(supplyCap.toUint160());
     emit SupplyCapUpdated(msg.sender, supplyCap);
   }
 
   /// @inheritdoc IsGhoSteward
   function fundSGho(uint256 amount) external onlyRole(SGHO_FUNDING_ROLE) {
-    COLLECTOR.transfer(GHO, address(_sGho), amount);
+    if (amount == 0) revert ZeroAmount();
+    
+    COLLECTOR.transfer(GHO, address(SGHO), amount);
     emit SGhoFunded(amount);
   }
 
@@ -135,13 +137,13 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function sGHO() external view returns (IsGho) {
-    return _sGho;
+    return SGHO;
   }
 
   function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {
     uint16 targetRate = _computeRateConfig(rateConfig);
 
-    _sGho.setTargetRate(targetRate);
+    SGHO.setTargetRate(targetRate);
     _rateConfig = rateConfig;
 
     emit RateConfigUpdated(

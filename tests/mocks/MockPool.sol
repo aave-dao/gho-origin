@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
@@ -48,5 +49,20 @@ contract MockPool {
 
   function setReserveInterestRateStrategyAddress(address asset, address strategy) external {
     _reserves[asset].interestRateStrategyAddress = strategy;
+  }
+
+  function deposit(
+    address asset,
+    uint256 amount,
+    address onBehalfOf,
+    uint16 referralCode
+  ) external {
+    IERC20(asset).transferFrom(msg.sender, onBehalfOf, amount);
+  }
+
+  function withdraw(address asset, uint256 amount, address to) external returns (uint256) {
+    IERC20(asset).transfer(to, amount);
+
+    return amount;
   }
 }

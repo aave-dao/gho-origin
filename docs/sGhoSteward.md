@@ -8,7 +8,8 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 ## Key features
 
 - Allows updating of `targetRate` and `supplyCap` of `sGHO` through this contract.
-- Allows funding `sGHO` yield by transfering `GHO` from the Aave Collector.
+- Allows funding `sGHO` yield by transfering `GHO` from the Aave Collector, optionally pre-withdrawing `GHO` from the `AaveV3EthereumLido` pool first.
+- Bounds each funding transfer by a governance-configurable `maxTransferAmount`, and rate-limits consecutive transfers via a `MINIMUM_DELAY` debounce (2 days).
 - Implements the `targetRate` formula as a composition of three parameters (with `AMPLIFICATION_DENOMINATOR` fixed at 100_00):
 
   `targetRate = AmplificationFactor / AMPLIFICATION_DENOMINATOR * FloatRate + FixedRate`
@@ -116,13 +117,43 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 - The maximum cap allowed within sGHO is `uint160` (less than the `uint256` input type of this function). Any attempt to set a value above this threshold results in a revert.
 - Similarly, attempting to set the same value as the current `supplyCap` will also cause the transaction to revert.
 
+## Funding sGHO
+
+The `fundSGho(uint256 amount, bool withdrawFromAave)` function transfers `GHO` from the Aave Collector into `sGHO` to seed yield.
+
+Behavior:
+
+- Only callable by addresses holding `SGHO_FUNDING_ROLE`.
+- The steward contract must have been granted `FUNDS_ADMIN_ROLE` on the Collector, otherwise the `COLLECTOR.transfer(...)` call reverts with `OnlyFundsAdmin`.
+- `amount` must be non-zero (`ZeroAmount` revert otherwise) and must be less than or equal to `maxTransferAmount` (`MaxTransferExceeded(maxTransferAmount)` revert otherwise).
+- Successive calls are rate-limited: at least `MINIMUM_DELAY` (2 days) must elapse between calls. A call inside the window reverts with `DebounceNotRespected`. The internal `_transferDebounce` timestamp is updated to `block.timestamp` once the input checks pass, so the window is anchored to the most recent attempt that reached the transfer.
+- If `withdrawFromAave` is `false`, the steward simply transfers `amount` of `GHO` from the Collector to `sGHO`. The Collector must hold sufficient `GHO`, otherwise the underlying `ERC20.transfer` reverts.
+- If `withdrawFromAave` is `true`, the steward first pulls `amount` of `aEthLidoGHO` (the `AaveV3EthereumLido` `GHO` aToken — referred to in the contract as `PRIME_GHO`) from the Collector to itself, then calls `POOL.withdraw(GHO, amount, COLLECTOR)` to redeem the underlying `GHO` straight back into the Collector. The final `COLLECTOR.transfer(GHO, sGHO, amount)` then forwards the freshly-withdrawn `GHO` to `sGHO`. The Collector must hold sufficient `aEthLidoGHO` for this branch to succeed.
+- Emits `SGhoFunded(amount)` on success.
+
+### Max Transfer Amount Management
+
+`maxTransferAmount` caps the per-call size of `fundSGho`. It defaults to `0` (so funding is effectively disabled until governance opens it) and is updated via:
+
+```solidity
+function setMaxTransferAmount(uint256 maxAmount) external; // DEFAULT_ADMIN_ROLE
+```
+
+- Only callable by the `DEFAULT_ADMIN_ROLE` (governance). This is deliberately separate from `SGHO_FUNDING_ROLE` so the risk council can fund within a ceiling that only governance can move.
+- Reverts with `MaxTransferAmountUnchanged` if the new value equals the current one.
+- Emits `MaxTransferAmountUpdated(caller, maxAmount)` on success.
+
 ## Contract Summary
 
-| Function                               | Description                                        | Required Role               |
-| :------------------------------------- | :------------------------------------------------- | :-------------------------- |
-| `setRateConfig(RateConfig newConfig)`  | Updates amplification, float, and fixed rates      | Corresponding Manager Roles |
-| `setSupplyCap(uint256 newSupplyCap)`   | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
-| `getRateConfig()`                      | Returns the current rate configuration             | Public                      |
-| `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration | Public                      |
-| `sGHO()`                               | Returns current `sGHO` address                     | Public                      |
-| `MAX_RATE()`                           | Returns max available `targetRate` that can be set | Public                      |
+| Function                                          | Description                                                                                   | Required Role               |
+| :------------------------------------------------ | :-------------------------------------------------------------------------------------------- | :-------------------------- |
+| `setRateConfig(RateConfig newConfig)`             | Updates amplification, float, and fixed rates                                                 | Corresponding Manager Roles |
+| `setSupplyCap(uint256 newSupplyCap)`              | Updates the maximum allowed sGHO supply                                                       | `SUPPLY_CAP_MANAGER_ROLE`   |
+| `fundSGho(uint256 amount, bool withdrawFromAave)` | Transfers GHO from the Collector to sGHO; optionally redeeming from the Aave Prime pool first | `SGHO_FUNDING_ROLE`         |
+| `setMaxTransferAmount(uint256 maxAmount)`         | Updates the per-call cap on `fundSGho`                                                        | `DEFAULT_ADMIN_ROLE`        |
+| `getRateConfig()`                                 | Returns the current rate configuration                                                        | Public                      |
+| `previewTargetRate(RateConfig config)`            | Computes the target rate for a given configuration                                            | Public                      |
+| `sGHO()`                                          | Returns current `sGHO` address                                                                | Public                      |
+| `MAX_RATE()`                                      | Returns max available `targetRate` that can be set                                            | Public                      |
+| `MINIMUM_DELAY()`                                 | Returns the debounce window (in seconds) between `fundSGho` calls                             | Public                      |
+| `maxTransferAmount()`                             | Returns the current per-call cap on `fundSGho`                                                | Public                      |

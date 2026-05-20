@@ -2,9 +2,10 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
+import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
-import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 import {IsGhoSteward} from 'src/contracts/misc/interfaces/IsGhoSteward.sol';
 
@@ -15,6 +16,9 @@ import {IsGhoSteward} from 'src/contracts/misc/interfaces/IsGhoSteward.sol';
  */
 contract sGhoSteward is AccessControl, IsGhoSteward {
   using SafeCast for uint256;
+
+  /// @inheritdoc IsGhoSteward
+  uint256 public constant MINIMUM_DELAY = 2 days;
 
   /// @inheritdoc IsGhoSteward
   uint16 public constant AMPLIFICATION_DENOMINATOR = 100_00;
@@ -40,19 +44,42 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   /// @notice sGho contract address
   IsGho internal immutable SGHO;
 
+  /// @notice sGho contract address
   ICollector internal immutable COLLECTOR;
 
+  /// @notice Gho contract address
   IERC20 internal immutable GHO;
+
+  /// @notice aEthLidoGho contract address
+  IERC20 internal immutable PRIME_GHO;
+
+  /// @notice Aave V3 Prime pool contract address
+  IPool internal immutable POOL;
 
   /// @notice Current rate parameters
   RateConfig internal _rateConfig;
 
-  constructor(address owner, address riskCouncil, address sGho, address collector) {
+  /// @notice Last transfer made by the steward
+  uint256 internal _transferDebounce;
+
+  /// @inheritdoc IsGhoSteward
+  uint256 public maxTransferAmount;
+
+  constructor(
+    address owner,
+    address riskCouncil,
+    address sGho,
+    address primeGho,
+    address collector,
+    address pool
+  ) {
     if (
       owner == address(0) ||
       riskCouncil == address(0) ||
       sGho == address(0) ||
-      collector == address(0)
+      primeGho == address(0) ||
+      collector == address(0) ||
+      pool == address(0)
     ) {
       revert ZeroAddress();
     }
@@ -61,6 +88,8 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     MAX_RATE = SGHO.MAX_SAFE_RATE();
     COLLECTOR = ICollector(collector);
     GHO = IERC20(SGHO.GHO());
+    PRIME_GHO = IERC20(primeGho);
+    POOL = IPool(pool);
 
     _grantRole(DEFAULT_ADMIN_ROLE, owner);
 
@@ -118,11 +147,28 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   }
 
   /// @inheritdoc IsGhoSteward
-  function fundSGho(uint256 amount) external onlyRole(SGHO_FUNDING_ROLE) {
+  function fundSGho(uint256 amount, bool withdrawFromAave) external onlyRole(SGHO_FUNDING_ROLE) {
+    if (block.timestamp - _transferDebounce < MINIMUM_DELAY) revert DebounceNotRespected();
     if (amount == 0) revert ZeroAmount();
-    
+    if (amount > maxTransferAmount) revert MaxTransferExceeded(maxTransferAmount);
+
+    _transferDebounce = block.timestamp;
+
+    if (withdrawFromAave) {
+      COLLECTOR.transfer(PRIME_GHO, address(this), amount);
+      POOL.withdraw(address(GHO), amount, address(COLLECTOR));
+    }
+
     COLLECTOR.transfer(GHO, address(SGHO), amount);
     emit SGhoFunded(amount);
+  }
+
+  /// @inheritdoc IsGhoSteward
+  function setMaxTransferAmount(uint256 maxAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    if (maxTransferAmount == maxAmount) revert MaxTransferAmountUnchanged();
+
+    maxTransferAmount = maxAmount;
+    emit MaxTransferAmountUpdated(msg.sender, maxAmount);
   }
 
   /// @inheritdoc IsGhoSteward

@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.19;
 
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Collector} from 'aave-v3-origin/contracts/treasury/Collector.sol';
 import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
+import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
+import {TestnetERC20} from 'lib/aave-v3-origin/src/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/Strings.sol';
 
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
+import {MockPool} from '../mocks/MockPool.sol';
 import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 contract sGhoStewardTest is TestSGhoBase {
@@ -18,6 +22,8 @@ contract sGhoStewardTest is TestSGhoBase {
   address public riskCouncil = makeAddr('riskCouncil');
   address public governance = makeAddr('governance');
   Collector public collector;
+  MockPool public pool;
+  TestnetERC20 public primeGho;
 
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
 
@@ -28,6 +34,8 @@ contract sGhoStewardTest is TestSGhoBase {
   bytes32 public constant FIXED_RATE_MANAGER_ROLE = keccak256('FIXED_RATE_MANAGER_ROLE');
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
   bytes32 public constant SGHO_FUNDING_ROLE = keccak256('SGHO_FUNDING_ROLE');
+
+  uint256 public constant DEFAULT_MAX_TRANSFER = 1_000_000 ether;
 
   function setUp() public override {
     super.setUp();
@@ -47,22 +55,83 @@ contract sGhoStewardTest is TestSGhoBase {
       )
     );
 
-    steward = new sGhoSteward(governance, riskCouncil, address(sgho), address(collector));
+    pool = new MockPool(IPoolAddressesProvider(address(0)));
+    primeGho = new TestnetERC20('Mock aEthLidoGHO', 'aEthLidoGHO', 18, poolAdmin);
+
+    steward = new sGhoSteward(
+      governance,
+      riskCouncil,
+      address(sgho),
+      address(primeGho),
+      address(collector),
+      address(pool)
+    );
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
+
+    // Warp past MINIMUM_DELAY so the debounce check in fundSGho does not block first-time calls.
+    vm.warp(block.timestamp + steward.MINIMUM_DELAY());
   }
 
   function test_wrongSetUp() public {
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(address(0), riskCouncil, address(sgho), address(collector));
+    new sGhoSteward(
+      address(0),
+      riskCouncil,
+      address(sgho),
+      address(primeGho),
+      address(collector),
+      address(pool)
+    );
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, address(0), address(sgho), address(collector));
+    new sGhoSteward(
+      governance,
+      address(0),
+      address(sgho),
+      address(primeGho),
+      address(collector),
+      address(pool)
+    );
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, riskCouncil, address(0), address(collector));
+    new sGhoSteward(
+      governance,
+      riskCouncil,
+      address(0),
+      address(primeGho),
+      address(collector),
+      address(pool)
+    );
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, riskCouncil, address(sgho), address(0));
+    new sGhoSteward(
+      governance,
+      riskCouncil,
+      address(sgho),
+      address(0),
+      address(collector),
+      address(pool)
+    );
+
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
+    new sGhoSteward(
+      governance,
+      riskCouncil,
+      address(sgho),
+      address(primeGho),
+      address(0),
+      address(pool)
+    );
+
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
+    new sGhoSteward(
+      governance,
+      riskCouncil,
+      address(sgho),
+      address(primeGho),
+      address(collector),
+      address(0)
+    );
   }
 
   function test_initial() public view {
@@ -459,37 +528,152 @@ contract sGhoStewardTest is TestSGhoBase {
     address user = makeAddr('user');
     vm.expectRevert(_craftError(user, SGHO_FUNDING_ROLE));
     vm.prank(user);
-    steward.fundSGho(100_000 ether);
-  }
-
-  function test_fundSGhoNoFunds() public {
-    collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
-    vm.expectRevert('ERC20: transfer amount exceeds balance');
-    vm.prank(riskCouncil);
-    steward.fundSGho(100_000 ether);
-  }
-
-  function test_fundSGhoNotFundsAdmin() public {
-    vm.expectRevert(ICollector.OnlyFundsAdmin.selector);
-    vm.prank(riskCouncil);
-    steward.fundSGho(100_000 ether);
+    steward.fundSGho(100_000 ether, false);
   }
 
   function test_fundSGhoZeroAmount() public {
     vm.expectRevert(IsGhoSteward.ZeroAmount.selector);
     vm.prank(riskCouncil);
-    steward.fundSGho(0);
+    steward.fundSGho(0, false);
+  }
+
+  function test_fundSGhoMaxTransferExceeded() public {
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(IsGhoSteward.MaxTransferExceeded.selector, DEFAULT_MAX_TRANSFER)
+    );
+    vm.prank(riskCouncil);
+    steward.fundSGho(DEFAULT_MAX_TRANSFER + 1, false);
+  }
+
+  function test_fundSGhoMaxTransferExceededDefaultZero() public {
+    // maxTransferAmount defaults to 0, so any non-zero amount must revert with MaxTransferExceeded(0).
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxTransferExceeded.selector, 0));
+    vm.prank(riskCouncil);
+    steward.fundSGho(1, false);
+  }
+
+  function test_fundSGhoNoFunds() public {
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
+    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    vm.prank(riskCouncil);
+    steward.fundSGho(100_000 ether, false);
+  }
+
+  function test_fundSGhoNotFundsAdmin() public {
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    vm.expectRevert(ICollector.OnlyFundsAdmin.selector);
+    vm.prank(riskCouncil);
+    steward.fundSGho(100_000 ether, false);
+  }
+
+  function test_fundSGhoDebounceNotRespected() public {
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
+    deal(address(gho), address(collector), 200_000 ether);
+
+    // First call succeeds and writes _transferDebounce = block.timestamp.
+    vm.prank(riskCouncil);
+    steward.fundSGho(100_000 ether, false);
+
+    // Second call immediately after must revert with DebounceNotRespected.
+    vm.expectRevert(IsGhoSteward.DebounceNotRespected.selector);
+    vm.prank(riskCouncil);
+    steward.fundSGho(100_000 ether, false);
+
+    // Move past MINIMUM_DELAY and the next call succeeds.
+    vm.warp(block.timestamp + steward.MINIMUM_DELAY());
+
+    vm.prank(riskCouncil);
+    steward.fundSGho(100_000 ether, false);
   }
 
   function test_fundSGho(uint256 amount) public {
+    amount = bound(amount, 1, DEFAULT_MAX_TRANSFER);
+
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
     collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
-    amount = bound(amount, 1, 1_000_000 ether);
     deal(address(gho), address(collector), amount);
+
+    uint256 sghoBalanceBefore = gho.balanceOf(address(sgho));
 
     vm.expectEmit(true, true, true, true, address(steward));
     emit IsGhoSteward.SGhoFunded(amount);
     vm.prank(riskCouncil);
-    steward.fundSGho(amount);
+    steward.fundSGho(amount, false);
+
+    assertEq(gho.balanceOf(address(sgho)), sghoBalanceBefore + amount);
+    assertEq(gho.balanceOf(address(collector)), 0);
+  }
+
+  function test_fundSGhoWithdrawFromAave(uint256 amount) public {
+    amount = bound(amount, 1, DEFAULT_MAX_TRANSFER);
+
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
+
+    // Collector holds primeGHO (aEthLidoGHO) that the steward will transfer to itself.
+    deal(address(primeGho), address(collector), amount);
+    // MockPool holds GHO so it can fulfill the withdraw call back to the collector.
+    deal(address(gho), address(pool), amount);
+
+    uint256 sghoBalanceBefore = gho.balanceOf(address(sgho));
+
+    vm.expectEmit(true, true, true, true, address(steward));
+    emit IsGhoSteward.SGhoFunded(amount);
+    vm.prank(riskCouncil);
+    steward.fundSGho(amount, true);
+
+    assertEq(gho.balanceOf(address(sgho)), sghoBalanceBefore + amount);
+    assertEq(gho.balanceOf(address(collector)), 0);
+    assertEq(gho.balanceOf(address(pool)), 0);
+    assertEq(primeGho.balanceOf(address(collector)), 0);
+    assertEq(primeGho.balanceOf(address(steward)), amount);
+  }
+
+  function test_setMaxTransferAmountNoRole() public {
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+  }
+
+  function test_setMaxTransferAmountUnchanged() public {
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    vm.expectRevert(IsGhoSteward.MaxTransferAmountUnchanged.selector);
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+  }
+
+  function test_setMaxTransferAmount() public {
+    assertEq(steward.maxTransferAmount(), 0);
+
+    vm.expectEmit(true, true, true, true, address(steward));
+    emit IsGhoSteward.MaxTransferAmountUpdated(governance, DEFAULT_MAX_TRANSFER);
+    vm.prank(governance);
+    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+
+    assertEq(steward.maxTransferAmount(), DEFAULT_MAX_TRANSFER);
+  }
+
+  function test_constants() public view {
+    assertEq(steward.MINIMUM_DELAY(), 2 days);
+    assertEq(steward.AMPLIFICATION_DENOMINATOR(), 100_00);
+    assertEq(steward.MAX_RATE(), sgho.MAX_SAFE_RATE());
   }
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {

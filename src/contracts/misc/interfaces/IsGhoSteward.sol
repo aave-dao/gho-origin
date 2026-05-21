@@ -212,5 +212,5 @@ interface IsGhoSteward {
    * @notice Returns the maximum amount that can be transfered at a time between timelocks.
    * @return The maximum amount that can be transfered (in wei)
    */
-  function maxTransferAmount() external view returns (uint256);
+  function getMaxTransferAmount() external view returns (uint256);
 }

@@ -6,7 +6,6 @@ import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/prox
 import {Collector} from 'aave-v3-origin/contracts/treasury/Collector.sol';
 import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
-import {TestnetERC20} from 'lib/aave-v3-origin/src/contracts/mocks/testnet-helpers/TestnetERC20.sol';
 
 import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/Strings.sol';
@@ -14,6 +13,7 @@ import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contrac
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
 import {MockPool} from '../mocks/MockPool.sol';
+import {MockAToken} from '../mocks/MockAToken.sol';
 import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 contract sGhoStewardTest is TestSGhoBase {
@@ -23,7 +23,7 @@ contract sGhoStewardTest is TestSGhoBase {
   address public governance = makeAddr('governance');
   Collector public collector;
   MockPool public pool;
-  TestnetERC20 public primeGho;
+  MockAToken public primeGho;
 
   bytes32 public constant YIELD_MANAGER_ROLE = 'YIELD_MANAGER';
 
@@ -34,8 +34,6 @@ contract sGhoStewardTest is TestSGhoBase {
   bytes32 public constant FIXED_RATE_MANAGER_ROLE = keccak256('FIXED_RATE_MANAGER_ROLE');
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
   bytes32 public constant SGHO_FUNDING_ROLE = keccak256('SGHO_FUNDING_ROLE');
-
-  uint256 public constant DEFAULT_MAX_TRANSFER = 1_000_000 ether;
 
   function setUp() public override {
     super.setUp();
@@ -56,7 +54,7 @@ contract sGhoStewardTest is TestSGhoBase {
     );
 
     pool = new MockPool(IPoolAddressesProvider(address(0)));
-    primeGho = new TestnetERC20('Mock aEthLidoGHO', 'aEthLidoGHO', 18, poolAdmin);
+    primeGho = new MockAToken('Mock aEthLidoGHO', 'aEthLidoGHO', 18, poolAdmin, address(pool));
 
     steward = new sGhoSteward(
       governance,
@@ -69,6 +67,7 @@ contract sGhoStewardTest is TestSGhoBase {
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
 
     // Warp past MINIMUM_DELAY so the debounce check in fundSGho does not block first-time calls.
+    // block.timestamp on tests starts as 0
     vm.warp(block.timestamp + steward.MINIMUM_DELAY());
   }
 
@@ -148,6 +147,7 @@ contract sGhoStewardTest is TestSGhoBase {
     assertFalse(steward.hasRole(FLOAT_RATE_MANAGER_ROLE, governance));
     assertFalse(steward.hasRole(FIXED_RATE_MANAGER_ROLE, governance));
     assertFalse(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(SGHO_FUNDING_ROLE, governance));
 
     assertEq(address(steward.sGHO()), address(sgho));
   }
@@ -538,27 +538,13 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   function test_fundSGhoMaxTransferExceeded() public {
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
-
-    vm.expectRevert(
-      abi.encodeWithSelector(IsGhoSteward.MaxTransferExceeded.selector, DEFAULT_MAX_TRANSFER)
-    );
+    uint256 maxTransfer = steward.getMaxTransferAmount();
+    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxTransferExceeded.selector, maxTransfer));
     vm.prank(riskCouncil);
-    steward.fundSGho(DEFAULT_MAX_TRANSFER + 1, false);
-  }
-
-  function test_fundSGhoMaxTransferExceededDefaultZero() public {
-    // maxTransferAmount defaults to 0, so any non-zero amount must revert with MaxTransferExceeded(0).
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxTransferExceeded.selector, 0));
-    vm.prank(riskCouncil);
-    steward.fundSGho(1, false);
+    steward.fundSGho(maxTransfer + 1, false);
   }
 
   function test_fundSGhoNoFunds() public {
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
-
     collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
     vm.expectRevert('ERC20: transfer amount exceeds balance');
     vm.prank(riskCouncil);
@@ -566,18 +552,12 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   function test_fundSGhoNotFundsAdmin() public {
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
-
     vm.expectRevert(ICollector.OnlyFundsAdmin.selector);
     vm.prank(riskCouncil);
     steward.fundSGho(100_000 ether, false);
   }
 
   function test_fundSGhoDebounceNotRespected() public {
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
-
     collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
     deal(address(gho), address(collector), 200_000 ether);
 
@@ -598,10 +578,7 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   function test_fundSGho(uint256 amount) public {
-    amount = bound(amount, 1, DEFAULT_MAX_TRANSFER);
-
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+    amount = bound(amount, 1, steward.getMaxTransferAmount());
 
     collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
     deal(address(gho), address(collector), amount);
@@ -618,15 +595,13 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   function test_fundSGhoWithdrawFromAave(uint256 amount) public {
-    amount = bound(amount, 1, DEFAULT_MAX_TRANSFER);
-
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+    amount = bound(amount, 1, steward.getMaxTransferAmount());
 
     collector.grantRole(collector.FUNDS_ADMIN_ROLE(), address(steward));
+    pool.setATokenAddress(address(gho), address(primeGho));
 
     // Collector holds primeGHO (aEthLidoGHO) that the steward will transfer to itself.
-    deal(address(primeGho), address(collector), amount);
+    deal(address(primeGho), address(collector), amount, true);
     // MockPool holds GHO so it can fulfill the withdraw call back to the collector.
     deal(address(gho), address(pool), amount);
 
@@ -641,37 +616,36 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(gho.balanceOf(address(collector)), 0);
     assertEq(gho.balanceOf(address(pool)), 0);
     assertEq(primeGho.balanceOf(address(collector)), 0);
-    assertEq(primeGho.balanceOf(address(steward)), amount);
+    assertEq(primeGho.balanceOf(address(steward)), 0);
   }
 
   function test_setMaxTransferAmountNoRole() public {
     vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
     vm.prank(riskCouncil);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+    steward.setMaxTransferAmount(1);
   }
 
   function test_setMaxTransferAmountUnchanged() public {
-    vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
-
+    uint256 maxTransferAmount = steward.getMaxTransferAmount();
     vm.expectRevert(IsGhoSteward.MaxTransferAmountUnchanged.selector);
     vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+    steward.setMaxTransferAmount(maxTransferAmount);
   }
 
   function test_setMaxTransferAmount() public {
-    assertEq(steward.maxTransferAmount(), 0);
+    uint256 maxTransferAmount = steward.getMaxTransferAmount();
+    assertEq(steward.getMaxTransferAmount(), maxTransferAmount);
 
     vm.expectEmit(true, true, true, true, address(steward));
-    emit IsGhoSteward.MaxTransferAmountUpdated(governance, DEFAULT_MAX_TRANSFER);
+    emit IsGhoSteward.MaxTransferAmountUpdated(governance, maxTransferAmount * 2);
     vm.prank(governance);
-    steward.setMaxTransferAmount(DEFAULT_MAX_TRANSFER);
+    steward.setMaxTransferAmount(maxTransferAmount * 2);
 
-    assertEq(steward.maxTransferAmount(), DEFAULT_MAX_TRANSFER);
+    assertEq(steward.getMaxTransferAmount(), maxTransferAmount * 2);
   }
 
   function test_constants() public view {
-    assertEq(steward.MINIMUM_DELAY(), 2 days);
+    assertEq(steward.MINIMUM_DELAY(), 1 days);
     assertEq(steward.AMPLIFICATION_DENOMINATOR(), 100_00);
     assertEq(steward.MAX_RATE(), sgho.MAX_SAFE_RATE());
   }

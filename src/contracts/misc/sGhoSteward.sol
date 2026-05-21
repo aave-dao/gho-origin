@@ -18,7 +18,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   using SafeCast for uint256;
 
   /// @inheritdoc IsGhoSteward
-  uint256 public constant MINIMUM_DELAY = 2 days;
+  uint256 public constant MINIMUM_DELAY = 1 days;
 
   /// @inheritdoc IsGhoSteward
   uint16 public constant AMPLIFICATION_DENOMINATOR = 100_00;
@@ -60,10 +60,10 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   RateConfig internal _rateConfig;
 
   /// @notice Last transfer made by the steward
-  uint256 internal _transferDebounce;
+  uint256 internal _lastTransferTimestamp;
 
-  /// @inheritdoc IsGhoSteward
-  uint256 public maxTransferAmount;
+  /// @notice The maximum amount that can be transfered at a time between timelocks.
+  uint256 internal _maxTransferAmount = 100_000 ether;
 
   constructor(
     address owner,
@@ -148,11 +148,11 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function fundSGho(uint256 amount, bool withdrawFromAave) external onlyRole(SGHO_FUNDING_ROLE) {
-    if (block.timestamp - _transferDebounce < MINIMUM_DELAY) revert DebounceNotRespected();
+    if (block.timestamp - _lastTransferTimestamp < MINIMUM_DELAY) revert DebounceNotRespected();
     if (amount == 0) revert ZeroAmount();
-    if (amount > maxTransferAmount) revert MaxTransferExceeded(maxTransferAmount);
+    if (amount > _maxTransferAmount) revert MaxTransferExceeded(_maxTransferAmount);
 
-    _transferDebounce = block.timestamp;
+    _lastTransferTimestamp = block.timestamp;
 
     if (withdrawFromAave) {
       COLLECTOR.transfer(PRIME_GHO, address(this), amount);
@@ -165,9 +165,9 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function setMaxTransferAmount(uint256 maxAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    if (maxTransferAmount == maxAmount) revert MaxTransferAmountUnchanged();
+    if (_maxTransferAmount == maxAmount) revert MaxTransferAmountUnchanged();
 
-    maxTransferAmount = maxAmount;
+    _maxTransferAmount = maxAmount;
     emit MaxTransferAmountUpdated(msg.sender, maxAmount);
   }
 
@@ -184,6 +184,11 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   /// @inheritdoc IsGhoSteward
   function sGHO() external view returns (IsGho) {
     return SGHO;
+  }
+
+  /// @inheritdoc IsGhoSteward
+  function getMaxTransferAmount() external view returns (uint256) {
+    return _maxTransferAmount;
   }
 
   function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {

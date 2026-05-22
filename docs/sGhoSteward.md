@@ -9,7 +9,7 @@ It provides role-based access-controlled mechanisms to safely adjust the `target
 
 - Allows updating of `targetRate` and `supplyCap` of `sGHO` through this contract.
 - Allows funding `sGHO` yield by transfering `GHO` from the Aave Collector, optionally pre-withdrawing `GHO` from the `AaveV3EthereumLido` pool first.
-- Bounds each funding transfer by a governance-configurable `maxTransferAmount`, and rate-limits consecutive transfers via a `MINIMUM_DELAY` debounce (2 days).
+- Bounds each funding transfer by a governance-configurable `maxTransferAmount`, and rate-limits consecutive transfers via a `MINIMUM_DELAY` debounce (1 day).
 - Implements the `targetRate` formula as a composition of three parameters (with `AMPLIFICATION_DENOMINATOR` fixed at 100_00):
 
   `targetRate = AmplificationFactor / AMPLIFICATION_DENOMINATOR * FloatRate + FixedRate`

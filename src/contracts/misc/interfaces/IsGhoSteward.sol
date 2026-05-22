@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IsGho} from '../../sgho/interfaces/IsGho.sol';
 
 /**
@@ -40,6 +41,12 @@ interface IsGhoSteward {
   );
 
   /**
+   * @dev Event is emitted whenever `GHO` token is sent to `sGHO`.
+   * @param amount Amount of `GHO` sent to `sGHO`.
+   */
+  event SGhoFunded(uint256 amount);
+
+  /**
    * @dev Event is emitted whenever the `supplyCap` is updated.
    * @param caller Message sender, who initiated the update
    * @param supplyCap Supply Cap set in `sGHO` after update
@@ -47,14 +54,37 @@ interface IsGhoSteward {
   event SupplyCapUpdated(address indexed caller, uint256 supplyCap);
 
   /**
+   * @dev Event is emitted whenever `maxTransferAmount` is updated.
+   * @param caller Message sender, who initiated the update
+   * @param maxTransferAmount New maximum transfer amount
+   */
+  event MaxTransferAmountUpdated(address indexed caller, uint256 maxTransferAmount);
+
+  /**
    * @dev Attempted to set zero address.
    */
   error ZeroAddress();
 
   /**
+   * @dev Attempted to transfer zero amount.
+   */
+  error ZeroAmount();
+
+  /**
+   * @dev Attempted to transfer before minimum timelock delay has passed.
+   */
+  error DebounceNotRespected();
+
+  /**
    * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
    */
   error MaxRateExceeded();
+
+  /**
+   * @dev Attempted to transfer `GHO` amount greater than maximum allowed transfer.
+   * @param maxTransfer The maximum amount of `GHO` that can be transferred
+   */
+  error MaxTransferExceeded(uint256 maxTransfer);
 
   /**
    * @dev Attempted to set the same rate, which is already set.
@@ -65,6 +95,11 @@ interface IsGhoSteward {
    * @dev Attempted to set the same supplyCap, which is already set.
    */
   error SupplyCapUnchanged();
+
+  /**
+   * @dev Attempted to set the same `maxTransferAmount`, which is already set.
+   */
+  error MaxTransferAmountUnchanged();
 
   /**
    * @notice Updates `targetRate` on `sGHO` and `rateConfig` inside the steward using new values.
@@ -93,6 +128,26 @@ interface IsGhoSteward {
    * @param supplyCap_ New `supplyCap` to set.
    */
   function setSupplyCap(uint256 supplyCap_) external;
+
+  /**
+   * @notice Sends specified amount of `GHO` token to `sGHO`.
+   * @dev Specified amount must be held in the collector or will revert, unless
+   * withdrawFromAave is true. In that case, `GHO` will first be withdrawn from
+   * `AaveV3EthereumLido` pool to then be transfered. Specified amount of `aEthLidoGHO`
+   * must be held in the collector in that scenario or will revert.
+   * Only callable by `SGHO_FUNDING_ROLE`.
+   * This contract must be granted `FUNDS_ADMIN_ROLE` from the collector.
+   * @param amount Amount of GHO token to send.
+   * @param withdrawFromAave Whether to withdraw `GHO` from Aave Pool
+   */
+  function fundSGho(uint256 amount, bool withdrawFromAave) external;
+
+  /**
+   * @notice Updates the maximum amount of `GHO` that can be transferred in a single `fundSGho` call.
+   * @dev Only callable by `DEFAULT_ADMIN_ROLE`. Reverts if the new value equals the current one.
+   * @param maxAmount New maximum transfer amount (in wei)
+   */
+  function setMaxTransferAmount(uint256 maxAmount) external;
 
   /**
    * @notice Calculates `targetRate` using `rateConfig_` struct.
@@ -141,4 +196,21 @@ interface IsGhoSteward {
    * @notice Returns role that can update the `supplyCap` parameter.
    */
   function SUPPLY_CAP_MANAGER_ROLE() external view returns (bytes32);
+
+  /**
+   * @notice Returns role that can send `GHO` from collector to `sGHO`.
+   */
+  function SGHO_FUNDING_ROLE() external view returns (bytes32);
+
+  /**
+   * @notice Returns the minimum delay that must be respected between parameters update.
+   * @return The minimum delay between parameter updates (in seconds)
+   */
+  function MINIMUM_DELAY() external view returns (uint256);
+
+  /**
+   * @notice Returns the maximum amount that can be transfered at a time between timelocks.
+   * @return The maximum amount that can be transfered (in wei)
+   */
+  function getMaxTransferAmount() external view returns (uint256);
 }

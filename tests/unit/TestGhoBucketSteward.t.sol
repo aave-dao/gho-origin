@@ -51,7 +51,7 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
   }
 
   function testRevertConstructorInvalidOwner() public {
-    vm.expectRevert('INVALID_OWNER');
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
     new GhoBucketSteward(address(0), address(0x002), address(0x003));
   }
 
@@ -74,7 +74,7 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
   }
 
   function testChangeOwnershipRevert() public {
-    vm.expectRevert('Ownable: new owner is the zero address');
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
     vm.prank(SHORT_EXECUTOR);
     GHO_BUCKET_STEWARD.transferOwnership(address(0));
   }
@@ -222,7 +222,9 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
   }
 
   function testRevertSetControlledFacilitatorIfUnauthorized() public {
-    vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, RISK_COUNCIL)
+    );
     vm.prank(RISK_COUNCIL);
     address[] memory newFacilitatorList = new address[](1);
     newFacilitatorList[0] = FACILITATOR_3;
@@ -238,5 +240,25 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
     assertTrue(GHO_BUCKET_STEWARD.isControlledFacilitator(facilitator));
     address nonFacilitator = makeAddr('NON_FACILITATOR');
     assertFalse(GHO_BUCKET_STEWARD.isControlledFacilitator(nonFacilitator));
+  }
+
+  function testConstructorEmitsOwnershipTransferred() public {
+    address expected = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+    vm.expectEmit(expected);
+    emit OwnershipTransferred(address(0), SHORT_EXECUTOR);
+    new GhoBucketSteward(SHORT_EXECUTOR, address(GHO_TOKEN), RISK_COUNCIL);
+  }
+
+  function testRevertRenounceOwnershipFromUnauthorized() public {
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
+    vm.prank(ALICE);
+    GHO_BUCKET_STEWARD.renounceOwnership();
+  }
+
+  function testRenounceOwnership() public {
+    assertEq(GHO_BUCKET_STEWARD.owner(), SHORT_EXECUTOR);
+    vm.prank(SHORT_EXECUTOR);
+    GHO_BUCKET_STEWARD.renounceOwnership();
+    assertEq(GHO_BUCKET_STEWARD.owner(), address(0));
   }
 }

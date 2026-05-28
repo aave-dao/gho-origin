@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import './TestGhoBase.t.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
 contract TestGhoReserve is TestGhoBase {
   function testConstructor() public {
@@ -79,7 +78,9 @@ contract TestGhoReserve is TestGhoBase {
 
     uint256 value = type(uint128).max;
 
-    vm.expectRevert("SafeCast: value doesn't fit in 128 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 128, value + 1)
+    );
     GHO_RESERVE.setLimit(newEntity, value + 1);
 
     GHO_RESERVE.setLimit(newEntity, value);
@@ -143,7 +144,9 @@ contract TestGhoReserve is TestGhoBase {
     uint256 value = type(uint128).max;
     GHO_RESERVE.setLimit(newEntity, value);
 
-    vm.expectRevert("SafeCast: value doesn't fit in 128 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 128, value + 1)
+    );
     vm.prank(newEntity);
     GHO_RESERVE.restore(value + 1);
   }
@@ -184,7 +187,13 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertAddEntityNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        ENTITY_MANAGER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_RESERVE.addEntity(ALICE);
   }
@@ -248,7 +257,13 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertRemoveEntityNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        ENTITY_MANAGER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_RESERVE.removeEntity(ALICE);
   }
@@ -273,12 +288,20 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(address(newEntity));
 
     uint256 value = type(uint128).max;
-    vm.expectRevert("SafeCast: value doesn't fit in 128 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 128, value + 1)
+    );
     GHO_RESERVE.setLimit(newEntity, value + 1);
   }
 
   function testRevertSetLimitNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(LIMIT_MANAGER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        LIMIT_MANAGER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_RESERVE.setLimit(ALICE, 1_000_000 ether);
   }
@@ -302,7 +325,13 @@ contract TestGhoReserve is TestGhoBase {
     address facilitator = makeAddr('facilitator');
     uint256 amount = 1_000 ether;
 
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(TRANSFER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        TRANSFER_ROLE
+      )
+    );
     vm.prank(ALICE);
     reserve.transfer(facilitator, amount);
   }
@@ -405,5 +434,29 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(makeAddr('alice'));
 
     assertEq(GHO_RESERVE.totalEntities(), 3);
+  }
+
+  function testRevertRenounceRoleBadConfirmation() public {
+    vm.expectRevert(IAccessControl.AccessControlBadConfirmation.selector);
+    vm.prank(ALICE);
+    GHO_RESERVE.renounceRole(ENTITY_MANAGER_ROLE, address(this));
+  }
+
+  function testRenounceRole() public {
+    assertTrue(GHO_RESERVE.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+    GHO_RESERVE.renounceRole(ENTITY_MANAGER_ROLE, address(this));
+    assertFalse(GHO_RESERVE.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+  }
+
+  function testGrantRoleRevertsWithCustomError() public {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        DEFAULT_ADMIN_ROLE
+      )
+    );
+    vm.prank(ALICE);
+    GHO_RESERVE.grantRole(ENTITY_MANAGER_ROLE, ALICE);
   }
 }

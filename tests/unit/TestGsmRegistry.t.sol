@@ -8,9 +8,7 @@ contract TestGsmRegistry is TestGhoBase {
     vm.assume(newOwner != address(this) && newOwner != address(0));
 
     vm.expectEmit(vm.computeCreateAddress(address(this), vm.getNonce(address(this))));
-    emit OwnershipTransferred(address(0), address(this));
-    vm.expectEmit(vm.computeCreateAddress(address(this), vm.getNonce(address(this))));
-    emit OwnershipTransferred(address(this), newOwner);
+    emit OwnershipTransferred(address(0), newOwner);
 
     GsmRegistry registry = new GsmRegistry(newOwner);
     assertEq(registry.owner(), newOwner, 'Unexpected contract owner');
@@ -19,7 +17,7 @@ contract TestGsmRegistry is TestGhoBase {
   }
 
   function testRevertConstructorZeroAddress() public {
-    vm.expectRevert('ZERO_ADDRESS_NOT_VALID');
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
     new GsmRegistry(address(0));
   }
 
@@ -51,7 +49,7 @@ contract TestGsmRegistry is TestGhoBase {
   function testRevertAddGsmUnauthorized(address caller) public {
     vm.assume(caller != GHO_GSM_REGISTRY.owner());
 
-    vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, caller));
     vm.prank(caller);
     GHO_GSM_REGISTRY.addGsm(address(123));
   }
@@ -113,7 +111,7 @@ contract TestGsmRegistry is TestGhoBase {
   function testRevertRemoveGsmUnauthorized(address caller) public {
     vm.assume(caller != GHO_GSM_REGISTRY.owner());
 
-    vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, caller));
     vm.prank(caller);
     GHO_GSM_REGISTRY.removeGsm(address(123));
   }

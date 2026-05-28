@@ -13,13 +13,13 @@ import {AutomationCompatibleInterface} from 'src/contracts/dependencies/chainlin
 import {Constants} from '../helpers/Constants.sol';
 import {DebtUtils} from '../helpers/DebtUtils.sol';
 import {Events} from '../helpers/Events.sol';
-import {AccessControlErrorsLib, OwnableErrorsLib} from '../helpers/ErrorsLib.sol';
+import {AccessControlErrorsLib} from '../helpers/ErrorsLib.sol';
 import {EIP712Types} from '../helpers/EIP712Types.sol';
 
 // generic libs
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
-import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
 // mocks
@@ -37,9 +37,11 @@ import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 
 // interfaces
-import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
-import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {IERC3156FlashBorrower} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
+import {IERC3156FlashLender} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';

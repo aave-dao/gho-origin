@@ -7,7 +7,7 @@ import {FixedPriceStrategy4626Harness} from './FixedPriceStrategy4626Harness.sol
 import {FixedFeeStrategyHarness} from './FixedFeeStrategyHarness.sol';
 import {IGsmFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
 import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
-import {IERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 
 contract Gsm4626Harness is Gsm4626 {
   constructor(

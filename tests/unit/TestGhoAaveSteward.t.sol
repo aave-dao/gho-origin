@@ -64,7 +64,7 @@ contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
   }
 
   function testRevertConstructorInvalidOwner() public {
-    vm.expectRevert('INVALID_OWNER');
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
     new GhoAaveSteward(
       address(0),
       address(0x002),
@@ -132,7 +132,7 @@ contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
   }
 
   function testChangeOwnershipRevert() public {
-    vm.expectRevert('Ownable: new owner is the zero address');
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
     vm.prank(SHORT_EXECUTOR);
     GHO_AAVE_STEWARD.transferOwnership(address(0));
   }

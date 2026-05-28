@@ -6,18 +6,15 @@ import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
 import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
-import {IRoleManager} from './interfaces/IRoleManager.sol';
 
 contract StkGhoMigratorStatelessFuzz is Test {
   StkGhoMigrator public migrator;
   address public user = makeAddr('USER');
-  address public user2 = makeAddr('USER2');
   address public ownerMigrator = makeAddr('OWNER_MIGRATOR');
   address public pauseGuardian = makeAddr('PAUSE_GUARDIAN');
   IStakeToken public constant STKGHO = IStakeToken(0x1a88Df1cFe15Af22B3c4c783D4e6F7F9e0C1885d);
   IERC4626 public constant SGHO = IERC4626(0xE1753F2e00940cC31213dd92013cF019DFE4ca1d);
   IERC20 public constant GHO = IERC20(0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f);
-  IRoleManager public role = IRoleManager(address(STKGHO));
   uint256 constant CLAIM_HELPER_ROLE = 2;
 
   function setUp() public {
@@ -30,9 +27,9 @@ contract StkGhoMigratorStatelessFuzz is Test {
     vm.createSelectFork(rpc);
     migrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
 
-    address admin = role.getAdmin(CLAIM_HELPER_ROLE);
+    address admin = STKGHO.getAdmin(CLAIM_HELPER_ROLE);
     vm.prank(admin);
-    role.setPendingAdmin(CLAIM_HELPER_ROLE, address(migrator));
+    STKGHO.setPendingAdmin(CLAIM_HELPER_ROLE, address(migrator));
 
     migrator.claimHelperRole();
   }
@@ -45,21 +42,21 @@ contract StkGhoMigratorStatelessFuzz is Test {
     vm.assume(maxDeposit >= 2);
     amount = bound(amount, 2, maxDeposit);
 
-    vm.deal(user2, 1 ether);
-    deal(address(GHO), user2, amount);
-    vm.startPrank(user2);
+    vm.deal(user, 1 ether);
+    deal(address(GHO), user, amount);
+    vm.startPrank(user);
     IERC20(GHO).approve(address(STKGHO), amount);
-    STKGHO.stake(user2, amount);
+    STKGHO.stake(user, amount);
     vm.stopPrank();
 
-    uint256 stkGhoShares = STKGHO.balanceOf(user2);
-    uint256 sGhoSharesBefore = SGHO.balanceOf(user2);
+    uint256 stkGhoShares = STKGHO.balanceOf(user);
+    uint256 sGhoSharesBefore = SGHO.balanceOf(user);
 
-    vm.prank(user2);
+    vm.prank(user);
     migrator.migrate();
 
-    assertEq(STKGHO.balanceOf(user2), 0);
-    assertGt(SGHO.balanceOf(user2), sGhoSharesBefore);
+    assertEq(STKGHO.balanceOf(user), 0);
+    assertGt(SGHO.balanceOf(user), sGhoSharesBefore);
     assertEq(GHO.balanceOf(address(migrator)), 0);
     assertEq(stkGhoShares, amount);
     assertGt(stkGhoShares, 0);
@@ -115,7 +112,7 @@ contract StkGhoMigratorStatelessFuzz is Test {
     vm.prank(ownerMigrator);
     migrator.setClaimHelperPendingAdmin(newPendingAdmin);
 
-    assertEq(role.getPendingAdmin(CLAIM_HELPER_ROLE), newPendingAdmin);
+    assertEq(STKGHO.getPendingAdmin(CLAIM_HELPER_ROLE), newPendingAdmin);
   }
 
   // --- Fuzzing Tests setPauseGuardian ---

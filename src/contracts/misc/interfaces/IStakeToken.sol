@@ -207,6 +207,18 @@ interface IStakeToken is IERC20 {
    */
   function setPendingAdmin(uint256 role, address newPendingAdmin) external;
 
+  /**
+   * @dev RoleManager inherited function. Returns the current admin of a role.
+   * @param role The role id.
+   */
+  function getAdmin(uint256 role) external view returns (address);
+
+  /**
+   * @dev RoleManager inherited function. Returns the pending admin of a role.
+   * @param role The role id.
+   */
+  function getPendingAdmin(uint256 role) external view returns (address);
+
   function REWARD_TOKEN() external view returns (address);
 
   function REWARDS_VAULT() external view returns (address);

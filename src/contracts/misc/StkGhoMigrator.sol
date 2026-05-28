@@ -66,6 +66,13 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable {
   }
 
   /// @inheritdoc IStkGhoMigrator
+  function rescue(address token, address to, uint256 amount) external onlyOwner {
+    require(token != address(0) && to != address(0), InvalidAddressZero());
+    require(amount > 0, InvalidAmount());
+    IERC20(token).safeTransfer(to, amount);
+  }
+
+  /// @inheritdoc IStkGhoMigrator
   function pause() external onlyOwnerOrPauseGuardian {
     _pause();
   }
@@ -73,13 +80,6 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable {
   /// @inheritdoc IStkGhoMigrator
   function unpause() external onlyOwnerOrPauseGuardian {
     _unpause();
-  }
-
-  /// @inheritdoc IStkGhoMigrator
-  function rescue(address token, address to, uint256 amount) external onlyOwner {
-    require(token != address(0) && to != address(0), InvalidAddressZero());
-    require(amount > 0, InvalidAmount());
-    IERC20(token).safeTransfer(to, amount);
   }
 
   /// @inheritdoc IStkGhoMigrator

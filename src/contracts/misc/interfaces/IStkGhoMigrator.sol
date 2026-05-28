@@ -64,6 +64,15 @@ interface IStkGhoMigrator {
   function setPauseGuardian(address newPauseGuardian) external;
 
   /**
+   * @notice Rescues ERC20 tokens accidentally sent to this contract.
+   * @dev Only callable by the owner.
+   * @param token The ERC20 token to rescue.
+   * @param to The address that will receive the rescued tokens.
+   * @param amount The amount of tokens to rescue.
+   */
+  function rescue(address token, address to, uint256 amount) external;
+
+  /**
    * @notice Pauses migrations.
    * @dev Callable by the owner or the pause guardian.
    */
@@ -80,15 +89,6 @@ interface IStkGhoMigrator {
    * @dev Reverts when the contract is paused.
    */
   function migrate() external;
-
-  /**
-   * @notice Rescues ERC20 tokens accidentally sent to this contract.
-   * @dev Only callable by the owner.
-   * @param token The ERC20 token to rescue.
-   * @param to The address that will receive the rescued tokens.
-   * @param amount The amount of tokens to rescue.
-   */
-  function rescue(address token, address to, uint256 amount) external;
 
   /**
    * @notice Returns the stkGHO token contract.

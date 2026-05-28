@@ -7,6 +7,13 @@ contract TestGsm4626 is TestGhoBase {
   using PercentageMath for uint256;
   using PercentageMath for uint128;
 
+  address internal gsmSignerAddr;
+  uint256 internal gsmSignerKey;
+
+  function setUp() public {
+    (gsmSignerAddr, gsmSignerKey) = makeAddrAndKey('gsmSigner');
+  }
+
   function testConstructor() public {
     Gsm4626 gsm = new Gsm4626(
       address(GHO_TOKEN),
@@ -1333,5 +1340,486 @@ contract TestGsm4626 is TestGhoBase {
 
       assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
     }
+  }
+
+  function testRevertInitializeZeroAdmin() public {
+    Gsm4626 gsmImpl = new Gsm4626(
+      address(GHO_TOKEN),
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+    );
+
+    vm.expectRevert();
+    new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(0),
+        TREASURY,
+        DEFAULT_GSM_USDX_EXPOSURE,
+        address(GHO_RESERVE)
+      )
+    );
+  }
+
+  function testRevertInitializeZeroGhoReserve() public {
+    Gsm4626 gsmImpl = new Gsm4626(
+      address(GHO_TOKEN),
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+    );
+
+    vm.expectRevert();
+    new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(this),
+        TREASURY,
+        DEFAULT_GSM_USDX_EXPOSURE,
+        address(0)
+      )
+    );
+  }
+
+  function testTypehash() public view {
+    bytes32 buyTypeHash = vm.eip712HashType('BuyAssetWithSig');
+    bytes32 sellTypeHash = vm.eip712HashType('SellAssetWithSig');
+    assertEq(
+      buyTypeHash,
+      GHO_GSM_4626.BUY_ASSET_WITH_SIG_TYPEHASH(),
+      'Unexpected buy asset typed data hash'
+    );
+    assertEq(
+      sellTypeHash,
+      GHO_GSM_4626.SELL_ASSET_WITH_SIG_TYPEHASH(),
+      'Unexpected sell asset typed data hash'
+    );
+  }
+
+  function testSellAssetWithSig() public {
+    uint256 deadline = block.timestamp + 1 hours;
+    uint256 fee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
+    uint256 ghoOut = DEFAULT_GSM_GHO_AMOUNT - fee;
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, gsmSignerAddr, DEFAULT_GSM_USDX_AMOUNT);
+
+    vm.prank(gsmSignerAddr);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    assertTrue(gsmSignerAddr != ALICE, 'Signer is the same as Alice');
+
+    vm.prank(ALICE);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit SellAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT,
+      fee
+    );
+    GHO_GSM_4626.sellAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(USDX_4626_TOKEN.balanceOf(gsmSignerAddr), 0, 'Unexpected final USDX balance');
+    assertEq(GHO_TOKEN.balanceOf(gsmSignerAddr), ghoOut, 'Unexpected final GHO balance');
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_GSM_4626)), fee, 'Unexpected GSM GHO balance');
+    assertEq(
+      GHO_GSM_4626.getExposureCap(),
+      DEFAULT_GSM_USDX_EXPOSURE,
+      'Unexpected exposure capacity'
+    );
+  }
+
+  function testSellAssetWithSigExactDeadline() public {
+    uint256 deadline = block.timestamp;
+    uint256 fee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
+    uint256 ghoOut = DEFAULT_GSM_GHO_AMOUNT - fee;
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, gsmSignerAddr, DEFAULT_GSM_USDX_AMOUNT);
+
+    vm.prank(gsmSignerAddr);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(ALICE);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit SellAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT,
+      fee
+    );
+    GHO_GSM_4626.sellAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(GHO_TOKEN.balanceOf(gsmSignerAddr), ghoOut, 'Unexpected final GHO balance');
+  }
+
+  function testRevertSellAssetWithSigExpiredSignature() public {
+    uint256 deadline = block.timestamp - 1;
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(ALICE);
+    vm.expectRevert('SIGNATURE_DEADLINE_EXPIRED');
+    GHO_GSM_4626.sellAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+  }
+
+  function testRevertSellAssetWithSigInvalidSignature() public {
+    uint256 deadline = block.timestamp + 1 hours;
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(ALICE);
+    vm.expectRevert('SIGNATURE_INVALID');
+    GHO_GSM_4626.sellAssetWithSig(ALICE, DEFAULT_GSM_USDX_AMOUNT, ALICE, deadline, signature);
+  }
+
+  function testBuyAssetWithSig() public {
+    uint256 deadline = block.timestamp + 1 hours;
+    uint256 sellFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
+    uint256 buyFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_BUY_FEE);
+    uint256 ghoOut = DEFAULT_GSM_GHO_AMOUNT - sellFee;
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+
+    ghoFaucet(gsmSignerAddr, DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    vm.prank(gsmSignerAddr);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    assertTrue(gsmSignerAddr != BOB, 'Signer is the same as Bob');
+
+    vm.prank(BOB);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit BuyAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
+    GHO_GSM_4626.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(
+      USDX_4626_TOKEN.balanceOf(gsmSignerAddr),
+      DEFAULT_GSM_USDX_AMOUNT,
+      'Unexpected final USDX balance'
+    );
+    assertEq(GHO_TOKEN.balanceOf(ALICE), ghoOut, 'Unexpected final GHO balance');
+    assertEq(
+      GHO_TOKEN.balanceOf(address(GHO_GSM_4626)),
+      sellFee + buyFee,
+      'Unexpected GSM GHO balance'
+    );
+  }
+
+  function testBuyAssetWithSigExactDeadline() public {
+    uint256 deadline = block.timestamp;
+    uint256 buyFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_BUY_FEE);
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+
+    ghoFaucet(gsmSignerAddr, DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    vm.prank(gsmSignerAddr);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(BOB);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit BuyAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
+    GHO_GSM_4626.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(
+      USDX_4626_TOKEN.balanceOf(gsmSignerAddr),
+      DEFAULT_GSM_USDX_AMOUNT,
+      'Unexpected final USDX balance'
+    );
+  }
+
+  function testRevertBuyAssetWithSigExpiredSignature() public {
+    uint256 deadline = block.timestamp - 1;
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(BOB);
+    vm.expectRevert('SIGNATURE_DEADLINE_EXPIRED');
+    GHO_GSM_4626.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+  }
+
+  function testRevertBuyAssetWithSigInvalidSignature() public {
+    uint256 deadline = block.timestamp + 1 hours;
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(BOB);
+    vm.expectRevert('SIGNATURE_INVALID');
+    GHO_GSM_4626.buyAssetWithSig(BOB, DEFAULT_GSM_USDX_AMOUNT, gsmSignerAddr, deadline, signature);
+  }
+
+  function testRevertSellAssetZeroAmount() public {
+    vm.prank(ALICE);
+    vm.expectRevert('INVALID_AMOUNT');
+    GHO_GSM_4626.sellAsset(0, ALICE);
+  }
+
+  function testRevertSellAssetNoAsset() public {
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+  }
+
+  function testRevertSellAssetNoAllowance() public {
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.prank(ALICE);
+    vm.expectRevert('ERC20: insufficient allowance');
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+  }
+
+  function testRevertSellAssetNoBucketCap() public {
+    Gsm4626 gsm = _deployGsm4626Proxy({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
+    GHO_RESERVE.addEntity(address(gsm));
+    uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, defaultCapInUsdx);
+
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(gsm), defaultCapInUsdx);
+    vm.expectRevert('LIMIT_EXCEEDED');
+    gsm.sellAsset(defaultCapInUsdx, ALICE);
+    vm.stopPrank();
+  }
+
+  function testRevertRescueTokensZeroAmount() public {
+    GHO_GSM_4626.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
+    vm.expectRevert('INVALID_AMOUNT');
+    GHO_GSM_4626.rescueTokens(address(WETH), ALICE, 0);
+  }
+
+  function testCanSwap() public {
+    assertEq(GHO_GSM_4626.canSwap(), true, 'Unexpected initial swap state');
+
+    vm.startPrank(address(GHO_GSM_SWAP_FREEZER));
+    GHO_GSM_4626.setSwapFreeze(true);
+    assertEq(GHO_GSM_4626.canSwap(), false, 'Unexpected swap state post-freeze');
+
+    GHO_GSM_4626.setSwapFreeze(false);
+    assertEq(GHO_GSM_4626.canSwap(), true, 'Unexpected swap state post-unfreeze');
+    vm.stopPrank();
+
+    vm.prank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
+    GHO_GSM_4626.seize();
+    assertEq(GHO_GSM_4626.canSwap(), false, 'Unexpected swap state post-seize');
+  }
+
+  function testUpdateExposureCapBelowCurrentExposure() public {
+    assertEq(
+      GHO_GSM_4626.getExposureCap(),
+      DEFAULT_GSM_USDX_EXPOSURE,
+      'Unexpected exposure cap'
+    );
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, 2 * DEFAULT_GSM_USDX_AMOUNT);
+
+    GHO_GSM_4626.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
+    vm.startPrank(address(ALICE));
+
+    GHO_GSM_4626.updateFeeStrategy(address(0));
+
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+
+    assertEq(
+      GHO_GSM_4626.getAvailableUnderlyingExposure(),
+      DEFAULT_GSM_USDX_EXPOSURE - DEFAULT_GSM_USDX_AMOUNT,
+      'Unexpected available underlying exposure'
+    );
+    assertEq(
+      GHO_GSM_4626.getExposureCap(),
+      DEFAULT_GSM_USDX_EXPOSURE,
+      'Unexpected exposure cap'
+    );
+
+    uint256 currentExposure = GHO_GSM_4626.getAvailableLiquidity();
+    uint256 newExposureCap = currentExposure - 1;
+    GHO_GSM_4626.updateExposureCap(uint128(newExposureCap));
+    assertEq(GHO_GSM_4626.getExposureCap(), newExposureCap, 'Unexpected exposure cap');
+    assertEq(
+      GHO_GSM_4626.getAvailableLiquidity(),
+      currentExposure,
+      'Unexpected current exposure'
+    );
+
+    GHO_GSM_4626.updateExposureCap(0);
+
+    vm.expectRevert('EXOGENOUS_ASSET_EXPOSURE_TOO_HIGH');
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+
+    vm.stopPrank();
+    ghoFaucet(BOB, DEFAULT_GSM_GHO_AMOUNT / 2);
+    vm.startPrank(BOB);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT / 2);
+    GHO_GSM_4626.buyAsset(DEFAULT_GSM_USDX_AMOUNT / 2, BOB);
+
+    assertEq(GHO_GSM_4626.getExposureCap(), 0, 'Unexpected exposure capacity');
   }
 }

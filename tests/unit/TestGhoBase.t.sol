@@ -489,26 +489,28 @@ contract TestGhoBase is Test, Constants, Events {
   }
 
   function _getBuyAssetTypedDataHash(
+    address gsm,
     EIP712Types.BuyAssetWithSig memory params
   ) internal view returns (bytes32) {
     return
       keccak256(
         abi.encodePacked(
           '\x19\x01',
-          GHO_GSM.DOMAIN_SEPARATOR(),
+          Gsm(gsm).DOMAIN_SEPARATOR(),
           vm.eip712HashStruct('BuyAssetWithSig', abi.encode(params))
         )
       );
   }
 
   function _getSellAssetTypedDataHash(
+    address gsm,
     EIP712Types.SellAssetWithSig memory params
   ) internal view returns (bytes32) {
     return
       keccak256(
         abi.encodePacked(
           '\x19\x01',
-          GHO_GSM.DOMAIN_SEPARATOR(),
+          Gsm(gsm).DOMAIN_SEPARATOR(),
           vm.eip712HashStruct('SellAssetWithSig', abi.encode(params))
         )
       );

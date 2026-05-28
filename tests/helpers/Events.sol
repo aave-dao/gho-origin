@@ -97,6 +97,11 @@ interface Events {
     uint256 remainingLoss
   );
   event FeeStrategyUpdated(address indexed oldFeeStrategy, address indexed newFeeStrategy);
+  event FeeStrategyCreated(
+    address indexed strategy,
+    uint256 indexed buyFee,
+    uint256 indexed sellFee
+  );
   event ExposureCapUpdated(uint256 oldExposureCap, uint256 newExposureCap);
   event TokensRescued(
     address indexed tokenRescued,

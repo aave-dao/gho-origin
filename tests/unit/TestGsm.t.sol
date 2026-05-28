@@ -222,6 +222,7 @@ contract TestGsm is TestGhoBase {
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
     bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -275,6 +276,7 @@ contract TestGsm is TestGhoBase {
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
     bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -317,6 +319,7 @@ contract TestGsm is TestGhoBase {
     uint256 deadline = block.timestamp - 1;
 
     bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -346,6 +349,7 @@ contract TestGsm is TestGhoBase {
     uint256 deadline = block.timestamp + 1 hours;
 
     bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.SellAssetWithSig({
         originator: gsmSignerAddr,
         maxAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -621,6 +625,7 @@ contract TestGsm is TestGhoBase {
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
     bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -689,6 +694,7 @@ contract TestGsm is TestGhoBase {
     assertEq(GHO_GSM.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
 
     bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -782,6 +788,7 @@ contract TestGsm is TestGhoBase {
     uint256 deadline = block.timestamp - 1;
 
     bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,
@@ -810,6 +817,7 @@ contract TestGsm is TestGhoBase {
     uint256 deadline = block.timestamp + 1 hours;
 
     bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM),
       EIP712Types.BuyAssetWithSig({
         originator: gsmSignerAddr,
         minAmount: DEFAULT_GSM_USDX_AMOUNT,

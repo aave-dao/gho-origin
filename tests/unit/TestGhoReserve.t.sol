@@ -104,7 +104,7 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(address(this));
     GHO_RESERVE.setLimit(address(this), 10_000 ether);
 
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     GHO_RESERVE.restore(10_000 ether);
   }
 
@@ -343,7 +343,7 @@ contract TestGhoReserve is TestGhoBase {
 
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 0);
 
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     reserve.transfer(facilitator, amount);
   }
 
@@ -368,7 +368,7 @@ contract TestGhoReserve is TestGhoBase {
 
     deal(address(GHO_TOKEN), address(reserve), amount);
 
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     reserve.transfer(facilitator, amount + 1);
   }
 
@@ -390,7 +390,7 @@ contract TestGhoReserve is TestGhoBase {
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 0);
 
     // No GHO to transfer
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     reserve.transfer(facilitator, amount);
 
     GHO_TOKEN.approve(address(reserve), amount / 2);

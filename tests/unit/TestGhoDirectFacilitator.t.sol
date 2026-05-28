@@ -161,7 +161,7 @@ contract TestGhoDirectFacilitator is TestGhoBase {
   }
 
   function testRevertBurnIfNoBalance() public {
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     GHO_DIRECT_FACILITATOR.burn(1);
   }
 

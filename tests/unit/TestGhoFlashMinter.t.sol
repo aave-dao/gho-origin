@@ -33,7 +33,7 @@ contract TestGhoFlashMinter is TestGhoBase {
   }
 
   function testRevertFlashloanNonRecipient() public {
-    vm.expectRevert();
+    vm.expectRevert(bytes(''));
     GHO_FLASH_MINTER.flashLoan(
       IERC3156FlashBorrower(address(this)),
       address(GHO_TOKEN),
@@ -45,7 +45,7 @@ contract TestGhoFlashMinter is TestGhoBase {
   function testRevertFlashloanEOARecipient() public {
     address receiver = makeAddr('receiver');
     vm.assume(receiver.code.length == 0);
-    vm.expectRevert();
+    vm.expectRevert(bytes(''));
     GHO_FLASH_MINTER.flashLoan(
       IERC3156FlashBorrower(receiver),
       address(GHO_TOKEN),
@@ -244,6 +244,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     vm.expectEmit(address(GHO_FLASH_MINTER));
     emit FeeUpdated(DEFAULT_FLASH_FEE, 100);
     GHO_FLASH_MINTER.updateFee(100);
+    assertEq(GHO_FLASH_MINTER.getFee(), 100, 'Flashminter fee not updated');
   }
 
   function testUpdateGhoTreasury() public {
@@ -252,6 +253,11 @@ contract TestGhoFlashMinter is TestGhoBase {
     vm.expectEmit(address(GHO_FLASH_MINTER));
     emit GhoTreasuryUpdated(TREASURY, address(this));
     GHO_FLASH_MINTER.updateGhoTreasury(address(this));
+    assertEq(
+      GHO_FLASH_MINTER.getGhoTreasury(),
+      address(this),
+      'Flashminter treasury not updated'
+    );
   }
 
   function testMaxFlashloanNotGho() public view {

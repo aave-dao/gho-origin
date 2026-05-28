@@ -8,9 +8,9 @@ contract TestGhoFlashMinter is TestGhoBase {
 
   function testConstructor() public {
     vm.expectEmit(vm.computeCreateAddress(address(this), vm.getNonce(address(this))));
-    emit GhoTreasuryUpdated(address(0), TREASURY);
+    emit IGhoFacilitator.GhoTreasuryUpdated(address(0), TREASURY);
     vm.expectEmit(vm.computeCreateAddress(address(this), vm.getNonce(address(this))));
-    emit FeeUpdated(0, DEFAULT_FLASH_FEE);
+    emit IGhoFlashMinter.FeeUpdated(0, DEFAULT_FLASH_FEE);
     GhoFlashMinter flashMinter = new GhoFlashMinter(
       address(GHO_TOKEN),
       TREASURY,
@@ -138,7 +138,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     ghoFaucet(address(FLASH_BORROWER), feeAmount);
 
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit FlashMint(
+    emit IGhoFlashMinter.FlashMint(
       address(FLASH_BORROWER),
       address(FLASH_BORROWER),
       address(GHO_TOKEN),
@@ -156,7 +156,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     assertTrue(ACL_MANAGER.isFlashBorrower(address(FLASH_BORROWER)));
 
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit FlashMint(
+    emit IGhoFlashMinter.FlashMint(
       address(FLASH_BORROWER),
       address(FLASH_BORROWER),
       address(GHO_TOKEN),
@@ -178,7 +178,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     assertGt(bucketCapacity, 0);
 
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit FlashMint(
+    emit IGhoFlashMinter.FlashMint(
       address(FLASH_BORROWER),
       address(FLASH_BORROWER),
       address(GHO_TOKEN),
@@ -199,7 +199,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     if (feeAmount > 0) ghoFaucet(address(FLASH_BORROWER), feeAmount);
 
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit FlashMint(
+    emit IGhoFlashMinter.FlashMint(
       address(FLASH_BORROWER),
       address(FLASH_BORROWER),
       address(GHO_TOKEN),
@@ -223,7 +223,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     );
 
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), 100e18);
+    emit IGhoFacilitator.FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), 100e18);
     GHO_FLASH_MINTER.distributeFeesToTreasury();
 
     assertEq(
@@ -242,7 +242,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     assertEq(GHO_FLASH_MINTER.getFee(), DEFAULT_FLASH_FEE, 'Flashminter non-default fee');
     assertTrue(DEFAULT_FLASH_FEE != 100);
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit FeeUpdated(DEFAULT_FLASH_FEE, 100);
+    emit IGhoFlashMinter.FeeUpdated(DEFAULT_FLASH_FEE, 100);
     GHO_FLASH_MINTER.updateFee(100);
     assertEq(GHO_FLASH_MINTER.getFee(), 100, 'Flashminter fee not updated');
   }
@@ -251,7 +251,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     assertEq(GHO_FLASH_MINTER.getGhoTreasury(), TREASURY, 'Flashminter non-default TREASURY');
     assertTrue(TREASURY != address(this));
     vm.expectEmit(address(GHO_FLASH_MINTER));
-    emit GhoTreasuryUpdated(TREASURY, address(this));
+    emit IGhoFacilitator.GhoTreasuryUpdated(TREASURY, address(this));
     GHO_FLASH_MINTER.updateGhoTreasury(address(this));
     assertEq(
       GHO_FLASH_MINTER.getGhoTreasury(),

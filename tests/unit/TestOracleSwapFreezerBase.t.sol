@@ -203,7 +203,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
     // Freeze the GSM and set the asset price to 1 wei
     vm.prank(address(GHO_GSM_SWAP_FREEZER));
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
     GHO_GSM.setSwapFreeze(true);
     PRICE_ORACLE.setAssetPrice(address(USDX_TOKEN), 1);
 
@@ -241,7 +241,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
     // Freeze the GSM
     vm.prank(address(GHO_GSM_SWAP_FREEZER));
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
     GHO_GSM.setSwapFreeze(true);
 
     bool canPerformUpkeep = _checkAndPerformAutomation(swapFreezer);
@@ -260,7 +260,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
     // Seize the GSM
     vm.prank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
     vm.expectEmit(address(GHO_GSM));
-    emit Seized(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), TREASURY, 0, 0);
+    emit IGsm.Seized(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), TREASURY, 0, 0);
     GHO_GSM.seize();
 
     canPerformUpkeep = _checkAndPerformAutomation(swapFreezer);
@@ -274,7 +274,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
 
     PRICE_ORACLE.setAssetPrice(address(USDX_TOKEN), DEFAULT_FREEZE_LOWER_BOUND);
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(swapFreezer), true);
+    emit IGsm.SwapFreeze(address(swapFreezer), true);
     _checkAndPerformAutomation(swapFreezer);
 
     // assertEq(GHO_GSM.getIsFrozen(), true, 'Unexpected final freeze state for GSM');
@@ -284,7 +284,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
     // Freeze the GSM and set price to 1 wei
     vm.prank(address(GHO_GSM_SWAP_FREEZER));
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
     GHO_GSM.setSwapFreeze(true);
     PRICE_ORACLE.setAssetPrice(address(USDX_TOKEN), 1);
 
@@ -294,7 +294,7 @@ abstract contract TestOracleSwapFreezerBase is TestGhoBase {
 
     PRICE_ORACLE.setAssetPrice(address(USDX_TOKEN), DEFAULT_UNFREEZE_LOWER_BOUND);
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(swapFreezer), false);
+    emit IGsm.SwapFreeze(address(swapFreezer), false);
     _checkAndPerformAutomation(swapFreezer);
 
     assertEq(GHO_GSM.getIsFrozen(), false, 'Unexpected final freeze state for GSM');

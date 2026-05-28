@@ -173,7 +173,7 @@ contract TestGhoDirectFacilitator is TestGhoBase {
     assertEq(level, 0);
 
     vm.expectEmit(true, false, false, true, address(GHO_TOKEN));
-    emit FacilitatorRemoved(address(facilitator));
+    emit IGhoToken.FacilitatorRemoved(address(facilitator));
     GHO_TOKEN.removeFacilitator(address(facilitator));
 
     (capacity, level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));

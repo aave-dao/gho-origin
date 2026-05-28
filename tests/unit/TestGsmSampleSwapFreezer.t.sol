@@ -6,14 +6,14 @@ import './TestGhoBase.t.sol';
 contract TestGsmSampleSwapFreezer is TestGhoBase {
   function testFreeze() public {
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
     GHO_GSM_SWAP_FREEZER.triggerFreeze(address(GHO_GSM));
   }
 
   function testUnfreeze() public {
     GHO_GSM_SWAP_FREEZER.triggerFreeze(address(GHO_GSM));
     vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), false);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), false);
     GHO_GSM_SWAP_FREEZER.triggerUnfreeze(address(GHO_GSM));
   }
 

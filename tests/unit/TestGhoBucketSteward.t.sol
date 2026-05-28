@@ -245,7 +245,7 @@ contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
   function testConstructorEmitsOwnershipTransferred() public {
     address expected = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
     vm.expectEmit(expected);
-    emit OwnershipTransferred(address(0), SHORT_EXECUTOR);
+    emit Ownable.OwnershipTransferred(address(0), SHORT_EXECUTOR);
     new GhoBucketSteward(SHORT_EXECUTOR, address(GHO_TOKEN), RISK_COUNCIL);
   }
 

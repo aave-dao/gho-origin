@@ -12,7 +12,6 @@ import {AutomationCompatibleInterface} from 'src/contracts/dependencies/chainlin
 // helpers
 import {Constants} from '../helpers/Constants.sol';
 import {DebtUtils} from '../helpers/DebtUtils.sol';
-import {Events} from '../helpers/Events.sol';
 import {AccessControlErrorsLib} from '../helpers/ErrorsLib.sol';
 import {EIP712Types} from '../helpers/EIP712Types.sol';
 
@@ -38,11 +37,13 @@ import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 
 // interfaces
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {IERC1967} from 'openzeppelin-contracts/contracts/interfaces/IERC1967.sol';
 import {IERC3156FlashBorrower} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
 import {IERC3156FlashLender} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
 import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
+import {IGhoFacilitator} from 'src/contracts/gho/interfaces/IGhoFacilitator.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
@@ -64,6 +65,7 @@ import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
 
 // GSM contracts
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
+import {IGsm4626} from 'src/contracts/facilitators/gsm/interfaces/IGsm4626.sol';
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
 import {Gsm4626} from 'src/contracts/facilitators/gsm/Gsm4626.sol';
 import {FixedPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
@@ -73,11 +75,15 @@ import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/Fixed
 import {SampleLiquidator} from 'src/contracts/facilitators/gsm/misc/SampleLiquidator.sol';
 import {SampleSwapFreezer} from 'src/contracts/facilitators/gsm/misc/SampleSwapFreezer.sol';
 import {GsmRegistry} from 'src/contracts/facilitators/gsm/misc/GsmRegistry.sol';
+import {IGsmRegistry} from 'src/contracts/facilitators/gsm/misc/IGsmRegistry.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import {GhoGsmSteward} from 'src/contracts/misc/GhoGsmSteward.sol';
 import {FixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
+import {IFixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IFixedFeeStrategyFactory.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
+import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve.sol';
 import {GhoDirectFacilitator} from 'src/contracts/facilitators/gsm/GhoDirectFacilitator.sol';
+import {IGhoFlashMinter} from 'src/contracts/facilitators/flashMinter/interfaces/IGhoFlashMinter.sol';
 import {OracleSwapFreezerBase} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
 import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
 import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
@@ -89,7 +95,7 @@ import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';
 import {GhoBucketSteward} from 'src/contracts/misc/GhoBucketSteward.sol';
 
-contract TestGhoBase is Test, Constants, Events {
+contract TestGhoBase is Test, Constants {
   using WadRayMath for uint256;
   using SafeCast for uint256;
   using PercentageMath for uint256;

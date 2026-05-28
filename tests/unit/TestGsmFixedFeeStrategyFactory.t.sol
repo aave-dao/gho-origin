@@ -31,9 +31,9 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
     FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
 
     vm.expectEmit(true, true, true, true);
-    emit FeeStrategyCreated(address(strategyA), DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
+    emit IFixedFeeStrategyFactory.FeeStrategyCreated(address(strategyA), DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
     vm.expectEmit(true, true, true, true);
-    emit FeeStrategyCreated(address(strategyB), 0, DEFAULT_GSM_SELL_FEE);
+    emit IFixedFeeStrategyFactory.FeeStrategyCreated(address(strategyB), 0, DEFAULT_GSM_SELL_FEE);
 
     TransparentUpgradeableProxy factoryProxy = new TransparentUpgradeableProxy(
       address(factoryImpl),
@@ -73,7 +73,7 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
 
     address expected = vm.computeCreateAddress(address(factory), vm.getNonce(address(factory)));
     vm.expectEmit(true, true, true, true, address(factory));
-    emit FeeStrategyCreated(expected, DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
+    emit IFixedFeeStrategyFactory.FeeStrategyCreated(expected, DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
     address[] memory strategies = factory.createStrategies(buyFees, sellFees);
 
     assertEq(strategies.length, 1, 'Unexpected strategies length');
@@ -135,7 +135,7 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
     address[] memory second = factory.createStrategies(buyFees, sellFees);
     Vm.Log[] memory emitted = vm.getRecordedLogs();
 
-    bytes32 createdTopic = FeeStrategyCreated.selector;
+    bytes32 createdTopic = IFixedFeeStrategyFactory.FeeStrategyCreated.selector;
     for (uint256 i = 0; i < emitted.length; i++) {
       assertTrue(emitted[i].topics[0] != createdTopic, 'Unexpected FeeStrategyCreated on cache hit');
     }

@@ -18,7 +18,7 @@ contract TestGsmUpgrade is TestGhoBase {
     );
     bytes memory data = abi.encodeWithSelector(MockGsmV2.initialize.selector);
     vm.expectEmit(address(GHO_GSM));
-    emit Upgraded(gsmV2);
+    emit IERC1967.Upgraded(gsmV2);
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GHO_GSM))).upgradeToAndCall(gsmV2, data);
 

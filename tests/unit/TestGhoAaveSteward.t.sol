@@ -814,4 +814,31 @@ contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
         ) / 1e23
       ); // Convert to bps
   }
+
+  function testConstructorEmitsOwnershipTransferred() public {
+    address expected = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+    vm.expectEmit(expected);
+    emit Ownable.OwnershipTransferred(address(0), SHORT_EXECUTOR);
+    new GhoAaveSteward(
+      SHORT_EXECUTOR,
+      address(PROVIDER),
+      address(MOCK_POOL_DATA_PROVIDER),
+      address(GHO_TOKEN),
+      RISK_COUNCIL,
+      defaultBorrowRateConfig
+    );
+  }
+
+  function testRevertRenounceOwnershipFromUnauthorized() public {
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
+    vm.prank(ALICE);
+    GHO_AAVE_STEWARD.renounceOwnership();
+  }
+
+  function testRenounceOwnership() public {
+    assertEq(GHO_AAVE_STEWARD.owner(), SHORT_EXECUTOR);
+    vm.prank(SHORT_EXECUTOR);
+    GHO_AAVE_STEWARD.renounceOwnership();
+    assertEq(GHO_AAVE_STEWARD.owner(), address(0));
+  }
 }

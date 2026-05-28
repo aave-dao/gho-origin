@@ -33,6 +33,7 @@ contract TestGsmUpgrade is TestGhoBase {
   }
 
   function _getStorageSnapshot() internal view returns (bytes32[] memory) {
+    // Snapshot values for lastInitializedRevision (slot 1) and GSM local storage (56-60)
     bytes32[] memory data = new bytes32[](6);
     data[0] = vm.load(address(GHO_GSM), bytes32(uint256(1)));
     data[1] = vm.load(address(GHO_GSM), bytes32(uint256(56)));

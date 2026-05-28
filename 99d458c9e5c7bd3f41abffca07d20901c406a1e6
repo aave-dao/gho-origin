@@ -1,0 +1,14 @@
+tests/unit/TestGsmUpgrade.t.sol
+  h_0f977de3f043fc 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99d458c9e5c7bd3f41abffca07d20901c406a1e6",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

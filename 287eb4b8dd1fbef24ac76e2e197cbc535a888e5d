@@ -1,0 +1,33 @@
+tests/misc/StkGhoMigratorForkTest.t.sol
+  s_259e9b6b6b6916::t_4407f9fb10c13a 301
+  h_dd1a1ee57491bb 6
+src/contracts/misc/interfaces/IStkGhoMigrator.sol
+  h_dd1a1ee57491bb 6
+remappings.txt
+  h_dd1a1ee57491bb 5
+src/contracts/misc/StkGhoMigrator.sol
+  h_dd1a1ee57491bb 10
+tests/misc/StkGhoMigratorStatelessFuzz.t.sol
+  h_dd1a1ee57491bb 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "287eb4b8dd1fbef24ac76e2e197cbc535a888e5d",
+  "prompts": {},
+  "humans": {
+    "h_dd1a1ee57491bb": {
+      "author": "AGMASO <agmguindo@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_259e9b6b6b6916": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b618a8-444a-4265-a412-32ff6fa7e603",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "AGMASO <agmguindo@gmail.com>"
+    }
+  }
+}

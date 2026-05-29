@@ -1,0 +1,79 @@
+certora/steward/conf/GhoBucketSteward.conf
+  s_030f088d26951f::t_7ca352889d9e0d 5-8
+certora/gsm/conf/gsm/finishedRules.conf
+  s_030f088d26951f::t_cb8da62f32472a 21
+certora/gho/conf/verifyFlashMinter.conf
+  s_030f088d26951f::t_36f038ccf08504 13-14
+certora/gsm/conf/gsm4626/finishedRules-4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/gho-gsm-inverse.conf
+  s_030f088d26951f::t_cb8da62f32472a 22
+certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf
+  s_030f088d26951f::t_cb8da62f32472a 21
+certora/gsm/conf/gsm4626/fees-sell-4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/optimality.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/gho-fixedPriceStrategy.conf
+  s_030f088d26951f::t_b33f446f6a0fd9 7
+certora/gsm/conf/gsm4626/balances-buy-4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/getAmount_properties.conf
+  s_030f088d26951f::t_cb8da62f32472a 21
+certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf
+  s_030f088d26951f::t_b33f446f6a0fd9 17
+certora/gsm/conf/gsm/gho-gsm-1.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm4626/gho-gsm4626-2.conf
+  s_030f088d26951f::t_cb8da62f32472a 24
+certora/gsm/conf/gsm/FixedFeeStrategy.conf
+  s_030f088d26951f::t_b33f446f6a0fd9 7
+certora/gsm/conf/gsm4626/optimality4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm4626/balances-sell-4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm4626/gho-gsm4626-1.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/balances-buy.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm4626/gho-fixedPriceStrategy4626.conf
+  s_030f088d26951f::t_b33f446f6a0fd9 7
+certora/gsm/conf/gsm4626/getAmount-properties-4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 25
+certora/steward/conf/GhoAaveSteward.conf
+  s_030f088d26951f::t_5e23728bc61734 3-6
+certora/gsm/conf/gsm/OracleSwapFreezer.conf
+  s_030f088d26951f::t_b33f446f6a0fd9 8
+certora/gsm/conf/gsm/GelatoOracleSwapFreezer.conf
+  s_030f088d26951f::t_b33f446f6a0fd9 8
+certora/gsm/conf/gsm/gho-gsm-2.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/steward/conf/GhoGsmSteward.conf
+  s_030f088d26951f::t_d21131757de885 9-12
+certora/gsm/conf/gsm/balances-sell.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/fees-sell.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm4626/gho-gsm4626-inverse.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm/fees-buy.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+certora/gsm/conf/gsm4626/fees-buy-4626.conf
+  s_030f088d26951f::t_cb8da62f32472a 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1ce4f05898a6392c1fa2ef79212cc34765ee8c5",
+  "prompts": {},
+  "sessions": {
+    "s_030f088d26951f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12c62f80-0635-47f6-8352-5e9452ee394c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

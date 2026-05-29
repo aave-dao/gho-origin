@@ -1,0 +1,19 @@
+tests/unit/TestGhoAaveSteward.t.sol
+  s_030f088d26951f::t_ba278916978b5b 817-843
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41009fcad76c6956f53b7138750317a63cbd3bba",
+  "prompts": {},
+  "sessions": {
+    "s_030f088d26951f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12c62f80-0635-47f6-8352-5e9452ee394c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

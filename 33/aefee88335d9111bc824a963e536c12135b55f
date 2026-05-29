@@ -1,0 +1,23 @@
+certora/gho/conf/verifyGhoToken.conf
+  s_030f088d26951f::t_73c947f134c177 7
+certora/gho/conf/verifyUpgradeableGhoToken.conf
+  s_030f088d26951f::t_9f79f1532ffe4a 5-7
+certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf
+  s_030f088d26951f::t_47c666cdbe24f6 20-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "33aefee88335d9111bc824a963e536c12135b55f",
+  "prompts": {},
+  "sessions": {
+    "s_030f088d26951f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12c62f80-0635-47f6-8352-5e9452ee394c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

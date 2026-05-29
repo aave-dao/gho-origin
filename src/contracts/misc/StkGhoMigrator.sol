@@ -7,7 +7,7 @@ import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from 'openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
-import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
+import {IStakeToken} from 'aave-address-book/common/IStakeToken.sol';
 
 /**
  * @title StkGhoMigrator

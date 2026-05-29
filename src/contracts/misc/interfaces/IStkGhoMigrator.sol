@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
-import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
+import {IStakeToken} from 'aave-address-book/common/IStakeToken.sol';
 
 /**
  * @title IStkGhoMigrator

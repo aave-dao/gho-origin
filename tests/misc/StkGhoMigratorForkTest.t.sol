@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {Test} from 'forge-std/Test.sol';
 import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
-import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
+import {IStakeToken} from 'aave-address-book/common/IStakeToken.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {Pausable} from 'openzeppelin-contracts/contracts/utils/Pausable.sol';
@@ -298,7 +298,7 @@ contract StkGhoMigratorForkTest is Test {
     deal(address(SGHO), user, 50e18);
     vm.startPrank(user);
     assertTrue(IERC20(GHO).transfer(address(migrator), 1_000e18));
-    assertTrue(IERC20(STKGHO).transfer(address(migrator), 90e18));
+    assertTrue(STKGHO.transfer(address(migrator), 90e18));
     assertTrue(IERC20(SGHO).transfer(address(migrator), 50e18));
     vm.stopPrank();
 

@@ -582,7 +582,13 @@ contract TestGsm is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM), DEFAULT_GSM_GHO_AMOUNT + buyFee);
     vm.expectEmit(true, true, true, true, address(GHO_GSM));
-    emit IGsm.BuyAsset(BOB, CHARLES, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
+    emit IGsm.BuyAsset(
+      BOB,
+      CHARLES,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
     (uint256 assetAmount, uint256 ghoSold) = GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, CHARLES);
     vm.stopPrank();
 

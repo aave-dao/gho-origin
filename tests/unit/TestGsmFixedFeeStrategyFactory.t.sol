@@ -31,7 +31,11 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
     FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
 
     vm.expectEmit(true, true, true, true);
-    emit IFixedFeeStrategyFactory.FeeStrategyCreated(address(strategyA), DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
+    emit IFixedFeeStrategyFactory.FeeStrategyCreated(
+      address(strategyA),
+      DEFAULT_GSM_BUY_FEE,
+      DEFAULT_GSM_SELL_FEE
+    );
     vm.expectEmit(true, true, true, true);
     emit IFixedFeeStrategyFactory.FeeStrategyCreated(address(strategyB), 0, DEFAULT_GSM_SELL_FEE);
 
@@ -73,7 +77,11 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
 
     address expected = vm.computeCreateAddress(address(factory), vm.getNonce(address(factory)));
     vm.expectEmit(true, true, true, true, address(factory));
-    emit IFixedFeeStrategyFactory.FeeStrategyCreated(expected, DEFAULT_GSM_BUY_FEE, DEFAULT_GSM_SELL_FEE);
+    emit IFixedFeeStrategyFactory.FeeStrategyCreated(
+      expected,
+      DEFAULT_GSM_BUY_FEE,
+      DEFAULT_GSM_SELL_FEE
+    );
     address[] memory strategies = factory.createStrategies(buyFees, sellFees);
 
     assertEq(strategies.length, 1, 'Unexpected strategies length');
@@ -137,7 +145,10 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
 
     bytes32 createdTopic = IFixedFeeStrategyFactory.FeeStrategyCreated.selector;
     for (uint256 i = 0; i < emitted.length; i++) {
-      assertTrue(emitted[i].topics[0] != createdTopic, 'Unexpected FeeStrategyCreated on cache hit');
+      assertTrue(
+        emitted[i].topics[0] != createdTopic,
+        'Unexpected FeeStrategyCreated on cache hit'
+      );
     }
 
     assertEq(second.length, 1, 'Unexpected strategies length');
@@ -164,9 +175,7 @@ contract TestGsmFixedFeeStrategyFactory is TestGhoBase {
     );
   }
 
-  function _deployFactory(
-    address[] memory preDeployed
-  ) internal returns (FixedFeeStrategyFactory) {
+  function _deployFactory(address[] memory preDeployed) internal returns (FixedFeeStrategyFactory) {
     address proxyAdmin = makeAddr('PROXY_ADMIN');
     FixedFeeStrategyFactory factoryImpl = new FixedFeeStrategyFactory();
     TransparentUpgradeableProxy factoryProxy = new TransparentUpgradeableProxy(

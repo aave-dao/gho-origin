@@ -357,7 +357,13 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit IGsm.BuyAsset(BOB, CHARLES, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
+    emit IGsm.BuyAsset(
+      BOB,
+      CHARLES,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
     (uint256 assetAmount, uint256 ghoSold) = GHO_GSM_4626.buyAsset(
       DEFAULT_GSM_USDX_AMOUNT,
       CHARLES
@@ -1772,11 +1778,7 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testUpdateExposureCapBelowCurrentExposure() public {
-    assertEq(
-      GHO_GSM_4626.getExposureCap(),
-      DEFAULT_GSM_USDX_EXPOSURE,
-      'Unexpected exposure cap'
-    );
+    assertEq(GHO_GSM_4626.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure cap');
 
     _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, 2 * DEFAULT_GSM_USDX_AMOUNT);
 
@@ -1793,21 +1795,13 @@ contract TestGsm4626 is TestGhoBase {
       DEFAULT_GSM_USDX_EXPOSURE - DEFAULT_GSM_USDX_AMOUNT,
       'Unexpected available underlying exposure'
     );
-    assertEq(
-      GHO_GSM_4626.getExposureCap(),
-      DEFAULT_GSM_USDX_EXPOSURE,
-      'Unexpected exposure cap'
-    );
+    assertEq(GHO_GSM_4626.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure cap');
 
     uint256 currentExposure = GHO_GSM_4626.getAvailableLiquidity();
     uint256 newExposureCap = currentExposure - 1;
     GHO_GSM_4626.updateExposureCap(uint128(newExposureCap));
     assertEq(GHO_GSM_4626.getExposureCap(), newExposureCap, 'Unexpected exposure cap');
-    assertEq(
-      GHO_GSM_4626.getAvailableLiquidity(),
-      currentExposure,
-      'Unexpected current exposure'
-    );
+    assertEq(GHO_GSM_4626.getAvailableLiquidity(), currentExposure, 'Unexpected current exposure');
 
     GHO_GSM_4626.updateExposureCap(0);
 

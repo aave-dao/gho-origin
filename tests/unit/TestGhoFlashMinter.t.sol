@@ -253,11 +253,7 @@ contract TestGhoFlashMinter is TestGhoBase {
     vm.expectEmit(address(GHO_FLASH_MINTER));
     emit IGhoFacilitator.GhoTreasuryUpdated(TREASURY, address(this));
     GHO_FLASH_MINTER.updateGhoTreasury(address(this));
-    assertEq(
-      GHO_FLASH_MINTER.getGhoTreasury(),
-      address(this),
-      'Flashminter treasury not updated'
-    );
+    assertEq(GHO_FLASH_MINTER.getGhoTreasury(), address(this), 'Flashminter treasury not updated');
   }
 
   function testMaxFlashloanNotGho() public view {

@@ -553,7 +553,11 @@ contract TestGsm4626Edge is TestGhoBase {
 
     // Fee distribution
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit IGhoFacilitator.FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), ongoingAccruedFees + margin);
+    emit IGhoFacilitator.FeesDistributedToTreasury(
+      TREASURY,
+      address(GHO_TOKEN),
+      ongoingAccruedFees + margin
+    );
     GHO_GSM_4626.distributeFeesToTreasury();
 
     ghoLevel = GHO_GSM_4626.getUsed();
@@ -662,7 +666,11 @@ contract TestGsm4626Edge is TestGhoBase {
     // Fee distribution
     uint256 treasuryBalanceBefore = GHO_TOKEN.balanceOf(address(TREASURY));
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit IGhoFacilitator.FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), ongoingAccruedFees);
+    emit IGhoFacilitator.FeesDistributedToTreasury(
+      TREASURY,
+      address(GHO_TOKEN),
+      ongoingAccruedFees
+    );
     GHO_GSM_4626.distributeFeesToTreasury();
 
     assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
@@ -743,7 +751,11 @@ contract TestGsm4626Edge is TestGhoBase {
     // Fee distribution
     uint256 treasuryBalanceBefore = GHO_TOKEN.balanceOf(address(TREASURY));
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit IGhoFacilitator.FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), ongoingAccruedFees);
+    emit IGhoFacilitator.FeesDistributedToTreasury(
+      TREASURY,
+      address(GHO_TOKEN),
+      ongoingAccruedFees
+    );
     GHO_GSM_4626.distributeFeesToTreasury();
 
     assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');

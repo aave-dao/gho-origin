@@ -7,7 +7,7 @@ import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from 'openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
-import {IStakeToken} from 'aave-address-book/common/IStakeToken.sol';
+import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 
 /**
  * @title StkGhoMigrator
@@ -78,7 +78,7 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable {
   }
 
   /// @inheritdoc IStkGhoMigrator
-  function unpause() external onlyOwnerOrPauseGuardian {
+  function unpause() external onlyOwner {
     _unpause();
   }
 
@@ -99,6 +99,6 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable {
     uint256 sghoSharesReceived = SGHO.deposit(ghoRedeemed, msg.sender);
     require(sghoSharesReceived != 0, NoSGhoSharesReceived());
 
-    emit MigrationBatchExecuted(msg.sender, stkGhoShares, ghoRedeemed, sghoSharesReceived);
+    emit MigrationBatchExecuted(msg.sender, ghoRedeemed, sghoSharesReceived);
   }
 }

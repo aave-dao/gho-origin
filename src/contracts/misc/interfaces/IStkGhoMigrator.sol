@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
-import {IStakeToken} from 'aave-address-book/common/IStakeToken.sol';
+import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 
 /**
  * @title IStkGhoMigrator
@@ -12,12 +12,10 @@ import {IStakeToken} from 'aave-address-book/common/IStakeToken.sol';
 interface IStkGhoMigrator {
   /// @notice Emitted when a migration batch is executed.
   /// @param user The address of the user executing the migration.
-  /// @param stkGhoSharesRedeemed The amount of stkGHO shares redeemed.
   /// @param ghoRedeemed The amount of GHO received from redeeming stkGHO.
   /// @param sghoSharesReceived The amount of sGHO shares received from the deposit.
   event MigrationBatchExecuted(
     address indexed user,
-    uint256 stkGhoSharesRedeemed,
     uint256 ghoRedeemed,
     uint256 sghoSharesReceived
   );

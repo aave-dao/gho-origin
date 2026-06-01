@@ -1,0 +1,41 @@
+tests/unit/TestGhoBucketSteward.t.sol
+  s_85132b8da9ed23::t_a44a47d4b75107 6
+tests/unit/TestGhoGsmSteward.t.sol
+  s_85132b8da9ed23::t_4daa25b77e4e7f 7
+tests/unit/TestGhoCcipSteward.t.sol
+  s_85132b8da9ed23::t_fba0dcaa261276 99-105
+  s_85132b8da9ed23::t_b49d81c9648bf3 8
+src/deployments/projects/aave-v3-gho-facilitator/batches/GhoTokenBatch.sol
+  s_85132b8da9ed23::t_cb97a568b666b5 15
+tests/unit/TestGhoBase.t.sol
+  s_85132b8da9ed23::t_17980e827e785a 65
+  s_85132b8da9ed23::t_c06dbdeed6192a 101-107
+  s_85132b8da9ed23::t_a2ee4f9b8af854 55
+  s_85132b8da9ed23::t_6bd5132f8705e9 169
+  s_85132b8da9ed23::t_db6874ba1b63f0 187-193
+  s_85132b8da9ed23::t_afba02c368bf3e 66-67
+tests/unit/TestUpgradeableGhoToken.t.sol
+  s_85132b8da9ed23::t_b3be61800f7221 5,8-12,14-27,32-391,400-412,415-420
+  s_85132b8da9ed23::t_86de191dbf6c01 4,7,13,30-31
+  s_85132b8da9ed23::t_df3c58e42438e5 392-399
+tests/unit/TestGhoAaveSteward.t.sol
+  s_85132b8da9ed23::t_35f12d83e33123 7
+src/deployments/contracts/procedures/GhoTokenProcedure.sol
+  s_85132b8da9ed23::t_d0116435f31971 4,21,23,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ec1397b0e9a627b6d3f58f781732510afb07fa1",
+  "prompts": {},
+  "sessions": {
+    "s_85132b8da9ed23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2cb6a6c-21e8-4f83-879f-f81d73f5b632",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

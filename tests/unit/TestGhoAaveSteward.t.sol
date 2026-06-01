@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 import {IGhoAaveSteward} from 'src/contracts/misc/interfaces/IGhoAaveSteward.sol';
 import './TestGhoBase.t.sol';
 
-contract TestGhoAaveSteward is TestGhoBase, GhoStewardProcedure {
+contract TestGhoAaveSteward is TestGhoBase {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
 
   IGhoAaveSteward.BorrowRateConfig public defaultBorrowRateConfig =

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import './TestGhoBase.t.sol';
 
-contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
+contract TestGhoGsmSteward is TestGhoBase {
   function setUp() public {
     // Deploy Gho GSM Steward
     FIXED_FEE_STRATEGY_FACTORY = new FixedFeeStrategyFactory();

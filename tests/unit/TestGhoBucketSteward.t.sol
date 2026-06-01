@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 import './TestGhoBase.t.sol';
 
-contract TestGhoBucketSteward is TestGhoBase, GhoStewardProcedure {
+contract TestGhoBucketSteward is TestGhoBase {
   address internal FACILITATOR_1 = makeAddr('facilitator1');
   address internal FACILITATOR_2 = makeAddr('facilitator2');
   address internal FACILITATOR_3 = makeAddr('facilitator3');

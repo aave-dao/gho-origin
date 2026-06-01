@@ -52,7 +52,7 @@ import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interface
 import {AdminUpgradeabilityProxy} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
 import {ERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/ERC20.sol';
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 
 import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 
@@ -62,6 +62,9 @@ import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
 import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
+import {GhoTokenProcedure} from 'src/deployments/contracts/procedures/GhoTokenProcedure.sol';
+import {GhoFlashMinterProcedure} from 'src/deployments/contracts/procedures/GhoFlashMinterProcedure.sol';
+import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 
 // GSM contracts
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
@@ -95,7 +98,13 @@ import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';
 import {GhoBucketSteward} from 'src/contracts/misc/GhoBucketSteward.sol';
 
-contract TestGhoBase is Test, Constants {
+contract TestGhoBase is
+  Test,
+  Constants,
+  GhoTokenProcedure,
+  GhoFlashMinterProcedure,
+  GhoStewardProcedure
+{
   using WadRayMath for uint256;
   using SafeCast for uint256;
   using PercentageMath for uint256;
@@ -157,7 +166,7 @@ contract TestGhoBase is Test, Constants {
     PROVIDER.setConfigurator(address(CONFIGURATOR));
     PROVIDER.setPriceOracle(address(PRICE_ORACLE));
     GHO_ORACLE = new GhoOracle();
-    GHO_TOKEN = new GhoToken(address(this));
+    GHO_TOKEN = GhoToken(_deployGhoToken(address(this)));
     GHO_TOKEN.grantRole(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, address(this));
     GHO_TOKEN.grantRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, address(this));
     AAVE_TOKEN = new TestnetERC20('AAVE', 'AAVE', 18, FAUCET);
@@ -175,11 +184,13 @@ contract TestGhoBase is Test, Constants {
       DEFAULT_CAPACITY * 2
     );
 
-    GHO_FLASH_MINTER = new GhoFlashMinter(
-      address(GHO_TOKEN),
-      TREASURY,
-      DEFAULT_FLASH_FEE,
-      address(PROVIDER)
+    GHO_FLASH_MINTER = GhoFlashMinter(
+      _deployGhoFlashMinter({
+        ghoToken: address(GHO_TOKEN),
+        treasury: TREASURY,
+        flashMinterFee: DEFAULT_FLASH_FEE,
+        poolAddressesProvider: address(PROVIDER)
+      })
     );
     FLASH_BORROWER = new MockFlashBorrower(IERC3156FlashLender(GHO_FLASH_MINTER));
 

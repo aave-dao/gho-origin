@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from 'openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol';
-import {Initializable} from 'src/contracts/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
+import {Initializable} from 'openzeppelin-contracts/contracts/proxy/utils/Initializable.sol';
 import {EnumerableSet} from 'openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 import {IRouter} from 'src/contracts/dependencies/ccip/Ccip.sol';

@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 import {IGhoToken} from '../munged/contracts/gho/interfaces/IGhoToken.sol';
-import 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
+import 'src/contracts/gho/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
 import {UpgradeableGhoToken} from '../munged/contracts/gho/UpgradeableGhoToken.sol';
 
 contract UpgradeableGhoTokenHarness is UpgradeableGhoToken {

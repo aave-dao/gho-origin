@@ -816,7 +816,7 @@ contract TestGhoAaveSteward is TestGhoBase {
 
   function testConstructorEmitsOwnershipTransferred() public {
     address expected = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-    vm.expectEmit(expected);
+    vm.expectEmit(true, true, true, true, expected);
     emit Ownable.OwnershipTransferred(address(0), SHORT_EXECUTOR);
     new GhoAaveSteward(
       SHORT_EXECUTOR,

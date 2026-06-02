@@ -7,7 +7,13 @@ contract TestGsmRegistry is TestGhoBase {
   function testConstructor(address newOwner) public {
     vm.assume(newOwner != address(this) && newOwner != address(0));
 
-    vm.expectEmit(vm.computeCreateAddress(address(this), vm.getNonce(address(this))));
+    vm.expectEmit(
+      true,
+      true,
+      true,
+      true,
+      vm.computeCreateAddress(address(this), vm.getNonce(address(this)))
+    );
     emit Ownable.OwnershipTransferred(address(0), newOwner);
 
     GsmRegistry registry = new GsmRegistry(newOwner);
@@ -24,7 +30,7 @@ contract TestGsmRegistry is TestGhoBase {
   function testAddGsm(address newGsm) public {
     vm.assume(newGsm != address(0));
 
-    vm.expectEmit(address(GHO_GSM_REGISTRY));
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_REGISTRY));
     emit IGsmRegistry.GsmAdded(newGsm);
     GHO_GSM_REGISTRY.addGsm(newGsm);
 
@@ -37,7 +43,7 @@ contract TestGsmRegistry is TestGhoBase {
 
     for (uint256 i = 0; i < size; i++) {
       address newGsm = address(uint160(i + 123));
-      vm.expectEmit(address(GHO_GSM_REGISTRY));
+      vm.expectEmit(true, true, true, true, address(GHO_GSM_REGISTRY));
       emit IGsmRegistry.GsmAdded(newGsm);
       GHO_GSM_REGISTRY.addGsm(newGsm);
       assertEq(GHO_GSM_REGISTRY.getGsmAtIndex(i), newGsm, 'Unexpected gsm registered');
@@ -63,7 +69,7 @@ contract TestGsmRegistry is TestGhoBase {
 
   function testRevertAddSameGsmTwice(address newGsm) public {
     vm.assume(newGsm != address(0));
-    vm.expectEmit(address(GHO_GSM_REGISTRY));
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_REGISTRY));
     emit IGsmRegistry.GsmAdded(newGsm);
     GHO_GSM_REGISTRY.addGsm(newGsm);
 
@@ -84,7 +90,7 @@ contract TestGsmRegistry is TestGhoBase {
 
     GHO_GSM_REGISTRY.addGsm(gsmToRemove);
 
-    vm.expectEmit(address(GHO_GSM_REGISTRY));
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_REGISTRY));
     emit IGsmRegistry.GsmRemoved(gsmToRemove);
     GHO_GSM_REGISTRY.removeGsm(gsmToRemove);
 
@@ -100,7 +106,7 @@ contract TestGsmRegistry is TestGhoBase {
       GHO_GSM_REGISTRY.addGsm(newGsm);
       assertEq(GHO_GSM_REGISTRY.getGsmAtIndex(0), newGsm, 'Unexpected gsm registered');
 
-      vm.expectEmit(address(GHO_GSM_REGISTRY));
+      vm.expectEmit(true, true, true, true, address(GHO_GSM_REGISTRY));
       emit IGsmRegistry.GsmRemoved(newGsm);
       GHO_GSM_REGISTRY.removeGsm(newGsm);
     }
@@ -125,7 +131,7 @@ contract TestGsmRegistry is TestGhoBase {
     vm.assume(newGsm != address(0));
     GHO_GSM_REGISTRY.addGsm(newGsm);
 
-    vm.expectEmit(address(GHO_GSM_REGISTRY));
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_REGISTRY));
     emit IGsmRegistry.GsmRemoved(newGsm);
     GHO_GSM_REGISTRY.removeGsm(newGsm);
 

@@ -6,6 +6,7 @@ import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
 import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
+import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 import {Pausable} from 'openzeppelin-contracts/contracts/utils/Pausable.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
@@ -64,7 +65,7 @@ contract StkGhoMigratorForkTest is Test {
     StkGhoMigrator freshMigrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
 
     assertEq(freshMigrator.owner(), ownerMigrator);
-    assertEq(freshMigrator.pauseGuardian(), pauseGuardian);
+    assertEq(freshMigrator.guardian(), pauseGuardian);
     assertEq(GHO.allowance(address(freshMigrator), address(SGHO)), type(uint256).max);
     assertEq(address(freshMigrator.STKGHO()), address(STKGHO));
     assertEq(address(freshMigrator.SGHO()), address(SGHO));
@@ -96,31 +97,33 @@ contract StkGhoMigratorForkTest is Test {
     assertEq(STKGHO.getAdmin(CLAIM_HELPER_ROLE), address(freshMigrator));
   }
 
-  // --- Test Pause Guardian ---
-  function test_PauseGuardian_FreshDeploy() public view {
-    assertEq(migrator.pauseGuardian(), pauseGuardian);
+  // --- Test Guardian ---
+  function test_Guardian_FreshDeploy() public view {
+    assertEq(migrator.guardian(), pauseGuardian);
   }
 
-  function test_SetPauseGuardian() public {
+  function test_UpdateGuardian() public {
     address newPauseGuardian = makeAddr('NEW_PAUSE_GUARDIAN');
 
-    vm.expectEmit(true, true, false, true);
-    emit IStkGhoMigrator.PauseGuardianUpdated(pauseGuardian, newPauseGuardian);
+    vm.expectEmit(address(migrator));
+    emit IWithGuardian.GuardianUpdated(pauseGuardian, newPauseGuardian);
 
     vm.prank(ownerMigrator);
-    migrator.setPauseGuardian(newPauseGuardian);
+    migrator.updateGuardian(newPauseGuardian);
 
-    assertEq(migrator.pauseGuardian(), newPauseGuardian);
+    assertEq(migrator.guardian(), newPauseGuardian);
   }
 
-  function test_SetPauseGuardian_UpdatesPausePermissions() public {
+  function test_UpdateGuardian_UpdatesPausePermissions() public {
     address newPauseGuardian = makeAddr('NEW_PAUSE_GUARDIAN');
 
     vm.prank(ownerMigrator);
-    migrator.setPauseGuardian(newPauseGuardian);
+    migrator.updateGuardian(newPauseGuardian);
 
     vm.prank(pauseGuardian);
-    vm.expectRevert(IStkGhoMigrator.CallerNotOwnerOrPauseGuardian.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, pauseGuardian)
+    );
     migrator.pause();
 
     vm.prank(newPauseGuardian);
@@ -129,22 +132,12 @@ contract StkGhoMigratorForkTest is Test {
     assertTrue(migrator.paused());
   }
 
-  function test_Revert_SetPauseGuardian_InvalidAddressZero() public {
-    vm.prank(ownerMigrator);
-    vm.expectRevert(IStkGhoMigrator.InvalidAddressZero.selector);
-    migrator.setPauseGuardian(address(0));
-  }
-
-  function test_Revert_SetPauseGuardian_SamePauseGuardian() public {
-    vm.prank(ownerMigrator);
-    vm.expectRevert(IStkGhoMigrator.InvalidSamePauseGuardian.selector);
-    migrator.setPauseGuardian(pauseGuardian);
-  }
-
-  function test_Revert_SetPauseGuardian_NotOwner() public {
+  function test_Revert_UpdateGuardian_NotOwnerOrGuardian() public {
     vm.prank(user);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
-    migrator.setPauseGuardian(invalidUser);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, user)
+    );
+    migrator.updateGuardian(invalidUser);
   }
 
   function test_PauseUnpause_ByPauseGuardian() public depositStkGhoReadyToRedeem {
@@ -184,9 +177,11 @@ contract StkGhoMigratorForkTest is Test {
     assertFalse(migrator.paused());
   }
 
-  function test_Revert_Pause_NotOwnerOrPauseGuardian() public {
+  function test_Revert_Pause_NotOwnerOrGuardian() public {
     vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.CallerNotOwnerOrPauseGuardian.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, user)
+    );
     migrator.pause();
   }
 
@@ -363,5 +358,28 @@ contract StkGhoMigratorForkTest is Test {
     vm.prank(invalidUser);
     vm.expectRevert();
     migrator.setClaimHelperPendingAdmin(newPendingAdmin);
+  }
+
+  // --- Tests transferOwnership ---
+  function test_TransferOwnership_2Steps() public {
+    address newOwner = makeAddr('NEW_OWNER');
+
+    vm.prank(ownerMigrator);
+    migrator.transferOwnership(newOwner);
+    assertEq(migrator.pendingOwner(), newOwner);
+
+    vm.prank(newOwner);
+    migrator.acceptOwnership();
+    assertEq(migrator.owner(), newOwner);
+  }
+
+  function test_Revert_TransferOwnership_NotOwner() public {
+    address newOwner = makeAddr('NEW_OWNER');
+
+    vm.prank(invalidUser);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, invalidUser)
+    );
+    migrator.transferOwnership(newOwner);
   }
 }

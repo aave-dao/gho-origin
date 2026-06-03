@@ -115,17 +115,6 @@ contract StkGhoMigratorStatelessFuzz is Test {
     assertEq(STKGHO.getPendingAdmin(CLAIM_HELPER_ROLE), newPendingAdmin);
   }
 
-  // --- Fuzzing Tests setPauseGuardian ---
-  function testFuzz_SetPauseGuardian(address newPauseGuardian) public {
-    vm.assume(newPauseGuardian != address(0));
-    vm.assume(newPauseGuardian != pauseGuardian);
-
-    vm.prank(ownerMigrator);
-    migrator.setPauseGuardian(newPauseGuardian);
-
-    assertEq(migrator.pauseGuardian(), newPauseGuardian);
-  }
-
   // --- Helper functions ---
   function _boundToken(uint256 tokenIndex) internal pure returns (IERC20) {
     uint256 boundedIndex = bound(tokenIndex, 0, 2);

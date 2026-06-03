@@ -13,15 +13,7 @@ interface IStkGhoMigrator {
   /// @notice Emitted when a migration is executed.
   /// @param user The address of the user executing the migration.
   /// @param amount The amount of stkGHO migrated.
-  event StkGhoMigrated(
-    address indexed user,
-    uint256 amount
-  );
-
-  /// @notice Emitted when the pause guardian is updated.
-  /// @param oldPauseGuardian The old pause guardian address.
-  /// @param newPauseGuardian The new pause guardian address.
-  event PauseGuardianUpdated(address indexed oldPauseGuardian, address indexed newPauseGuardian);
+  event StkGhoMigrated(address indexed user, uint256 amount);
 
   /// @notice Thrown when the stkGHO cooldown period is not zero.
   error CooldownPeriodNotZero();
@@ -35,10 +27,6 @@ interface IStkGhoMigrator {
   error InvalidAmount();
   /// @notice Thrown when no sGHO shares were received from the deposit.
   error NoSGhoSharesReceived();
-  /// @notice Thrown when the new pause guardian is the current pause guardian.
-  error InvalidSamePauseGuardian();
-  /// @notice Thrown when the caller is neither the owner nor the pause guardian.
-  error CallerNotOwnerOrPauseGuardian();
 
   /**
    * @notice Claims the stkGHO claim helper role.
@@ -51,13 +39,6 @@ interface IStkGhoMigrator {
    * @param newPendingAdmin The address of the new pending admin.
    */
   function setClaimHelperPendingAdmin(address newPendingAdmin) external;
-
-  /**
-   * @notice Updates the pause guardian.
-   * @dev Only callable by the owner.
-   * @param newPauseGuardian The address of the new pause guardian.
-   */
-  function setPauseGuardian(address newPauseGuardian) external;
 
   /**
    * @notice Rescues ERC20 tokens accidentally sent to this contract.
@@ -76,7 +57,7 @@ interface IStkGhoMigrator {
 
   /**
    * @notice Unpauses migrations.
-   * @dev Callable by the owner or the pause guardian.
+   * @dev Callable by the owner only.
    */
   function unpause() external;
 
@@ -105,9 +86,4 @@ interface IStkGhoMigrator {
    * @notice Returns the stkGHO claim helper role ID.
    */
   function CLAIM_HELPER_ROLE() external view returns (uint256);
-
-  /**
-   * @notice Returns the pause guardian address.
-   */
-  function pauseGuardian() external view returns (address);
 }

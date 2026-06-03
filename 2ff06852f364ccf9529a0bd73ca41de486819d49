@@ -1,0 +1,44 @@
+src/contracts/gho/UpgradeableERC20.sol
+  s_85132b8da9ed23::t_fd9b527ec11bf7 4
+tests/unit/TestGhoToken.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 17,74,83,87,116,124,128,153,167,171,198,200,222,238,240,251,253,258,272,299
+tests/unit/TestOracleSwapFreezerBase.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 205,243,262,276,286,296
+tests/unit/TestUpgradeableGhoToken.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 105,111,115,144,150,154,181,187,191,218,220,239,250,252,263,265,270,280,302
+  s_85132b8da9ed23::t_a795eaff125fa4 41-47
+tests/unit/TestGhoAaveSteward.t.sol
+  s_85132b8da9ed23::t_ba6c4864a23e7f 819
+tests/unit/TestGsmUpgrade.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 20
+tests/unit/TestGsmRegistry.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 33,46,72,93,109,134
+  s_85132b8da9ed23::t_a795eaff125fa4 10-16
+src/contracts/gho/interfaces/IGhoToken.sol
+  s_85132b8da9ed23::t_86dfbd3863c932 4
+tests/unit/TestGhoFlashMinter.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 152,170,192,213,237,256,265
+  s_85132b8da9ed23::t_a795eaff125fa4 10-16,18-24
+tests/unit/TestGhoBucketSteward.t.sol
+  s_85132b8da9ed23::t_ba6c4864a23e7f 246
+tests/unit/TestGsmSampleSwapFreezer.t.sol
+  s_85132b8da9ed23::t_881bc1823dbf51 8,15
+src/contracts/gho/ERC20.sol
+  s_85132b8da9ed23::t_0bf2a769240083 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ff06852f364ccf9529a0bd73ca41de486819d49",
+  "prompts": {},
+  "sessions": {
+    "s_85132b8da9ed23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2cb6a6c-21e8-4f83-879f-f81d73f5b632",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

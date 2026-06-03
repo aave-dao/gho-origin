@@ -378,7 +378,7 @@ contract TestGsm is TestGhoBase {
   function testRevertSellAssetNoAsset() public {
     vm.startPrank(ALICE);
     USDX_TOKEN.approve(address(GHO_GSM), DEFAULT_GSM_USDX_AMOUNT);
-    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    vm.expectPartialRevert(IERC20Errors.ERC20InsufficientBalance.selector);
     GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
   }
@@ -387,7 +387,7 @@ contract TestGsm is TestGhoBase {
     vm.prank(FAUCET);
     USDX_TOKEN.mint(ALICE, DEFAULT_GSM_USDX_AMOUNT);
     vm.prank(ALICE);
-    vm.expectRevert('ERC20: transfer amount exceeds allowance');
+    vm.expectPartialRevert(IERC20Errors.ERC20InsufficientAllowance.selector);
     GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
   }
 

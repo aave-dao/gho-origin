@@ -38,6 +38,7 @@ import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 // interfaces
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC1967} from 'openzeppelin-contracts/contracts/interfaces/IERC1967.sol';
+import {IERC20Errors} from 'openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol';
 import {IERC3156FlashBorrower} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
 import {IERC3156FlashLender} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
 import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
@@ -50,7 +51,6 @@ import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interface
 
 // non-GHO contracts
 import {AdminUpgradeabilityProxy} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
-import {ERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/ERC20.sol';
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 

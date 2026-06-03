@@ -1,0 +1,36 @@
+src/contracts/misc/StkGhoMigrator.sol
+  s_bf486cf1103962::t_cb58971588d758 92-102
+  h_dd1a1ee57491bb 5-6,20,34-35,38,40,64
+docs/stkgho-migrator.md
+  s_bf486cf1103962::t_dca887b490957b 22-29
+src/contracts/misc/interfaces/IStkGhoMigrator.sol
+  h_dd1a1ee57491bb 60
+tests/misc/StkGhoMigratorForkTest.t.sol
+  s_bf486cf1103962::t_9f70bda4409869 380-382,384
+  s_bf486cf1103962::t_0763a9676fbaba 180,182-184
+  s_bf486cf1103962::t_23d0172157b2c4 68
+  h_dd1a1ee57491bb 362-368,371-379,383
+  s_bf486cf1103962::t_9a54edf0e40247 9
+  s_bf486cf1103962::t_49c168f8601521 100-102,105,108-109,112,114,117,121,124-126,135,137-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df81d502ad833a1767bb1b5b2072f849f003add0",
+  "prompts": {},
+  "humans": {
+    "h_dd1a1ee57491bb": {
+      "author": "AGMASO <agmguindo@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bf486cf1103962": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecab23e1-266d-4839-9b74-2eee8fedd060",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "AGMASO <agmguindo@gmail.com>"
+    }
+  }
+}

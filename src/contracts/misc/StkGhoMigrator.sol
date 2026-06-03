@@ -86,19 +86,19 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable {
   function migrate() external whenNotPaused {
     require(STKGHO.getCooldownSeconds() == 0, CooldownPeriodNotZero());
 
-    uint256 stkGhoShares = STKGHO.balanceOf(msg.sender);
-    require(stkGhoShares != 0, NoStkGhoSharesToRedeem());
+    uint256 amountToRedeem = STKGHO.balanceOf(msg.sender);
+    require(amountToRedeem != 0, NoStkGhoSharesToRedeem());
 
     uint256 ghoBalanceBefore = GHO.balanceOf(address(this));
 
     STKGHO.cooldownOnBehalfOf(msg.sender);
-    STKGHO.redeemOnBehalf(msg.sender, address(this), stkGhoShares);
+    STKGHO.redeemOnBehalf(msg.sender, address(this), amountToRedeem);
     uint256 ghoRedeemed = GHO.balanceOf(address(this)) - ghoBalanceBefore;
-    require(ghoRedeemed == stkGhoShares, UnexpectedGhoRedeemed());
+    require(ghoRedeemed == amountToRedeem, UnexpectedGhoRedeemed());
 
     uint256 sghoSharesReceived = SGHO.deposit(ghoRedeemed, msg.sender);
     require(sghoSharesReceived != 0, NoSGhoSharesReceived());
 
-    emit MigrationBatchExecuted(msg.sender, ghoRedeemed, sghoSharesReceived);
+    emit StkGhoMigrated(msg.sender, ghoRedeemed);
   }
 }

@@ -10,14 +10,12 @@ import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
  * @notice Interface for migrating stkGHO positions into the sGHO ERC4626 vault in a single transaction.
  */
 interface IStkGhoMigrator {
-  /// @notice Emitted when a migration batch is executed.
+  /// @notice Emitted when a migration is executed.
   /// @param user The address of the user executing the migration.
-  /// @param ghoRedeemed The amount of GHO received from redeeming stkGHO.
-  /// @param sghoSharesReceived The amount of sGHO shares received from the deposit.
-  event MigrationBatchExecuted(
+  /// @param amount The amount of stkGHO migrated.
+  event StkGhoMigrated(
     address indexed user,
-    uint256 ghoRedeemed,
-    uint256 sghoSharesReceived
+    uint256 amount
   );
 
   /// @notice Emitted when the pause guardian is updated.

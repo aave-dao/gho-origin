@@ -17,8 +17,8 @@ contract TestGsmUpgrade is TestGhoBase {
       new MockGsmV2(address(GHO_TOKEN), address(USDX_TOKEN), address(GHO_GSM_FIXED_PRICE_STRATEGY))
     );
     bytes memory data = abi.encodeWithSelector(MockGsmV2.initialize.selector);
-    vm.expectEmit(address(GHO_GSM));
-    emit Upgraded(gsmV2);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM));
+    emit IERC1967.Upgraded(gsmV2);
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GHO_GSM))).upgradeToAndCall(gsmV2, data);
 
@@ -33,14 +33,14 @@ contract TestGsmUpgrade is TestGhoBase {
   }
 
   function _getStorageSnapshot() internal view returns (bytes32[] memory) {
-    // Snapshot values for lastInitializedRevision (slot 1) and GSM local storage (54-58)
+    // Snapshot values for lastInitializedRevision (slot 1) and GSM local storage (56-60)
     bytes32[] memory data = new bytes32[](6);
     data[0] = vm.load(address(GHO_GSM), bytes32(uint256(1)));
-    data[1] = vm.load(address(GHO_GSM), bytes32(uint256(54)));
-    data[2] = vm.load(address(GHO_GSM), bytes32(uint256(55)));
-    data[3] = vm.load(address(GHO_GSM), bytes32(uint256(56)));
-    data[4] = vm.load(address(GHO_GSM), bytes32(uint256(57)));
-    data[5] = vm.load(address(GHO_GSM), bytes32(uint256(58)));
+    data[1] = vm.load(address(GHO_GSM), bytes32(uint256(56)));
+    data[2] = vm.load(address(GHO_GSM), bytes32(uint256(57)));
+    data[3] = vm.load(address(GHO_GSM), bytes32(uint256(58)));
+    data[4] = vm.load(address(GHO_GSM), bytes32(uint256(59)));
+    data[5] = vm.load(address(GHO_GSM), bytes32(uint256(60)));
     return data;
   }
 }

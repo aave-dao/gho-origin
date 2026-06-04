@@ -127,12 +127,40 @@ contract SwapToGHOTest is TestGhoRouterBase {
     assertEq(ghoReceived, expectedOut, 'Received GHO does not match');
   }
 
-  function testSwapToGHOWithRecipient(uint256 amount) public {
+  function testSwapToGHORegularGsm(uint256 amount) public {
     amount = bound(amount, 1e6, MAX_FUZZ_AMOUNT_6_DECIMALS);
-    uint256 recipientBalanceBefore = IERC20(GHO_TOKEN).balanceOf(RECIPIENT);
+
+    GHO_ROUTER.removeTokenToGsm(address(USDX_TOKEN));
+    GHO_ROUTER.setTokenToGsm(address(USDX_TOKEN), address(GHO_GSM));
 
     _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
-    uint256 userBalanceBefore = IERC20(GHO_TOKEN).balanceOf(USER);
+
+    uint256 grossGho = (amount * 1e18) / 1e6;
+    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 expectedOut = grossGho - fee;
+
+    vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+    emit IGhoRouter.Swap(USER, address(USDX_TOKEN), address(GHO_TOKEN), amount, expectedOut, USER);
+    vm.prank(USER);
+    uint256 ghoReceived = GHO_ROUTER.swap(
+      address(USDX_TOKEN),
+      address(GHO_TOKEN),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+
+    assertEq(ghoReceived, expectedOut, 'Received GHO does not match');
+    assertEq(GHO_TOKEN.balanceOf(USER), expectedOut, 'User should receive GHO');
+  }
+
+  function testSwapToGHOWithRecipient(uint256 amount) public {
+    amount = bound(amount, 1e6, MAX_FUZZ_AMOUNT_6_DECIMALS);
+    uint256 recipientBalanceBefore = GHO_TOKEN.balanceOf(RECIPIENT);
+
+    _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
+    uint256 userBalanceBefore = GHO_TOKEN.balanceOf(USER);
 
     uint256 shares = USDX_4626_TOKEN.previewDeposit(amount);
     uint256 grossGho = (shares * 1e18) / 1e6;
@@ -160,11 +188,11 @@ contract SwapToGHOTest is TestGhoRouterBase {
 
     assertEq(ghoReceived, expectedOut, 'Received GHO does not match');
     assertEq(
-      IERC20(GHO_TOKEN).balanceOf(RECIPIENT) - recipientBalanceBefore,
+      GHO_TOKEN.balanceOf(RECIPIENT) - recipientBalanceBefore,
       ghoReceived,
       'Recipient gets GHO'
     );
-    assertEq(IERC20(GHO_TOKEN).balanceOf(USER), userBalanceBefore, 'Caller should not receive GHO');
+    assertEq(GHO_TOKEN.balanceOf(USER), userBalanceBefore, 'Caller should not receive GHO');
   }
 }
 
@@ -666,7 +694,7 @@ contract RedeemSGhoTest is TestGhoRouterBase {
     vm.stopPrank();
 
     assertEq(outputAmount, expectedOut, 'Should redeem to full GHO amount');
-    assertEq(IERC20(GHO_TOKEN).balanceOf(USER), outputAmount, 'User should receive redeemed GHO');
+    assertEq(GHO_TOKEN.balanceOf(USER), outputAmount, 'User should receive redeemed GHO');
     assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, 'User should spend all sGHO');
   }
 
@@ -699,8 +727,8 @@ contract RedeemSGhoTest is TestGhoRouterBase {
     vm.startPrank(USER);
 
     SGHO.approve(address(GHO_ROUTER), amount);
-    uint256 recipientBalanceBefore = IERC20(GHO_TOKEN).balanceOf(RECIPIENT);
-    uint256 userBalanceBefore = IERC20(GHO_TOKEN).balanceOf(USER);
+    uint256 recipientBalanceBefore = GHO_TOKEN.balanceOf(RECIPIENT);
+    uint256 userBalanceBefore = GHO_TOKEN.balanceOf(USER);
     uint256 expectedOut = SGHO.previewRedeem(amount);
 
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
@@ -717,10 +745,10 @@ contract RedeemSGhoTest is TestGhoRouterBase {
 
     assertEq(outputAmount, expectedOut, 'Should redeem to full GHO amount');
     assertEq(
-      IERC20(GHO_TOKEN).balanceOf(RECIPIENT) - recipientBalanceBefore,
+      GHO_TOKEN.balanceOf(RECIPIENT) - recipientBalanceBefore,
       outputAmount,
       'Recipient should receive GHO'
     );
-    assertEq(IERC20(GHO_TOKEN).balanceOf(USER), userBalanceBefore, 'Caller should not receive GHO');
+    assertEq(GHO_TOKEN.balanceOf(USER), userBalanceBefore, 'Caller should not receive GHO');
   }
 }

@@ -46,7 +46,13 @@ contract TestGhoDirectFacilitator is TestGhoBase {
     GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 amount = 50_000_000 ether;
 
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(MINTER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        MINTER_ROLE
+      )
+    );
     vm.prank(ALICE);
     facilitator.mint(address(this), amount);
   }
@@ -143,13 +149,19 @@ contract TestGhoDirectFacilitator is TestGhoBase {
     GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 amount = 50_000_000 ether;
 
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(BURNER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        BURNER_ROLE
+      )
+    );
     vm.prank(ALICE);
     facilitator.burn(amount);
   }
 
   function testRevertBurnIfNoBalance() public {
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     GHO_DIRECT_FACILITATOR.burn(1);
   }
 
@@ -161,7 +173,7 @@ contract TestGhoDirectFacilitator is TestGhoBase {
     assertEq(level, 0);
 
     vm.expectEmit(true, false, false, true, address(GHO_TOKEN));
-    emit FacilitatorRemoved(address(facilitator));
+    emit IGhoToken.FacilitatorRemoved(address(facilitator));
     GHO_TOKEN.removeFacilitator(address(facilitator));
 
     (capacity, level) = GHO_TOKEN.getFacilitatorBucket(address(facilitator));

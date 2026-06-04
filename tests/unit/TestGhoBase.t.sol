@@ -12,14 +12,13 @@ import {AutomationCompatibleInterface} from 'src/contracts/dependencies/chainlin
 // helpers
 import {Constants} from '../helpers/Constants.sol';
 import {DebtUtils} from '../helpers/DebtUtils.sol';
-import {Events} from '../helpers/Events.sol';
-import {AccessControlErrorsLib, OwnableErrorsLib} from '../helpers/ErrorsLib.sol';
+import {AccessControlErrorsLib} from '../helpers/ErrorsLib.sol';
 import {EIP712Types} from '../helpers/EIP712Types.sol';
 
 // generic libs
 import {DataTypes} from 'aave-v3-origin/contracts/protocol/libraries/types/DataTypes.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
-import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
 // mocks
@@ -37,20 +36,23 @@ import {WETH9Mock} from 'aave-v3-origin/contracts/mocks/WETH9Mock.sol';
 import {MockPoolDataProvider} from '../mocks/MockPoolDataProvider.sol';
 
 // interfaces
-import {IERC20} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {IERC3156FlashBorrower} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
-import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {IERC1967} from 'openzeppelin-contracts/contracts/interfaces/IERC1967.sol';
+import {IERC20Errors} from 'openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol';
+import {IERC3156FlashBorrower} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashBorrower.sol';
+import {IERC3156FlashLender} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
+import {IGhoFacilitator} from 'src/contracts/gho/interfaces/IGhoFacilitator.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IDefaultInterestRateStrategyV2} from 'aave-v3-origin/contracts/interfaces/IDefaultInterestRateStrategyV2.sol';
 
 // non-GHO contracts
 import {AdminUpgradeabilityProxy} from 'aave-v3-origin/contracts/dependencies/openzeppelin/upgradeability/AdminUpgradeabilityProxy.sol';
-import {ERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/ERC20.sol';
-import {ERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol';
 import {ReserveConfiguration} from 'aave-v3-origin/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
-import {TransparentUpgradeableProxy} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 
 import {DefaultReserveInterestRateStrategyV2} from 'aave-v3-origin/contracts/misc/DefaultReserveInterestRateStrategyV2.sol';
 
@@ -60,12 +62,16 @@ import {GhoAaveSteward} from 'src/contracts/misc/GhoAaveSteward.sol';
 import {GhoOracle} from 'src/contracts/misc/GhoOracle.sol';
 import {GhoToken} from 'src/contracts/gho/GhoToken.sol';
 import {UpgradeableGhoToken} from 'src/contracts/gho/UpgradeableGhoToken.sol';
+import {GhoTokenProcedure} from 'src/deployments/contracts/procedures/GhoTokenProcedure.sol';
+import {GhoFlashMinterProcedure} from 'src/deployments/contracts/procedures/GhoFlashMinterProcedure.sol';
+import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 
 // SGHO contracts
 import {sGho} from 'src/contracts/sgho/sGho.sol';
 
 // GSM contracts
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
+import {IGsm4626} from 'src/contracts/facilitators/gsm/interfaces/IGsm4626.sol';
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
 import {Gsm4626} from 'src/contracts/facilitators/gsm/Gsm4626.sol';
 import {FixedPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
@@ -75,11 +81,15 @@ import {FixedFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/Fixed
 import {SampleLiquidator} from 'src/contracts/facilitators/gsm/misc/SampleLiquidator.sol';
 import {SampleSwapFreezer} from 'src/contracts/facilitators/gsm/misc/SampleSwapFreezer.sol';
 import {GsmRegistry} from 'src/contracts/facilitators/gsm/misc/GsmRegistry.sol';
+import {IGsmRegistry} from 'src/contracts/facilitators/gsm/misc/IGsmRegistry.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import {GhoGsmSteward} from 'src/contracts/misc/GhoGsmSteward.sol';
 import {FixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/FixedFeeStrategyFactory.sol';
+import {IFixedFeeStrategyFactory} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IFixedFeeStrategyFactory.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
+import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve.sol';
 import {GhoDirectFacilitator} from 'src/contracts/facilitators/gsm/GhoDirectFacilitator.sol';
+import {IGhoFlashMinter} from 'src/contracts/facilitators/flashMinter/interfaces/IGhoFlashMinter.sol';
 import {OracleSwapFreezerBase} from 'src/contracts/facilitators/gsm/swapFreezer/OracleSwapFreezerBase.sol';
 import {ChainlinkOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/ChainlinkOracleSwapFreezer.sol';
 import {GelatoOracleSwapFreezer} from 'src/contracts/facilitators/gsm/swapFreezer/GelatoOracleSwapFreezer.sol';
@@ -94,7 +104,13 @@ import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 import {GhoCcipSteward} from 'src/contracts/misc/GhoCcipSteward.sol';
 import {GhoBucketSteward} from 'src/contracts/misc/GhoBucketSteward.sol';
 
-contract TestGhoBase is Test, Constants, Events {
+contract TestGhoBase is
+  Test,
+  Constants,
+  GhoTokenProcedure,
+  GhoFlashMinterProcedure,
+  GhoStewardProcedure
+{
   using WadRayMath for uint256;
   using SafeCast for uint256;
   using PercentageMath for uint256;
@@ -158,7 +174,7 @@ contract TestGhoBase is Test, Constants, Events {
     PROVIDER.setConfigurator(address(CONFIGURATOR));
     PROVIDER.setPriceOracle(address(PRICE_ORACLE));
     GHO_ORACLE = new GhoOracle();
-    GHO_TOKEN = new GhoToken(address(this));
+    GHO_TOKEN = GhoToken(_deployGhoToken(address(this)));
     GHO_TOKEN.grantRole(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, address(this));
     GHO_TOKEN.grantRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, address(this));
     AAVE_TOKEN = new TestnetERC20('AAVE', 'AAVE', 18, FAUCET);
@@ -176,11 +192,13 @@ contract TestGhoBase is Test, Constants, Events {
       DEFAULT_CAPACITY * 2
     );
 
-    GHO_FLASH_MINTER = new GhoFlashMinter(
-      address(GHO_TOKEN),
-      TREASURY,
-      DEFAULT_FLASH_FEE,
-      address(PROVIDER)
+    GHO_FLASH_MINTER = GhoFlashMinter(
+      _deployGhoFlashMinter({
+        ghoToken: address(GHO_TOKEN),
+        treasury: TREASURY,
+        flashMinterFee: DEFAULT_FLASH_FEE,
+        poolAddressesProvider: address(PROVIDER)
+      })
     );
     FLASH_BORROWER = new MockFlashBorrower(IERC3156FlashLender(GHO_FLASH_MINTER));
 
@@ -513,26 +531,28 @@ contract TestGhoBase is Test, Constants, Events {
   }
 
   function _getBuyAssetTypedDataHash(
+    address gsm,
     EIP712Types.BuyAssetWithSig memory params
   ) internal view returns (bytes32) {
     return
       keccak256(
         abi.encodePacked(
           '\x19\x01',
-          GHO_GSM.DOMAIN_SEPARATOR(),
+          Gsm(gsm).DOMAIN_SEPARATOR(),
           vm.eip712HashStruct('BuyAssetWithSig', abi.encode(params))
         )
       );
   }
 
   function _getSellAssetTypedDataHash(
+    address gsm,
     EIP712Types.SellAssetWithSig memory params
   ) internal view returns (bytes32) {
     return
       keccak256(
         abi.encodePacked(
           '\x19\x01',
-          GHO_GSM.DOMAIN_SEPARATOR(),
+          Gsm(gsm).DOMAIN_SEPARATOR(),
           vm.eip712HashStruct('SellAssetWithSig', abi.encode(params))
         )
       );

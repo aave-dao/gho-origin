@@ -15,11 +15,13 @@ interface IGhoRouter {
   /// @dev Amount must be greater than zero
   error InvalidAmount();
 
-  /// @dev GSM is not whitelisted for swaps
+  /// @dev GSM is not a structurally valid GSM
   error InvalidGsm();
 
   /// @dev Invalid path for token swap
-  error InvalidPath();
+  /// @param tokenIn Address of the token to swap from
+  /// @param tokenOut Address of the token to swap to
+  error InvalidTokenPair(address tokenIn, address tokenOut);
 
   /// @dev Unsupported token provided
   error InvalidToken();
@@ -38,6 +40,7 @@ interface IGhoRouter {
 
   /**
    * @notice Emitted when a swap is completed
+   * @param caller The address of the initiator of the swap
    * @param tokenIn The address of the token to swap from
    * @param tokenOut The address of the token to swap to
    * @param exactAmountIn The amount of tokenIn swapped
@@ -45,6 +48,7 @@ interface IGhoRouter {
    * @param recipient The address of the recipient of tokenOut
    */
   event Swap(
+    address caller,
     address indexed tokenIn,
     address indexed tokenOut,
     uint256 exactAmountIn,

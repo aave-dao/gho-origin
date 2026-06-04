@@ -53,6 +53,13 @@ contract SetTokenToGsmTest is TestGhoRouterBase {
     GHO_ROUTER.setTokenToGsm(token, address(gsm));
   }
 
+  function testSetTokenToGsmNon4626Gsm() public {
+    // GHO_GSM is a regular GSM whose underlying (USDX) is not an ERC4626 vault
+    GHO_ROUTER.removeTokenToGsm(address(USDX_TOKEN));
+    vm.expectRevert(IGhoRouter.InvalidGsm.selector);
+    GHO_ROUTER.setTokenToGsm(address(USDX_TOKEN), address(GHO_GSM));
+  }
+
   function testSetTokenToGsmAlreadySet() public {
     vm.expectRevert(IGhoRouter.TokenToGsmAlreadySet.selector);
     GHO_ROUTER.setTokenToGsm(address(USDX_TOKEN), address(GHO_GSM_4626));

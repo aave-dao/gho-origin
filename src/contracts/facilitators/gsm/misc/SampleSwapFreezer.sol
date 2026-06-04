@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Ownable} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/Ownable.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 
 /**
@@ -10,6 +10,8 @@ import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
  * @notice Minimal Swap Freezer that can serve as sample contract
  */
 contract SampleSwapFreezer is Ownable {
+  constructor() Ownable(msg.sender) {}
+
   /**
    * @notice Triggers freezing of a GSM
    * @param gsm Address of the GSM

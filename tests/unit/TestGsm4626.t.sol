@@ -7,6 +7,13 @@ contract TestGsm4626 is TestGhoBase {
   using PercentageMath for uint256;
   using PercentageMath for uint128;
 
+  address internal gsmSignerAddr;
+  uint256 internal gsmSignerKey;
+
+  function setUp() public {
+    (gsmSignerAddr, gsmSignerKey) = makeAddrAndKey('gsmSigner');
+  }
+
   function testConstructor() public {
     Gsm4626 gsm = new Gsm4626(
       address(GHO_TOKEN),
@@ -42,9 +49,9 @@ contract TestGsm4626 is TestGhoBase {
 
   function testInitialize() public {
     vm.expectEmit(true, true, true, true);
-    emit RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
+    emit IAccessControl.RoleGranted(DEFAULT_ADMIN_ROLE, address(this), address(this));
     vm.expectEmit(true, true, false, true);
-    emit ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
+    emit IGsm.ExposureCapUpdated(0, DEFAULT_GSM_USDX_EXPOSURE);
 
     Gsm4626 gsm = _deployGsm4626Proxy({
       underlyingToken: address(USDX_4626_TOKEN),
@@ -68,7 +75,7 @@ contract TestGsm4626 is TestGhoBase {
 
   function testSellAssetZeroFee() public {
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
@@ -76,7 +83,7 @@ contract TestGsm4626 is TestGhoBase {
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
 
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
     (uint256 assetAmount, uint256 ghoBought) = GHO_GSM_4626.sellAsset(
       DEFAULT_GSM_USDX_AMOUNT,
       ALICE
@@ -107,7 +114,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
     (uint256 assetAmount, uint256 ghoBought) = GHO_GSM_4626.sellAsset(
       DEFAULT_GSM_USDX_AMOUNT,
       ALICE
@@ -145,7 +152,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
+    emit IGsm.SellAsset(ALICE, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
     (uint256 assetAmount, uint256 ghoBought) = GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, BOB);
     vm.stopPrank();
 
@@ -246,7 +253,7 @@ contract TestGsm4626 is TestGhoBase {
 
   function testBuyAssetZeroFee() public {
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     // Supply assets to the GSM first
@@ -254,7 +261,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
 
@@ -263,7 +270,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
     (uint256 assetAmount, uint256 ghoSold) = GHO_GSM_4626.buyAsset(DEFAULT_GSM_USDX_AMOUNT, BOB);
     vm.stopPrank();
 
@@ -292,7 +299,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
 
@@ -301,7 +308,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
+    emit IGsm.BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
     (uint256 assetAmount, uint256 ghoSold) = GHO_GSM_4626.buyAsset(DEFAULT_GSM_USDX_AMOUNT, BOB);
     vm.stopPrank();
 
@@ -341,7 +348,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
 
@@ -350,7 +357,13 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(BOB, CHARLES, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
+    emit IGsm.BuyAsset(
+      BOB,
+      CHARLES,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
     (uint256 assetAmount, uint256 ghoSold) = GHO_GSM_4626.buyAsset(
       DEFAULT_GSM_USDX_AMOUNT,
       CHARLES
@@ -381,7 +394,7 @@ contract TestGsm4626 is TestGhoBase {
   function testBuyThenSellAtMaximumBucketCapacity() public {
     // Use zero fees to simplify amount calculations
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     // Supply assets to the GSM first
@@ -389,7 +402,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_EXPOSURE);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_EXPOSURE, DEFAULT_CAPACITY, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_EXPOSURE, DEFAULT_CAPACITY, 0);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_EXPOSURE, ALICE);
 
     uint256 usedGho = GHO_GSM_4626.getUsed();
@@ -404,7 +417,7 @@ contract TestGsm4626 is TestGhoBase {
     // Buy 1 of the underlying
     GHO_TOKEN.approve(address(GHO_GSM_4626), 1e18);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(ALICE, ALICE, 1e6, 1e18, 0);
+    emit IGsm.BuyAsset(ALICE, ALICE, 1e6, 1e18, 0);
     GHO_GSM_4626.buyAsset(1e6, ALICE);
 
     usedGho = GHO_GSM_4626.getUsed();
@@ -419,7 +432,7 @@ contract TestGsm4626 is TestGhoBase {
     // Sell 1 of the underlying
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), 1e6);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, 1e6, 1e18, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, 1e6, 1e18, 0);
     GHO_GSM_4626.sellAsset(1e6, ALICE);
     vm.stopPrank();
 
@@ -458,7 +471,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
 
@@ -478,7 +491,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, sellFee);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
 
@@ -588,13 +601,19 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(GHO_GSM_4626.getIsFrozen(), false, 'Unexpected freeze status before');
     vm.prank(address(GHO_GSM_SWAP_FREEZER));
     vm.expectEmit(true, false, false, true, address(GHO_GSM_4626));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
     GHO_GSM_4626.setSwapFreeze(true);
     assertEq(GHO_GSM_4626.getIsFrozen(), true, 'Unexpected freeze status after');
   }
 
   function testRevertFreezeNotAuthorized() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_SWAP_FREEZER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        GSM_SWAP_FREEZER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_GSM_4626.setSwapFreeze(true);
   }
@@ -611,13 +630,19 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(address(GHO_GSM_SWAP_FREEZER));
     GHO_GSM_4626.setSwapFreeze(true);
     vm.expectEmit(true, false, false, true, address(GHO_GSM_4626));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), false);
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), false);
     GHO_GSM_4626.setSwapFreeze(false);
     vm.stopPrank();
   }
 
   function testRevertUnfreezeNotAuthorized() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_SWAP_FREEZER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        GSM_SWAP_FREEZER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_GSM_4626.setSwapFreeze(false);
   }
@@ -639,15 +664,21 @@ contract TestGsm4626 is TestGhoBase {
 
   function testUpdateConfigurator() public {
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, address(this));
+    emit IAccessControl.RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, address(this));
     GHO_GSM_4626.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit RoleRevoked(GSM_CONFIGURATOR_ROLE, address(this), address(this));
+    emit IAccessControl.RoleRevoked(GSM_CONFIGURATOR_ROLE, address(this), address(this));
     GHO_GSM_4626.revokeRole(GSM_CONFIGURATOR_ROLE, address(this));
   }
 
   function testRevertUpdateConfiguratorNotAuthorized() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(DEFAULT_ADMIN_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        DEFAULT_ADMIN_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_GSM_4626.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
   }
@@ -655,7 +686,7 @@ contract TestGsm4626 is TestGhoBase {
   function testConfiguratorUpdateMethods() public {
     // Alice as configurator
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, address(this));
+    emit IAccessControl.RoleGranted(GSM_CONFIGURATOR_ROLE, ALICE, address(this));
     GHO_GSM_4626.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
 
     vm.startPrank(address(ALICE));
@@ -670,17 +701,17 @@ contract TestGsm4626 is TestGhoBase {
       DEFAULT_GSM_SELL_FEE
     );
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(newFeeStrategy));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(newFeeStrategy));
     GHO_GSM_4626.updateFeeStrategy(address(newFeeStrategy));
     assertEq(GHO_GSM_4626.getFeeStrategy(), address(newFeeStrategy), 'Unexpected fee strategy');
 
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit ExposureCapUpdated(DEFAULT_GSM_USDX_EXPOSURE, 0);
+    emit IGsm.ExposureCapUpdated(DEFAULT_GSM_USDX_EXPOSURE, 0);
     GHO_GSM_4626.updateExposureCap(0);
     assertEq(GHO_GSM_4626.getExposureCap(), 0, 'Unexpected exposure capacity');
 
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit ExposureCapUpdated(0, 1000);
+    emit IGsm.ExposureCapUpdated(0, 1000);
     GHO_GSM_4626.updateExposureCap(1000);
     assertEq(GHO_GSM_4626.getExposureCap(), 1000, 'Unexpected exposure capacity');
 
@@ -689,11 +720,29 @@ contract TestGsm4626 is TestGhoBase {
 
   function testRevertConfiguratorUpdateMethodsNotAuthorized() public {
     vm.startPrank(ALICE);
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(DEFAULT_ADMIN_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        DEFAULT_ADMIN_ROLE
+      )
+    );
     GHO_GSM_4626.grantRole(GSM_LIQUIDATOR_ROLE, ALICE);
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(DEFAULT_ADMIN_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        DEFAULT_ADMIN_ROLE
+      )
+    );
     GHO_GSM_4626.grantRole(GSM_SWAP_FREEZER_ROLE, ALICE);
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        GSM_CONFIGURATOR_ROLE
+      )
+    );
     GHO_GSM_4626.updateExposureCap(0);
     vm.stopPrank();
   }
@@ -705,14 +754,20 @@ contract TestGsm4626 is TestGhoBase {
 
   function testUpdateGhoTreasury() public {
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit GhoTreasuryUpdated(TREASURY, ALICE);
+    emit IGhoFacilitator.GhoTreasuryUpdated(TREASURY, ALICE);
     GHO_GSM_4626.updateGhoTreasury(ALICE);
 
     assertEq(GHO_GSM_4626.getGhoTreasury(), ALICE);
   }
 
   function testUnauthorizedUpdateGhoTreasuryRevert() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        GSM_CONFIGURATOR_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_GSM_4626.updateGhoTreasury(ALICE);
   }
@@ -725,7 +780,7 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(WETH.balanceOf(address(GHO_GSM_4626)), 100e18, 'Unexpected GSM WETH before balance');
     assertEq(WETH.balanceOf(ALICE), 0, 'Unexpected target WETH before balance');
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit TokensRescued(address(WETH), ALICE, 100e18);
+    emit IGsm.TokensRescued(address(WETH), ALICE, 100e18);
     GHO_GSM_4626.rescueTokens(address(WETH), ALICE, 100e18);
     assertEq(WETH.balanceOf(address(GHO_GSM_4626)), 0, 'Unexpected GSM WETH after balance');
     assertEq(WETH.balanceOf(ALICE), 100e18, 'Unexpected target WETH after balance');
@@ -742,7 +797,7 @@ contract TestGsm4626 is TestGhoBase {
     );
     assertEq(GHO_TOKEN.balanceOf(ALICE), 0, 'Unexpected target GHO before balance');
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit TokensRescued(address(GHO_TOKEN), ALICE, 100e18);
+    emit IGsm.TokensRescued(address(GHO_TOKEN), ALICE, 100e18);
     GHO_GSM_4626.rescueTokens(address(GHO_TOKEN), ALICE, 100e18);
     assertEq(GHO_TOKEN.balanceOf(address(GHO_GSM_4626)), 0, 'Unexpected GSM GHO after balance');
     assertEq(GHO_TOKEN.balanceOf(ALICE), 100e18, 'Unexpected target GHO after balance');
@@ -759,7 +814,7 @@ contract TestGsm4626 is TestGhoBase {
 
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
     assertEq(GHO_TOKEN.balanceOf(address(GHO_GSM_4626)), fee, 'Unexpected GSM GHO balance');
@@ -776,7 +831,7 @@ contract TestGsm4626 is TestGhoBase {
     GHO_GSM_4626.rescueTokens(address(GHO_TOKEN), BOB, fee);
 
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit TokensRescued(address(GHO_TOKEN), BOB, 1);
+    emit IGsm.TokensRescued(address(GHO_TOKEN), BOB, 1);
     GHO_GSM_4626.rescueTokens(address(GHO_TOKEN), BOB, 1);
 
     assertEq(GHO_TOKEN.balanceOf(BOB), 1, 'Unexpected target GHO balance after');
@@ -797,7 +852,7 @@ contract TestGsm4626 is TestGhoBase {
 
     assertEq(USDX_4626_TOKEN.balanceOf(ALICE), 0, 'Unexpected USDX balance before');
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit TokensRescued(address(USDX_4626_TOKEN), ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    emit IGsm.TokensRescued(address(USDX_4626_TOKEN), ALICE, DEFAULT_GSM_USDX_AMOUNT);
     GHO_GSM_4626.rescueTokens(address(USDX_4626_TOKEN), ALICE, DEFAULT_GSM_USDX_AMOUNT);
     assertEq(
       USDX_4626_TOKEN.balanceOf(ALICE),
@@ -832,7 +887,7 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(USDX_4626_TOKEN.balanceOf(ALICE), 0, 'Unexpected target USDX balance before');
 
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit TokensRescued(address(USDX_4626_TOKEN), ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    emit IGsm.TokensRescued(address(USDX_4626_TOKEN), ALICE, DEFAULT_GSM_USDX_AMOUNT);
     GHO_GSM_4626.rescueTokens(address(USDX_4626_TOKEN), ALICE, DEFAULT_GSM_USDX_AMOUNT);
     assertEq(
       USDX_4626_TOKEN.balanceOf(address(GHO_GSM_4626)),
@@ -865,7 +920,7 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(USDX_4626_TOKEN.balanceOf(TREASURY), 0, 'Unexpected USDX before token balance');
     vm.prank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
     vm.expectEmit(true, false, false, true, address(GHO_GSM_4626));
-    emit Seized(
+    emit IGsm.Seized(
       address(GHO_GSM_LAST_RESORT_LIQUIDATOR),
       BOB,
       DEFAULT_GSM_USDX_AMOUNT,
@@ -884,7 +939,13 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertSeizeWithoutAuthorization() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_LIQUIDATOR_ROLE, address(this)));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        address(this),
+        GSM_LIQUIDATOR_ROLE
+      )
+    );
     GHO_GSM_4626.seize();
   }
 
@@ -930,7 +991,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT);
     vm.expectEmit(true, false, false, true, address(GHO_GSM_4626));
-    emit BurnAfterSeize(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.BurnAfterSeize(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), DEFAULT_GSM_GHO_AMOUNT, 0);
     uint256 burnedAmount = GHO_GSM_4626.burnAfterSeize(DEFAULT_GSM_GHO_AMOUNT);
     vm.stopPrank();
     assertEq(burnedAmount, DEFAULT_GSM_GHO_AMOUNT, 'Unexpected burned amount of GHO');
@@ -958,7 +1019,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + 1);
     vm.expectEmit(true, false, false, true, address(GHO_GSM_4626));
-    emit BurnAfterSeize(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.BurnAfterSeize(address(GHO_GSM_LAST_RESORT_LIQUIDATOR), DEFAULT_GSM_GHO_AMOUNT, 0);
     uint256 burnedAmount = GHO_GSM_4626.burnAfterSeize(DEFAULT_GSM_GHO_AMOUNT + 1);
     vm.stopPrank();
     assertEq(burnedAmount, DEFAULT_GSM_GHO_AMOUNT, 'Unexpected burned amount of GHO');
@@ -979,7 +1040,13 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertBurnAfterSeizeUnauthorized() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_LIQUIDATOR_ROLE, address(this)));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        address(this),
+        GSM_LIQUIDATOR_ROLE
+      )
+    );
     GHO_GSM_4626.burnAfterSeize(1);
   }
 
@@ -1007,7 +1074,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT / 2);
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit BackingProvided(
+    emit IGsm4626.BackingProvided(
       BOB,
       address(GHO_TOKEN),
       DEFAULT_GSM_GHO_AMOUNT / 2,
@@ -1084,7 +1151,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit BackingProvided(
+    emit IGsm4626.BackingProvided(
       BOB,
       address(USDX_4626_TOKEN),
       DEFAULT_GSM_USDX_AMOUNT,
@@ -1125,7 +1192,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT + 1);
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit BackingProvided(
+    emit IGsm4626.BackingProvided(
       BOB,
       address(USDX_4626_TOKEN),
       DEFAULT_GSM_USDX_AMOUNT,
@@ -1143,9 +1210,21 @@ contract TestGsm4626 is TestGhoBase {
 
   function testRevertBackWithNotAuthorized() public {
     vm.startPrank(ALICE);
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        GSM_CONFIGURATOR_ROLE
+      )
+    );
     GHO_GSM_4626.backWithGho(0);
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        GSM_CONFIGURATOR_ROLE
+      )
+    );
     GHO_GSM_4626.backWithUnderlying(0);
     vm.stopPrank();
   }
@@ -1174,14 +1253,14 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, fee);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
     assertEq(GHO_TOKEN.balanceOf(address(GHO_GSM_4626)), fee, 'Unexpected GSM GHO balance');
     assertEq(GHO_GSM_4626.getAccruedFees(), fee, 'Unexpected GSM accrued fees');
 
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(
+    emit IGhoFacilitator.FeesDistributedToTreasury(
       TREASURY,
       address(GHO_TOKEN),
       GHO_TOKEN.balanceOf(address(GHO_GSM_4626))
@@ -1236,7 +1315,7 @@ contract TestGsm4626 is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
+    emit IGsm.BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT + buyFee, buyFee);
     GHO_GSM_4626.buyAsset(DEFAULT_GSM_USDX_AMOUNT, BOB);
     vm.stopPrank();
 
@@ -1250,7 +1329,7 @@ contract TestGsm4626 is TestGhoBase {
 
   function testGetAccruedFeesWithZeroFee() public {
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
@@ -1267,5 +1346,474 @@ contract TestGsm4626 is TestGhoBase {
 
       assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
     }
+  }
+
+  function testRevertInitializeZeroAdmin() public {
+    Gsm4626 gsmImpl = new Gsm4626(
+      address(GHO_TOKEN),
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+    );
+
+    vm.expectRevert();
+    new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(0),
+        TREASURY,
+        DEFAULT_GSM_USDX_EXPOSURE,
+        address(GHO_RESERVE)
+      )
+    );
+  }
+
+  function testRevertInitializeZeroGhoReserve() public {
+    Gsm4626 gsmImpl = new Gsm4626(
+      address(GHO_TOKEN),
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626_FIXED_PRICE_STRATEGY)
+    );
+
+    vm.expectRevert();
+    new AdminUpgradeabilityProxy(
+      address(gsmImpl),
+      SHORT_EXECUTOR,
+      abi.encodeWithSignature(
+        'initialize(address,address,uint128,address)',
+        address(this),
+        TREASURY,
+        DEFAULT_GSM_USDX_EXPOSURE,
+        address(0)
+      )
+    );
+  }
+
+  function testTypehash() public view {
+    bytes32 buyTypeHash = vm.eip712HashType('BuyAssetWithSig');
+    bytes32 sellTypeHash = vm.eip712HashType('SellAssetWithSig');
+    assertEq(
+      buyTypeHash,
+      GHO_GSM_4626.BUY_ASSET_WITH_SIG_TYPEHASH(),
+      'Unexpected buy asset typed data hash'
+    );
+    assertEq(
+      sellTypeHash,
+      GHO_GSM_4626.SELL_ASSET_WITH_SIG_TYPEHASH(),
+      'Unexpected sell asset typed data hash'
+    );
+  }
+
+  function testSellAssetWithSig() public {
+    uint256 deadline = block.timestamp + 1 hours;
+    uint256 fee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
+    uint256 ghoOut = DEFAULT_GSM_GHO_AMOUNT - fee;
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, gsmSignerAddr, DEFAULT_GSM_USDX_AMOUNT);
+
+    vm.prank(gsmSignerAddr);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    assertTrue(gsmSignerAddr != ALICE, 'Signer is the same as Alice');
+
+    vm.prank(ALICE);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit IGsm.SellAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT,
+      fee
+    );
+    GHO_GSM_4626.sellAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(USDX_4626_TOKEN.balanceOf(gsmSignerAddr), 0, 'Unexpected final USDX balance');
+    assertEq(GHO_TOKEN.balanceOf(gsmSignerAddr), ghoOut, 'Unexpected final GHO balance');
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_GSM_4626)), fee, 'Unexpected GSM GHO balance');
+    assertEq(
+      GHO_GSM_4626.getExposureCap(),
+      DEFAULT_GSM_USDX_EXPOSURE,
+      'Unexpected exposure capacity'
+    );
+  }
+
+  function testSellAssetWithSigExactDeadline() public {
+    uint256 deadline = block.timestamp;
+    uint256 fee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
+    uint256 ghoOut = DEFAULT_GSM_GHO_AMOUNT - fee;
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, gsmSignerAddr, DEFAULT_GSM_USDX_AMOUNT);
+
+    vm.prank(gsmSignerAddr);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(ALICE);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit IGsm.SellAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT,
+      fee
+    );
+    GHO_GSM_4626.sellAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(GHO_TOKEN.balanceOf(gsmSignerAddr), ghoOut, 'Unexpected final GHO balance');
+  }
+
+  function testRevertSellAssetWithSigExpiredSignature() public {
+    uint256 deadline = block.timestamp - 1;
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(ALICE);
+    vm.expectRevert('SIGNATURE_DEADLINE_EXPIRED');
+    GHO_GSM_4626.sellAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+  }
+
+  function testRevertSellAssetWithSigInvalidSignature() public {
+    uint256 deadline = block.timestamp + 1 hours;
+
+    bytes32 digest = _getSellAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.SellAssetWithSig({
+        originator: gsmSignerAddr,
+        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(ALICE);
+    vm.expectRevert('SIGNATURE_INVALID');
+    GHO_GSM_4626.sellAssetWithSig(ALICE, DEFAULT_GSM_USDX_AMOUNT, ALICE, deadline, signature);
+  }
+
+  function testBuyAssetWithSig() public {
+    uint256 deadline = block.timestamp + 1 hours;
+    uint256 sellFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_SELL_FEE);
+    uint256 buyFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_BUY_FEE);
+    uint256 ghoOut = DEFAULT_GSM_GHO_AMOUNT - sellFee;
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+
+    ghoFaucet(gsmSignerAddr, DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    vm.prank(gsmSignerAddr);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 0, 'Unexpected before gsmSignerAddr nonce');
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    assertTrue(gsmSignerAddr != BOB, 'Signer is the same as Bob');
+
+    vm.prank(BOB);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit IGsm.BuyAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
+    GHO_GSM_4626.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(
+      USDX_4626_TOKEN.balanceOf(gsmSignerAddr),
+      DEFAULT_GSM_USDX_AMOUNT,
+      'Unexpected final USDX balance'
+    );
+    assertEq(GHO_TOKEN.balanceOf(ALICE), ghoOut, 'Unexpected final GHO balance');
+    assertEq(
+      GHO_TOKEN.balanceOf(address(GHO_GSM_4626)),
+      sellFee + buyFee,
+      'Unexpected GSM GHO balance'
+    );
+  }
+
+  function testBuyAssetWithSigExactDeadline() public {
+    uint256 deadline = block.timestamp;
+    uint256 buyFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_BUY_FEE);
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+
+    ghoFaucet(gsmSignerAddr, DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    vm.prank(gsmSignerAddr);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(BOB);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
+    emit IGsm.BuyAsset(
+      gsmSignerAddr,
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      DEFAULT_GSM_GHO_AMOUNT + buyFee,
+      buyFee
+    );
+    GHO_GSM_4626.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+
+    assertEq(GHO_GSM_4626.nonces(gsmSignerAddr), 1, 'Unexpected final gsmSignerAddr nonce');
+    assertEq(
+      USDX_4626_TOKEN.balanceOf(gsmSignerAddr),
+      DEFAULT_GSM_USDX_AMOUNT,
+      'Unexpected final USDX balance'
+    );
+  }
+
+  function testRevertBuyAssetWithSigExpiredSignature() public {
+    uint256 deadline = block.timestamp - 1;
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(BOB);
+    vm.expectRevert('SIGNATURE_DEADLINE_EXPIRED');
+    GHO_GSM_4626.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+  }
+
+  function testRevertBuyAssetWithSigInvalidSignature() public {
+    uint256 deadline = block.timestamp + 1 hours;
+
+    bytes32 digest = _getBuyAssetTypedDataHash(
+      address(GHO_GSM_4626),
+      EIP712Types.BuyAssetWithSig({
+        originator: gsmSignerAddr,
+        minAmount: DEFAULT_GSM_USDX_AMOUNT,
+        receiver: gsmSignerAddr,
+        nonce: GHO_GSM_4626.nonces(gsmSignerAddr),
+        deadline: deadline
+      })
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.prank(BOB);
+    vm.expectRevert('SIGNATURE_INVALID');
+    GHO_GSM_4626.buyAssetWithSig(BOB, DEFAULT_GSM_USDX_AMOUNT, gsmSignerAddr, deadline, signature);
+  }
+
+  function testRevertSellAssetZeroAmount() public {
+    vm.prank(ALICE);
+    vm.expectRevert('INVALID_AMOUNT');
+    GHO_GSM_4626.sellAsset(0, ALICE);
+  }
+
+  function testRevertSellAssetNoAsset() public {
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+  }
+
+  function testRevertSellAssetNoAllowance() public {
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.prank(ALICE);
+    vm.expectRevert('ERC20: insufficient allowance');
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+  }
+
+  function testRevertSellAssetNoBucketCap() public {
+    Gsm4626 gsm = _deployGsm4626Proxy({
+      underlyingToken: address(USDX_4626_TOKEN),
+      priceStrategy: address(GHO_GSM_4626_FIXED_PRICE_STRATEGY),
+      exposureCap: DEFAULT_GSM_USDX_EXPOSURE
+    });
+    GHO_RESERVE.addEntity(address(gsm));
+    uint256 defaultCapInUsdx = DEFAULT_CAPACITY / (10 ** (18 - USDX_TOKEN.decimals()));
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, defaultCapInUsdx);
+
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(gsm), defaultCapInUsdx);
+    vm.expectRevert('LIMIT_EXCEEDED');
+    gsm.sellAsset(defaultCapInUsdx, ALICE);
+    vm.stopPrank();
+  }
+
+  function testRevertRescueTokensZeroAmount() public {
+    GHO_GSM_4626.grantRole(GSM_TOKEN_RESCUER_ROLE, address(this));
+    vm.expectRevert('INVALID_AMOUNT');
+    GHO_GSM_4626.rescueTokens(address(WETH), ALICE, 0);
+  }
+
+  function testCanSwap() public {
+    assertEq(GHO_GSM_4626.canSwap(), true, 'Unexpected initial swap state');
+
+    vm.startPrank(address(GHO_GSM_SWAP_FREEZER));
+    GHO_GSM_4626.setSwapFreeze(true);
+    assertEq(GHO_GSM_4626.canSwap(), false, 'Unexpected swap state post-freeze');
+
+    GHO_GSM_4626.setSwapFreeze(false);
+    assertEq(GHO_GSM_4626.canSwap(), true, 'Unexpected swap state post-unfreeze');
+    vm.stopPrank();
+
+    vm.prank(address(GHO_GSM_LAST_RESORT_LIQUIDATOR));
+    GHO_GSM_4626.seize();
+    assertEq(GHO_GSM_4626.canSwap(), false, 'Unexpected swap state post-seize');
+  }
+
+  function testUpdateExposureCapBelowCurrentExposure() public {
+    assertEq(GHO_GSM_4626.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure cap');
+
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, 2 * DEFAULT_GSM_USDX_AMOUNT);
+
+    GHO_GSM_4626.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
+    vm.startPrank(address(ALICE));
+
+    GHO_GSM_4626.updateFeeStrategy(address(0));
+
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+
+    assertEq(
+      GHO_GSM_4626.getAvailableUnderlyingExposure(),
+      DEFAULT_GSM_USDX_EXPOSURE - DEFAULT_GSM_USDX_AMOUNT,
+      'Unexpected available underlying exposure'
+    );
+    assertEq(GHO_GSM_4626.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure cap');
+
+    uint256 currentExposure = GHO_GSM_4626.getAvailableLiquidity();
+    uint256 newExposureCap = currentExposure - 1;
+    GHO_GSM_4626.updateExposureCap(uint128(newExposureCap));
+    assertEq(GHO_GSM_4626.getExposureCap(), newExposureCap, 'Unexpected exposure cap');
+    assertEq(GHO_GSM_4626.getAvailableLiquidity(), currentExposure, 'Unexpected current exposure');
+
+    GHO_GSM_4626.updateExposureCap(0);
+
+    vm.expectRevert('EXOGENOUS_ASSET_EXPOSURE_TOO_HIGH');
+    GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+
+    vm.stopPrank();
+    ghoFaucet(BOB, DEFAULT_GSM_GHO_AMOUNT / 2);
+    vm.startPrank(BOB);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT / 2);
+    GHO_GSM_4626.buyAsset(DEFAULT_GSM_USDX_AMOUNT / 2, BOB);
+
+    assertEq(GHO_GSM_4626.getExposureCap(), 0, 'Unexpected exposure capacity');
   }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Ownable} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/Ownable.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IPoolDataProvider} from 'aave-v3-origin/contracts/interfaces/IPoolDataProvider.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
@@ -64,8 +64,7 @@ contract GhoAaveSteward is Ownable, RiskCouncilControlled, IGhoAaveSteward {
     address ghoToken,
     address riskCouncil,
     BorrowRateConfig memory borrowRateConfig
-  ) RiskCouncilControlled(riskCouncil) {
-    require(owner != address(0), 'INVALID_OWNER');
+  ) RiskCouncilControlled(riskCouncil) Ownable(owner) {
     require(addressesProvider != address(0), 'INVALID_ADDRESSES_PROVIDER');
     require(poolDataProvider != address(0), 'INVALID_DATA_PROVIDER');
     require(ghoToken != address(0), 'INVALID_GHO_TOKEN');
@@ -74,8 +73,6 @@ contract GhoAaveSteward is Ownable, RiskCouncilControlled, IGhoAaveSteward {
     POOL_DATA_PROVIDER = poolDataProvider;
     GHO_TOKEN = ghoToken;
     _borrowRateConfig = borrowRateConfig;
-
-    _transferOwnership(owner);
   }
 
   /// @inheritdoc IGhoAaveSteward

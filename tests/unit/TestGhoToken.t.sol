@@ -14,8 +14,8 @@ contract TestGhoToken is TestGhoBase {
 
   function testConstructor() public {
     GhoToken ghoToken = new GhoToken(address(this));
-    vm.expectEmit(address(GHO_TOKEN));
-    emit RoleGranted(DEFAULT_ADMIN_ROLE, msg.sender, address(this));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IAccessControl.RoleGranted(DEFAULT_ADMIN_ROLE, msg.sender, address(this));
     GHO_TOKEN.grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     assertEq(ghoToken.name(), 'Gho Token', 'Wrong default ERC20 name');
     assertEq(ghoToken.symbol(), 'GHO', 'Wrong default ERC20 symbol');
@@ -71,8 +71,8 @@ contract TestGhoToken is TestGhoBase {
   }
 
   function testAddFacilitator() public {
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorAdded(ALICE, keccak256(abi.encodePacked('Alice')), DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorAdded(ALICE, keccak256(abi.encodePacked('Alice')), DEFAULT_CAPACITY);
     GHO_TOKEN.addFacilitator(ALICE, 'Alice', DEFAULT_CAPACITY);
 
     address[] memory facilitatorList = GHO_TOKEN.getFacilitatorsList();
@@ -80,12 +80,12 @@ contract TestGhoToken is TestGhoBase {
   }
 
   function testAddFacilitatorWithRole() public {
-    vm.expectEmit(address(GHO_TOKEN));
-    emit RoleGranted(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE, address(this));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IAccessControl.RoleGranted(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE, address(this));
     GHO_TOKEN.grantRole(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE);
     vm.prank(ALICE);
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorAdded(ALICE, keccak256(abi.encodePacked('Alice')), DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorAdded(ALICE, keccak256(abi.encodePacked('Alice')), DEFAULT_CAPACITY);
     GHO_TOKEN.addFacilitator(ALICE, 'Alice', DEFAULT_CAPACITY);
   }
 
@@ -113,20 +113,20 @@ contract TestGhoToken is TestGhoBase {
   }
 
   function testSetNewBucketCapacity() public {
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketCapacityUpdated(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY, 0);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketCapacityUpdated(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY, 0);
     GHO_TOKEN.setFacilitatorBucketCapacity(address(GHO_FLASH_MINTER), 0);
     (uint256 capacity, ) = GHO_TOKEN.getFacilitatorBucket(address(GHO_FLASH_MINTER));
     assertEq(capacity, 0, 'Unexpected bucket capacity');
   }
 
   function testSetNewBucketCapacityAsManager() public {
-    vm.expectEmit(address(GHO_TOKEN));
-    emit RoleGranted(GHO_TOKEN_BUCKET_MANAGER_ROLE, ALICE, address(this));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IAccessControl.RoleGranted(GHO_TOKEN_BUCKET_MANAGER_ROLE, ALICE, address(this));
     GHO_TOKEN.grantRole(GHO_TOKEN_BUCKET_MANAGER_ROLE, ALICE);
     vm.prank(ALICE);
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketCapacityUpdated(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY, 0);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketCapacityUpdated(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY, 0);
     GHO_TOKEN.setFacilitatorBucketCapacity(address(GHO_FLASH_MINTER), 0);
   }
 
@@ -150,8 +150,8 @@ contract TestGhoToken is TestGhoBase {
   }
 
   function testRemoveFacilitator() public {
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorRemoved(address(GHO_FLASH_MINTER));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorRemoved(address(GHO_FLASH_MINTER));
     GHO_TOKEN.removeFacilitator(address(GHO_FLASH_MINTER));
 
     address[] memory facilitatorList = GHO_TOKEN.getFacilitatorsList();
@@ -164,12 +164,12 @@ contract TestGhoToken is TestGhoBase {
   }
 
   function testRemoveFacilitatorWithRole() public {
-    vm.expectEmit(address(GHO_TOKEN));
-    emit RoleGranted(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE, address(this));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IAccessControl.RoleGranted(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE, address(this));
     GHO_TOKEN.grantRole(GHO_TOKEN_FACILITATOR_MANAGER_ROLE, ALICE);
     vm.prank(ALICE);
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorRemoved(address(GHO_FLASH_MINTER));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorRemoved(address(GHO_FLASH_MINTER));
     GHO_TOKEN.removeFacilitator(address(GHO_FLASH_MINTER));
   }
 
@@ -195,10 +195,10 @@ contract TestGhoToken is TestGhoBase {
 
   function testMint() public {
     vm.prank(address(GHO_FLASH_MINTER));
-    vm.expectEmit(address(GHO_TOKEN));
-    emit Transfer(address(0), ALICE, DEFAULT_CAPACITY);
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IERC20.Transfer(address(0), ALICE, DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
     GHO_TOKEN.mint(ALICE, DEFAULT_CAPACITY);
 
     (, uint256 level) = GHO_TOKEN.getFacilitatorBucket(address(GHO_FLASH_MINTER));
@@ -219,8 +219,8 @@ contract TestGhoToken is TestGhoBase {
 
   function testRevertBurnMoreThanMinted() public {
     vm.prank(address(GHO_FLASH_MINTER));
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
     GHO_TOKEN.mint(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
 
     vm.prank(address(GHO_FLASH_MINTER));
@@ -235,10 +235,10 @@ contract TestGhoToken is TestGhoBase {
 
   function testRevertBurnOthersTokens() public {
     vm.prank(address(GHO_FLASH_MINTER));
-    vm.expectEmit(address(GHO_TOKEN));
-    emit Transfer(address(0), ALICE, DEFAULT_CAPACITY);
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IERC20.Transfer(address(0), ALICE, DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
     GHO_TOKEN.mint(ALICE, DEFAULT_CAPACITY);
 
     vm.prank(address(GHO_FLASH_MINTER));
@@ -248,15 +248,15 @@ contract TestGhoToken is TestGhoBase {
 
   function testBurn() public {
     vm.prank(address(GHO_FLASH_MINTER));
-    vm.expectEmit(address(GHO_TOKEN));
-    emit Transfer(address(0), address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IERC20.Transfer(address(0), address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketLevelUpdated(address(GHO_FLASH_MINTER), 0, DEFAULT_CAPACITY);
     GHO_TOKEN.mint(address(GHO_FLASH_MINTER), DEFAULT_CAPACITY);
 
     vm.prank(address(GHO_FLASH_MINTER));
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorBucketLevelUpdated(
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorBucketLevelUpdated(
       address(GHO_FLASH_MINTER),
       DEFAULT_CAPACITY,
       DEFAULT_CAPACITY - DEFAULT_BORROW_AMOUNT
@@ -269,8 +269,8 @@ contract TestGhoToken is TestGhoBase {
 
   function testOffboardFacilitator() public {
     // Onboard facilitator
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorAdded(ALICE, keccak256(abi.encodePacked('Alice')), DEFAULT_CAPACITY);
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorAdded(ALICE, keccak256(abi.encodePacked('Alice')), DEFAULT_CAPACITY);
     GHO_TOKEN.addFacilitator(ALICE, 'Alice', DEFAULT_CAPACITY);
 
     // Facilitator mints half of its capacity
@@ -296,8 +296,8 @@ contract TestGhoToken is TestGhoBase {
     GHO_TOKEN.burn(bucketLevel);
 
     // Facilitator can be removed with 0 bucket level
-    vm.expectEmit(address(GHO_TOKEN));
-    emit FacilitatorRemoved(address(ALICE));
+    vm.expectEmit(true, true, true, true, address(GHO_TOKEN));
+    emit IGhoToken.FacilitatorRemoved(address(ALICE));
     GHO_TOKEN.removeFacilitator(address(ALICE));
   }
 

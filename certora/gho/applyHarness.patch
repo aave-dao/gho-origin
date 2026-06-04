@@ -2,8 +2,8 @@ diff -ruN ../../src/contracts/gho/GhoToken.sol contracts/gho/GhoToken.sol
 --- ../../src/contracts/gho/GhoToken.sol	2025-07-06 15:01:13.000000000 +0300
 +++ contracts/gho/GhoToken.sol	2025-07-23 12:11:37.173811676 +0300
 @@ -4,7 +4,7 @@
- import {EnumerableSet} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
- import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
+ import {EnumerableSet} from 'src/contracts/gho/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
+ import {AccessControl} from 'src/contracts/gho/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
  import {ERC20} from 'src/contracts/gho/ERC20.sol';
 -import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 +import {IGhoToken} from './interfaces/IGhoToken.sol';
@@ -79,8 +79,8 @@ diff -ruN ../../src/contracts/gho/UpgradeableGhoToken.sol contracts/gho/Upgradea
 --- ../../src/contracts/gho/UpgradeableGhoToken.sol	2025-07-06 15:01:13.000000000 +0300
 +++ contracts/gho/UpgradeableGhoToken.sol	2025-07-23 12:11:37.174811677 +0300
 @@ -5,7 +5,7 @@
- import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
- import {Initializable} from 'src/contracts/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
+ import {AccessControl} from 'src/contracts/gho/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
+ import {Initializable} from 'src/contracts/gho/dependencies/solidity-utils/src/contracts/transparent-proxy/Initializable.sol';
  import {UpgradeableERC20} from 'src/contracts/gho/UpgradeableERC20.sol';
 -import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 +import {IGhoToken} from './interfaces/IGhoToken.sol';

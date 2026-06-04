@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import {console} from 'forge-std/console.sol';
 import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
-import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
-import {Strings} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/Strings.sol';
+import {AccessControl} from 'openzeppelin-contracts/contracts/access/AccessControl.sol';
+import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
@@ -342,7 +342,9 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SupplyCapUnchanged.selector));
     steward.setSupplyCap(type(uint160).max);
 
-    vm.expectRevert("SafeCast: value doesn't fit in 160 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 160, newSupplyCap)
+    );
     steward.setSupplyCap(newSupplyCap);
   }
 
@@ -430,15 +432,10 @@ contract sGhoStewardTest is TestSGhoBase {
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {
     return
-      bytes(
-        string(
-          abi.encodePacked(
-            'AccessControl: account ',
-            Strings.toHexString(account),
-            ' is missing role ',
-            Strings.toHexString(uint256(role), 32)
-          )
-        )
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        account,
+        role
       );
   }
 }

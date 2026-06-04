@@ -127,7 +127,7 @@ contract TestGsm4626Edge is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, grossAmount, fee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, grossAmount, fee);
     (uint256 assetAmount, uint256 ghoBought) = GHO_GSM_4626.sellAsset(
       DEFAULT_GSM_USDX_AMOUNT,
       ALICE
@@ -166,7 +166,7 @@ contract TestGsm4626Edge is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, grossAmount, fee);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, grossAmount, fee);
     (uint256 assetAmount, uint256 ghoBought) = GHO_GSM_4626.sellAsset(
       DEFAULT_GSM_USDX_AMOUNT,
       ALICE
@@ -305,7 +305,7 @@ contract TestGsm4626Edge is TestGhoBase {
     assertEq(totalBackedGho, totalMintedGho + DEFAULT_GSM_GHO_AMOUNT);
 
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(
+    emit IGhoFacilitator.FeesDistributedToTreasury(
       TREASURY,
       address(GHO_TOKEN),
       GHO_TOKEN.balanceOf(address(GHO_GSM_4626)) + DEFAULT_GSM_GHO_AMOUNT
@@ -388,7 +388,7 @@ contract TestGsm4626Edge is TestGhoBase {
 
     // Distribute fees, with no yield in GHO to redirect
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(
+    emit IGhoFacilitator.FeesDistributedToTreasury(
       TREASURY,
       address(GHO_TOKEN),
       GHO_TOKEN.balanceOf(address(GHO_GSM_4626))
@@ -483,7 +483,7 @@ contract TestGsm4626Edge is TestGhoBase {
     assertEq(totalBackedGho, totalMintedGho / 2);
 
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(
+    emit IGhoFacilitator.FeesDistributedToTreasury(
       TREASURY,
       address(GHO_TOKEN),
       GHO_TOKEN.balanceOf(address(GHO_GSM_4626))
@@ -553,7 +553,11 @@ contract TestGsm4626Edge is TestGhoBase {
 
     // Fee distribution
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), ongoingAccruedFees + margin);
+    emit IGhoFacilitator.FeesDistributedToTreasury(
+      TREASURY,
+      address(GHO_TOKEN),
+      ongoingAccruedFees + margin
+    );
     GHO_GSM_4626.distributeFeesToTreasury();
 
     ghoLevel = GHO_GSM_4626.getUsed();
@@ -662,7 +666,11 @@ contract TestGsm4626Edge is TestGhoBase {
     // Fee distribution
     uint256 treasuryBalanceBefore = GHO_TOKEN.balanceOf(address(TREASURY));
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), ongoingAccruedFees);
+    emit IGhoFacilitator.FeesDistributedToTreasury(
+      TREASURY,
+      address(GHO_TOKEN),
+      ongoingAccruedFees
+    );
     GHO_GSM_4626.distributeFeesToTreasury();
 
     assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
@@ -743,7 +751,11 @@ contract TestGsm4626Edge is TestGhoBase {
     // Fee distribution
     uint256 treasuryBalanceBefore = GHO_TOKEN.balanceOf(address(TREASURY));
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit FeesDistributedToTreasury(TREASURY, address(GHO_TOKEN), ongoingAccruedFees);
+    emit IGhoFacilitator.FeesDistributedToTreasury(
+      TREASURY,
+      address(GHO_TOKEN),
+      ongoingAccruedFees
+    );
     GHO_GSM_4626.distributeFeesToTreasury();
 
     assertEq(GHO_GSM_4626.getAccruedFees(), 0, 'Unexpected GSM accrued fees');
@@ -913,7 +925,7 @@ contract TestGsm4626Edge is TestGhoBase {
      */
     // Use zero fees for easier calculations
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     // Supply assets to the GSM first
@@ -921,7 +933,7 @@ contract TestGsm4626Edge is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_USDX_EXPOSURE);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_EXPOSURE, DEFAULT_CAPACITY, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_EXPOSURE, DEFAULT_CAPACITY, 0);
     GHO_GSM_4626.sellAsset(DEFAULT_GSM_USDX_EXPOSURE, ALICE);
     vm.stopPrank();
 
@@ -939,7 +951,7 @@ contract TestGsm4626Edge is TestGhoBase {
     vm.startPrank(ALICE);
     GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_CAPACITY);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(ALICE, ALICE, buyAmount, DEFAULT_CAPACITY, 0);
+    emit IGsm.BuyAsset(ALICE, ALICE, buyAmount, DEFAULT_CAPACITY, 0);
     GHO_GSM_4626.buyAsset(buyAmount, ALICE);
     vm.stopPrank();
 
@@ -959,7 +971,7 @@ contract TestGsm4626Edge is TestGhoBase {
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), 2);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
     // Expected amount is a result of a 25% gain on 2 of the underlying getting rounded down
-    emit SellAsset(ALICE, ALICE, 2, 2e12, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, 2, 2e12, 0);
     GHO_GSM_4626.sellAsset(2, ALICE);
     vm.stopPrank();
 
@@ -974,7 +986,7 @@ contract TestGsm4626Edge is TestGhoBase {
     vm.startPrank(ALICE);
     GHO_TOKEN.approve(address(GHO_GSM_4626), 2e12);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(ALICE, ALICE, 1, 2e12, 0);
+    emit IGsm.BuyAsset(ALICE, ALICE, 1, 2e12, 0);
     GHO_GSM_4626.buyAsset(1, ALICE);
     vm.stopPrank();
 
@@ -1000,7 +1012,7 @@ contract TestGsm4626Edge is TestGhoBase {
      */
     // Use zero fees for easier calculations
     vm.expectEmit(true, true, false, true, address(GHO_GSM_4626));
-    emit FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
+    emit IGsm.FeeStrategyUpdated(address(GHO_GSM_FIXED_FEE_STRATEGY), address(0));
     GHO_GSM_4626.updateFeeStrategy(address(0));
 
     // Mint some vault shares first
@@ -1014,7 +1026,7 @@ contract TestGsm4626Edge is TestGhoBase {
     USDX_4626_TOKEN.approve(address(GHO_GSM_4626), 2);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
     // Expected amount is a result of a 25% gain on 2 of the underlying getting rounded down
-    emit SellAsset(ALICE, ALICE, 2, 2e12, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, 2, 2e12, 0);
     GHO_GSM_4626.sellAsset(2, ALICE);
     vm.stopPrank();
 
@@ -1022,7 +1034,7 @@ contract TestGsm4626Edge is TestGhoBase {
     vm.startPrank(ALICE);
     GHO_TOKEN.approve(address(GHO_GSM_4626), 2e12);
     vm.expectEmit(true, true, true, true, address(GHO_GSM_4626));
-    emit BuyAsset(ALICE, ALICE, 1, 2e12, 0);
+    emit IGsm.BuyAsset(ALICE, ALICE, 1, 2e12, 0);
     GHO_GSM_4626.buyAsset(1, ALICE);
     vm.stopPrank();
 

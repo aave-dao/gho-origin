@@ -1,0 +1,36 @@
+src/contracts/misc/interfaces/IStkGhoMigrator.sol
+  h_dd1a1ee57491bb 24-25,40,56,62
+  s_e1bc245303f373::t_826ae6f3f719d6 33
+  s_e1bc245303f373::t_376f1b8563f318 68-73
+src/contracts/misc/StkGhoMigrator.sol
+  h_dd1a1ee57491bb 33,36-39,44,50,56
+  s_e1bc245303f373::t_42e5187d9f5fb7 32
+  s_e1bc245303f373::t_13761e186138c4 4,18
+docs/stkgho-migrator.md
+  s_e1bc245303f373::t_5d314ff92372bf 24-25,29
+tests/misc/StkGhoMigratorForkTest.t.sol
+  h_dd1a1ee57491bb 99,102,106
+  s_e1bc245303f373::t_dcea9e324cf092 100-101,103-105,211-213,219
+  s_e1bc245303f373::t_dea3a3ff0d0486 76,334,338,358,360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "9c009e40f377769eb1b523e3849c3ed108ad5951",
+  "prompts": {},
+  "humans": {
+    "h_dd1a1ee57491bb": {
+      "author": "AGMASO <agmguindo@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e1bc245303f373": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9688-1e92-7d81-b17d-ceeb4c331dfa",
+        "model": "gpt-5.5"
+      },
+      "human_author": "AGMASO <agmguindo@gmail.com>"
+    }
+  }
+}

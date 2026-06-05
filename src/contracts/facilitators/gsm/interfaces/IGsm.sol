@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IAccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/IAccessControl.sol';
+import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 import {IGhoFacilitator} from 'src/contracts/gho/interfaces/IGhoFacilitator.sol';
 
 /**

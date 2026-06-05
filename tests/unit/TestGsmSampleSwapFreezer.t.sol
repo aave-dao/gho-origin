@@ -5,23 +5,23 @@ import './TestGhoBase.t.sol';
 
 contract TestGsmSampleSwapFreezer is TestGhoBase {
   function testFreeze() public {
-    vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM));
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), true);
     GHO_GSM_SWAP_FREEZER.triggerFreeze(address(GHO_GSM));
   }
 
   function testUnfreeze() public {
     GHO_GSM_SWAP_FREEZER.triggerFreeze(address(GHO_GSM));
-    vm.expectEmit(address(GHO_GSM));
-    emit SwapFreeze(address(GHO_GSM_SWAP_FREEZER), false);
+    vm.expectEmit(true, true, true, true, address(GHO_GSM));
+    emit IGsm.SwapFreeze(address(GHO_GSM_SWAP_FREEZER), false);
     GHO_GSM_SWAP_FREEZER.triggerUnfreeze(address(GHO_GSM));
   }
 
   function testRevertNotAuthorized() public {
     vm.startPrank(ALICE);
-    vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
     GHO_GSM_SWAP_FREEZER.triggerFreeze(address(GHO_GSM));
-    vm.expectRevert(OwnableErrorsLib.CALLER_NOT_OWNER());
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ALICE));
     GHO_GSM_SWAP_FREEZER.triggerUnfreeze(address(GHO_GSM));
     vm.stopPrank();
   }

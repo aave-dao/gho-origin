@@ -331,7 +331,7 @@ contract TestSGhoPermit is TestSGhoBase {
 
     // Execute depositWithPermit - should revert due to insufficient balance
     vm.startPrank(owner);
-    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    vm.expectPartialRevert(IERC20Errors.ERC20InsufficientBalance.selector);
     sgho.depositWithPermit(depositAmount, owner, deadline, IsGho.SignatureParams(v, r, s));
     vm.stopPrank();
   }

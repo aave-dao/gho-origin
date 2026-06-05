@@ -11,7 +11,7 @@
 
 pragma solidity ^0.8.2;
 
-import 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/Address.sol';
+import 'src/contracts/gho/dependencies/openzeppelin-contracts/contracts/utils/Address.sol';
 
 /**
  * @dev This is a base contract to aid in writing upgradeable contracts, or any kind of contract that will be deployed

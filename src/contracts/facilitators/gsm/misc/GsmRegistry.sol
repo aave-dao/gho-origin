@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {EnumerableSet} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
-import {Ownable} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/Ownable.sol';
+import {EnumerableSet} from 'openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IGsmRegistry} from 'src/contracts/facilitators/gsm/misc/IGsmRegistry.sol';
 
 /**
@@ -19,10 +19,7 @@ contract GsmRegistry is Ownable, IGsmRegistry {
    * @dev Constructor
    * @param newOwner The address of the contract owner
    */
-  constructor(address newOwner) {
-    require(newOwner != address(0), 'ZERO_ADDRESS_NOT_VALID');
-    _transferOwnership(newOwner);
-  }
+  constructor(address newOwner) Ownable(newOwner) {}
 
   /// @inheritdoc IGsmRegistry
   function addGsm(address gsmAddress) external onlyOwner {

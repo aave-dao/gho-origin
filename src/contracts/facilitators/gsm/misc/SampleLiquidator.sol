@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Ownable} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/Ownable.sol';
-import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 
@@ -12,6 +12,8 @@ import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
  * @notice Minimal Liquidator that can serve as sample contract
  */
 contract SampleLiquidator is Ownable {
+  constructor() Ownable(msg.sender) {}
+
   /**
    * @notice Triggers seizure of a GSM, sending seized funds to the Treasury
    * @param gsm Address of the GSM

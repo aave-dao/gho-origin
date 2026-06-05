@@ -29,7 +29,6 @@ contract StkGhoMigratorForkTest is Test {
     vm.startPrank(user);
     IERC20(GHO).approve(address(STKGHO), 90e18);
     STKGHO.stake(user, 90e18);
-    vm.warp(block.timestamp + 30 days);
     vm.stopPrank();
     _;
   }
@@ -74,7 +73,7 @@ contract StkGhoMigratorForkTest is Test {
   }
 
   function test_Revert_Constructor_InvalidPauseGuardian() public {
-    vm.expectRevert(IStkGhoMigrator.InvalidAddressZero.selector);
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
     new StkGhoMigrator(ownerMigrator, address(0));
   }
 
@@ -95,6 +94,14 @@ contract StkGhoMigratorForkTest is Test {
     freshMigrator.claimHelperRole();
 
     assertEq(STKGHO.getAdmin(CLAIM_HELPER_ROLE), address(freshMigrator));
+  }
+
+  function test_Revert_ClaimHelperRole_WhenPaused() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    migrator.claimHelperRole();
   }
 
   // --- Test Guardian ---
@@ -201,14 +208,16 @@ contract StkGhoMigratorForkTest is Test {
   function test_Migrate() public depositStkGhoReadyToRedeem {
     uint256 stkGhoShares = STKGHO.balanceOf(user);
     uint256 sGhoSharesBefore = SGHO.balanceOf(user);
+    uint256 expectedSGhoShares = SGHO.previewDeposit(stkGhoShares);
+
+    assertGt(stkGhoShares, 0);
 
     vm.prank(user);
     migrator.migrate();
 
     assertEq(STKGHO.balanceOf(user), 0);
-    assertGt(SGHO.balanceOf(user), sGhoSharesBefore);
+    assertEq(SGHO.balanceOf(user) - sGhoSharesBefore, expectedSGhoShares);
     assertEq(GHO.balanceOf(address(migrator)), 0);
-    assertGt(stkGhoShares, 0);
   }
 
   function test_Revert_Migrate_NoSGhoSharesReceived() public {
@@ -322,11 +331,11 @@ contract StkGhoMigratorForkTest is Test {
 
   function test_Revert_Rescue_Invalid_Address() public {
     vm.prank(ownerMigrator);
-    vm.expectRevert(IStkGhoMigrator.InvalidAddressZero.selector);
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
     migrator.rescue(address(0), user, 1_000e18);
 
     vm.prank(ownerMigrator);
-    vm.expectRevert(IStkGhoMigrator.InvalidAddressZero.selector);
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
     migrator.rescue(address(GHO), address(0), 1_000e18);
   }
 
@@ -346,9 +355,9 @@ contract StkGhoMigratorForkTest is Test {
     assertEq(STKGHO.getPendingAdmin(CLAIM_HELPER_ROLE), newPendingAdmin);
   }
 
-  function test_Revert_SetClaimHelperPendingAdmin_InvalidAddressZero() public {
+  function test_Revert_SetClaimHelperPendingAdmin_InvalidAddress() public {
     vm.prank(ownerMigrator);
-    vm.expectRevert(IStkGhoMigrator.InvalidAddressZero.selector);
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
     migrator.setClaimHelperPendingAdmin(address(0));
   }
 

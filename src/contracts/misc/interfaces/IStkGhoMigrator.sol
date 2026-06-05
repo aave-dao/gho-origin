@@ -21,8 +21,8 @@ interface IStkGhoMigrator {
   error NoStkGhoSharesToRedeem();
   /// @notice Thrown when the redeemed shares did not return the expected amount of GHO.
   error UnexpectedGhoRedeemed();
-  /// @notice Thrown when an input address is zero.
-  error InvalidAddressZero();
+  /// @notice Thrown when an input address is invalid.
+  error InvalidAddress();
   /// @notice Thrown when the rescue amount is zero.
   error InvalidAmount();
   /// @notice Thrown when no sGHO shares were received from the deposit.
@@ -30,12 +30,14 @@ interface IStkGhoMigrator {
 
   /**
    * @notice Claims the stkGHO claim helper role.
+   * @dev Reverts when the contract is paused.
    * @dev This contract must have been set as the pending admin for the claim helper role.
    */
   function claimHelperRole() external;
 
   /**
    * @notice Sets the pending admin for the stkGHO claim helper role.
+   * @dev Only callable by the owner.
    * @param newPendingAdmin The address of the new pending admin.
    */
   function setClaimHelperPendingAdmin(address newPendingAdmin) external;
@@ -51,19 +53,24 @@ interface IStkGhoMigrator {
 
   /**
    * @notice Pauses migrations.
-   * @dev Callable by the owner or the pause guardian.
+   * @dev Only callable by the owner or the pause guardian.
    */
   function pause() external;
 
   /**
    * @notice Unpauses migrations.
-   * @dev Callable by the owner only.
+   * @dev Only callable by the owner.
    */
   function unpause() external;
 
   /**
    * @notice Migrates the caller's full stkGHO position into the sGHO ERC4626 vault.
-   * @dev Reverts when the contract is paused.
+   * @dev The migrator cools down and redeems the caller's full stkGHO balance on their behalf,
+   *      then deposits the redeemed GHO into sGHO with the caller as receiver.
+   * @dev Reverts when the contract is paused, when the stkGHO cooldown period is not zero,
+   *      when the caller has no stkGHO shares, when this contract does not hold the stkGHO
+   *      claim helper role, when the redeemed GHO amount does not match the stkGHO shares
+   *      redeemed, or when the sGHO deposit returns zero shares.
    */
   function migrate() external;
 

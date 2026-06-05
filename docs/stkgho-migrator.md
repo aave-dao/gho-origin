@@ -21,12 +21,12 @@ The migrator approves `sGHO` for `type(uint256).max` of GHO once, in the constru
 
 | Role on `StkGhoMigrator`           | Description                                                                                          |
 | :--------------------------------- | :--------------------------------------------------------------------------------------------------- |
-| `owner` (`Ownable2Step`)           | Can update the guardian, set the `stkGHO` claim helper pending admin, rescue ERC20, and `unpause()`. |
-| `guardian` (`OwnableWithGuardian`) | Can `pause()` `migrate()` in case of emergency.                                                      |
+| `owner` (`Ownable2StepWithGuardian`)    | Can update the guardian, set the `stkGHO` claim helper pending admin, rescue ERC20, and `unpause()`. |
+| `guardian` (`Ownable2StepWithGuardian`) | Can `pause()` `migrate()` in case of emergency.                                                      |
 
 - `pause()` is callable by the `owner` or the `guardian`; `unpause()` is callable by the `owner` only.
 - The `guardian` is updated via `updateGuardian(newGuardian)`, callable by the `owner` or the current `guardian`.
-- Ownership uses a two-step transfer (`Ownable2Step`): the current owner calls `transferOwnership(newOwner)`, and the new owner must call `acceptOwnership()` to take over.
+- Ownership uses a two-step transfer (`Ownable2StepWithGuardian`): the current owner calls `transferOwnership(newOwner)`, and the new owner must call `acceptOwnership()` to take over.
 
 ### `CLAIM_HELPER` role on `stkGHO`
 

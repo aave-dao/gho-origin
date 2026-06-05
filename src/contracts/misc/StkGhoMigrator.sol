@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
-import {Ownable2Step} from 'openzeppelin-contracts/contracts/access/Ownable2Step.sol';
-import {OwnableWithGuardian} from 'solidity-utils/contracts/access-control/OwnableWithGuardian.sol';
+import {Ownable2StepWithGuardian} from 'solidity-utils/contracts/access-control/Ownable2StepWithGuardian.sol';
 import {Pausable} from 'openzeppelin-contracts/contracts/utils/Pausable.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
@@ -17,7 +15,7 @@ import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
  * @notice Migrates stkGHO positions into the sGHO ERC4626 vault in a single transaction.
  * @dev The contract must hold the stkGHO claim helper role to call cooldownOnBehalfOf and redeemOnBehalf.
  */
-contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2Step, OwnableWithGuardian {
+contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2StepWithGuardian {
   using SafeERC20 for IERC20;
 
   /// @notice The stkGHO token contract
@@ -31,31 +29,31 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2Step, OwnableWithG
 
   /**
    * @notice Initializes the contract owner and grants the sGHO vault maximum GHO allowance.
-   * @param initialOwner The address of the contract owner.
-   * @param initialPauseGuardian The address of the initial pause guardian.
+   * @param initialOwner_ The address of the contract owner.
+   * @param initialPauseGuardian_ The address of the initial pause guardian.
    */
   constructor(
-    address initialOwner,
-    address initialPauseGuardian
-  ) OwnableWithGuardian(initialOwner, initialPauseGuardian) {
-    require(initialPauseGuardian != address(0), InvalidAddressZero());
+    address initialOwner_,
+    address initialPauseGuardian_
+  ) Ownable2StepWithGuardian(initialOwner_, initialPauseGuardian_) {
+    require(initialPauseGuardian_ != address(0), InvalidAddress());
     GHO.forceApprove(address(SGHO), type(uint256).max);
   }
 
   /// @inheritdoc IStkGhoMigrator
-  function claimHelperRole() external {
+  function claimHelperRole() external whenNotPaused {
     STKGHO.claimRoleAdmin(CLAIM_HELPER_ROLE);
   }
 
   /// @inheritdoc IStkGhoMigrator
   function setClaimHelperPendingAdmin(address newPendingAdmin) external onlyOwner {
-    require(newPendingAdmin != address(0), InvalidAddressZero());
+    require(newPendingAdmin != address(0), InvalidAddress());
     STKGHO.setPendingAdmin(CLAIM_HELPER_ROLE, newPendingAdmin);
   }
 
   /// @inheritdoc IStkGhoMigrator
   function rescue(address token, address to, uint256 amount) external onlyOwner {
-    require(token != address(0) && to != address(0), InvalidAddressZero());
+    require(token != address(0) && to != address(0), InvalidAddress());
     require(amount > 0, InvalidAmount());
     IERC20(token).safeTransfer(to, amount);
   }
@@ -88,16 +86,5 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2Step, OwnableWithG
     require(sghoSharesReceived != 0, NoSGhoSharesReceived());
 
     emit StkGhoMigrated(msg.sender, ghoRedeemed);
-  }
-
-  /// @dev Resolves the inheritance clash between `Ownable` (via `OwnableWithGuardian`) and `Ownable2Step`,
-  /// keeping the two-step ownership transfer behavior.
-  function transferOwnership(address newOwner) public override(Ownable, Ownable2Step) {
-    super.transferOwnership(newOwner);
-  }
-
-  /// @dev Resolves the same clash for the internal ownership-transfer hook.
-  function _transferOwnership(address newOwner) internal override(Ownable, Ownable2Step) {
-    super._transferOwnership(newOwner);
   }
 }

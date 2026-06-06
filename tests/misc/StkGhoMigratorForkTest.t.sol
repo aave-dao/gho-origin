@@ -1,28 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {Test} from 'forge-std/Test.sol';
 import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
-import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 import {Pausable} from 'openzeppelin-contracts/contracts/utils/Pausable.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
-import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {StkGhoMigratorBaseTest} from './StkGhoMigratorBase.t.sol';
 
-contract StkGhoMigratorForkTest is Test {
-  StkGhoMigrator public migrator;
-  address public invalidUser = makeAddr('INVALID_USER');
-  address public user = makeAddr('USER');
-  address public ownerMigrator = makeAddr('OWNER_MIGRATOR');
-  address public pauseGuardian = makeAddr('PAUSE_GUARDIAN');
-  IStakeToken public constant STKGHO = IStakeToken(0x1a88Df1cFe15Af22B3c4c783D4e6F7F9e0C1885d);
-  IERC4626 public constant SGHO = IERC4626(0xE1753F2e00940cC31213dd92013cF019DFE4ca1d);
-  IERC20 public constant GHO = IERC20(0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f);
-  uint256 constant CLAIM_HELPER_ROLE = 2;
-  uint256 constant COOLDOWN_ADMIN_ROLE = 1;
-
+contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
   modifier depositStkGhoReadyToRedeem() {
     vm.deal(user, 1 ether);
     deal(address(GHO), user, 1_000e18);
@@ -59,22 +46,10 @@ contract StkGhoMigratorForkTest is Test {
   }
 
   // --- Test Constructor ---
-
-  function test_Constructor() public {
+  function test_Constructor_ApprovesSGhoMaxOnFork() public {
     StkGhoMigrator freshMigrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
 
-    assertEq(freshMigrator.owner(), ownerMigrator);
-    assertEq(freshMigrator.guardian(), pauseGuardian);
     assertEq(GHO.allowance(address(freshMigrator), address(SGHO)), type(uint256).max);
-    assertEq(address(freshMigrator.STKGHO()), address(STKGHO));
-    assertEq(address(freshMigrator.SGHO()), address(SGHO));
-    assertEq(address(freshMigrator.GHO()), address(GHO));
-    assertEq(freshMigrator.CLAIM_HELPER_ROLE(), CLAIM_HELPER_ROLE);
-  }
-
-  function test_Revert_Constructor_InvalidPauseGuardian() public {
-    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
-    new StkGhoMigrator(ownerMigrator, address(0));
   }
 
   // --- Test Deployment and Role Claiming ---
@@ -94,14 +69,6 @@ contract StkGhoMigratorForkTest is Test {
     freshMigrator.claimHelperRole();
 
     assertEq(STKGHO.getAdmin(CLAIM_HELPER_ROLE), address(freshMigrator));
-  }
-
-  function test_Revert_ClaimHelperRole_WhenPaused() public {
-    vm.prank(pauseGuardian);
-    migrator.pause();
-
-    vm.expectRevert(Pausable.EnforcedPause.selector);
-    migrator.claimHelperRole();
   }
 
   // --- Test Guardian ---
@@ -182,20 +149,6 @@ contract StkGhoMigratorForkTest is Test {
     migrator.unpause();
 
     assertFalse(migrator.paused());
-  }
-
-  function test_Revert_Pause_NotOwnerOrGuardian() public {
-    vm.prank(user);
-    vm.expectRevert(
-      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, user)
-    );
-    migrator.pause();
-  }
-
-  function test_Revert_Unpause_NotOwner() public {
-    vm.prank(user);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
-    migrator.unpause();
   }
 
   // --- Test Setup ---

@@ -137,6 +137,73 @@ abstract contract StkGhoMigratorBaseTest is Test {
       abi.encode(true)
     );
   }
+
+  // --- Test Constructor ---
+
+  function test_Constructor() public view {
+    assertEq(migrator.owner(), ownerMigrator);
+    assertEq(migrator.guardian(), pauseGuardian);
+    assertEq(address(migrator.STKGHO()), address(STKGHO));
+    assertEq(address(migrator.SGHO()), address(SGHO));
+    assertEq(address(migrator.GHO()), address(GHO));
+    assertEq(migrator.CLAIM_HELPER_ROLE(), CLAIM_HELPER_ROLE);
+  }
+
+  function test_Revert_Constructor_InvalidPauseGuardian() public {
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
+    new StkGhoMigrator(ownerMigrator, address(0));
+  }
+
+  // --- Test Guardian ---
+
+  function test_Pause_ByGuardian() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    assertTrue(migrator.paused());
+  }
+
+  function test_Revert_Pause_NotOwnerOrGuardian() public {
+    vm.prank(user);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, user)
+    );
+    migrator.pause();
+  }
+
+  function test_Unpause_ByOwner() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.prank(ownerMigrator);
+    migrator.unpause();
+
+    assertFalse(migrator.paused());
+  }
+
+  function test_Revert_Unpause_NotOwner() public {
+    vm.prank(user);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    migrator.unpause();
+  }
+
+  function test_Revert_Migrate_WhenPaused() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.prank(user);
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    migrator.migrate();
+  }
+
+  function test_Revert_ClaimHelperRole_WhenPaused() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    migrator.claimHelperRole();
+  }
+
   // function _mockSuccessfulMigration(
   //   address account,
   //   uint256 stkGhoShares,

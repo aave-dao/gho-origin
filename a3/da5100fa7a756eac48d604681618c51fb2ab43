@@ -1,0 +1,23 @@
+tests/misc/StkGhoMigratorBase.t.sol
+  s_e1bc245303f373::t_3c276b8838dc37 140-206
+tests/misc/StkGhoMigratorForkTest.t.sol
+  s_e1bc245303f373::t_09058658f38605 10,12,49
+tests/misc/StkGhoMigratorUnitTest.t.sol
+  s_e1bc245303f373::t_bd6c189c769bf0 158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "a3da5100fa7a756eac48d604681618c51fb2ab43",
+  "prompts": {},
+  "sessions": {
+    "s_e1bc245303f373": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9688-1e92-7d81-b17d-ceeb4c331dfa",
+        "model": "gpt-5.5"
+      },
+      "human_author": "AGMASO <agmguindo@gmail.com>"
+    }
+  }
+}

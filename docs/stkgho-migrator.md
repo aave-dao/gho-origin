@@ -19,8 +19,8 @@ The migrator approves `sGHO` for `type(uint256).max` of GHO once, in the constru
 
 ## Access Control & Roles
 
-| Role on `StkGhoMigrator`           | Description                                                                                          |
-| :--------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| Role on `StkGhoMigrator`                | Description                                                                                          |
+| :-------------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | `owner` (`Ownable2StepWithGuardian`)    | Can update the guardian, set the `stkGHO` claim helper pending admin, rescue ERC20, and `unpause()`. |
 | `guardian` (`Ownable2StepWithGuardian`) | Can `pause()` `migrate()` in case of emergency.                                                      |
 

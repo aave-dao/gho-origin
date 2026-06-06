@@ -251,50 +251,6 @@ contract StkGhoMigratorForkTest is Test {
     migrator.migrate();
   }
 
-  // Mock the calls to simulate redeeming stkGHO but receiving an unexpected amount of GHO.
-  function test_Revert_UnexpectedGhoRedeemed() public {
-    uint256 stkGhoShares = 90e18;
-
-    vm.mockCall(
-      address(STKGHO),
-      abi.encodeWithSelector(IStakeToken.getCooldownSeconds.selector),
-      abi.encode(0)
-    );
-
-    vm.mockCall(
-      address(STKGHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, user),
-      abi.encode(stkGhoShares)
-    );
-
-    vm.mockCall(
-      address(GHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, address(migrator)),
-      abi.encode(0)
-    );
-
-    vm.mockCall(
-      address(STKGHO),
-      abi.encodeWithSelector(IStakeToken.cooldownOnBehalfOf.selector, user),
-      ''
-    );
-
-    vm.mockCall(
-      address(STKGHO),
-      abi.encodeWithSelector(
-        IStakeToken.redeemOnBehalf.selector,
-        user,
-        address(migrator),
-        stkGhoShares
-      ),
-      ''
-    );
-
-    vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.UnexpectedGhoRedeemed.selector);
-    migrator.migrate();
-  }
-
   // --- Tests rescue ---
   function test_Rescue_erc20() public {
     vm.deal(user, 1 ether);

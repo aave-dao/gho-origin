@@ -27,6 +27,74 @@ abstract contract StkGhoMigratorBaseTest is Test {
   IERC4626 public constant SGHO = IERC4626(0xE1753F2e00940cC31213dd92013cF019DFE4ca1d);
   IERC20 public constant GHO = IERC20(0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f);
 
+  // --- Test Constructor ---
+
+  function test_Constructor() public view {
+    assertEq(migrator.owner(), ownerMigrator);
+    assertEq(migrator.guardian(), pauseGuardian);
+    assertEq(address(migrator.STKGHO()), address(STKGHO));
+    assertEq(address(migrator.SGHO()), address(SGHO));
+    assertEq(address(migrator.GHO()), address(GHO));
+    assertEq(migrator.CLAIM_HELPER_ROLE(), CLAIM_HELPER_ROLE);
+  }
+
+  function test_Revert_Constructor_InvalidPauseGuardian() public {
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
+    new StkGhoMigrator(ownerMigrator, address(0));
+  }
+
+  // --- Test Guardian ---
+
+  function test_Pause_ByGuardian() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    assertTrue(migrator.paused());
+  }
+
+  function test_Revert_Pause_NotOwnerOrGuardian() public {
+    vm.prank(user);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, user)
+    );
+    migrator.pause();
+  }
+
+  function test_Unpause_ByOwner() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.prank(ownerMigrator);
+    migrator.unpause();
+
+    assertFalse(migrator.paused());
+  }
+
+  function test_Revert_Unpause_NotOwner() public {
+    vm.prank(user);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    migrator.unpause();
+  }
+
+  function test_Revert_Migrate_WhenPaused() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.prank(user);
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    migrator.migrate();
+  }
+
+  function test_Revert_ClaimHelperRole_WhenPaused() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    migrator.claimHelperRole();
+  }
+
+  // --- Internal functions for tests ---
+
   function _deployMigratorWithMockedTargets() internal {
     _etchIntegrationTargets();
     _mockGhoApprove(address(SGHO), type(uint256).max);
@@ -137,85 +205,4 @@ abstract contract StkGhoMigratorBaseTest is Test {
       abi.encode(true)
     );
   }
-
-  // --- Test Constructor ---
-
-  function test_Constructor() public view {
-    assertEq(migrator.owner(), ownerMigrator);
-    assertEq(migrator.guardian(), pauseGuardian);
-    assertEq(address(migrator.STKGHO()), address(STKGHO));
-    assertEq(address(migrator.SGHO()), address(SGHO));
-    assertEq(address(migrator.GHO()), address(GHO));
-    assertEq(migrator.CLAIM_HELPER_ROLE(), CLAIM_HELPER_ROLE);
-  }
-
-  function test_Revert_Constructor_InvalidPauseGuardian() public {
-    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
-    new StkGhoMigrator(ownerMigrator, address(0));
-  }
-
-  // --- Test Guardian ---
-
-  function test_Pause_ByGuardian() public {
-    vm.prank(pauseGuardian);
-    migrator.pause();
-
-    assertTrue(migrator.paused());
-  }
-
-  function test_Revert_Pause_NotOwnerOrGuardian() public {
-    vm.prank(user);
-    vm.expectRevert(
-      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, user)
-    );
-    migrator.pause();
-  }
-
-  function test_Unpause_ByOwner() public {
-    vm.prank(pauseGuardian);
-    migrator.pause();
-
-    vm.prank(ownerMigrator);
-    migrator.unpause();
-
-    assertFalse(migrator.paused());
-  }
-
-  function test_Revert_Unpause_NotOwner() public {
-    vm.prank(user);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
-    migrator.unpause();
-  }
-
-  function test_Revert_Migrate_WhenPaused() public {
-    vm.prank(pauseGuardian);
-    migrator.pause();
-
-    vm.prank(user);
-    vm.expectRevert(Pausable.EnforcedPause.selector);
-    migrator.migrate();
-  }
-
-  function test_Revert_ClaimHelperRole_WhenPaused() public {
-    vm.prank(pauseGuardian);
-    migrator.pause();
-
-    vm.expectRevert(Pausable.EnforcedPause.selector);
-    migrator.claimHelperRole();
-  }
-
-  // function _mockSuccessfulMigration(
-  //   address account,
-  //   uint256 stkGhoShares,
-  //   uint256 ghoBalanceBefore,
-  //   uint256 sGhoShares
-  // ) internal {
-  //   _mockCooldownSeconds(0);
-  //   _mockStkGhoBalance(account, stkGhoShares);
-  //   _mockGhoBalance(address(migrator), ghoBalanceBefore);
-  //   _mockCooldownOnBehalfOf(account);
-  //   _mockRedeemOnBehalf(account, address(migrator), stkGhoShares);
-  //   _mockGhoBalance(address(migrator), ghoBalanceBefore + stkGhoShares);
-  //   _mockSGhoDeposit(stkGhoShares, account, sGhoShares);
-  // }
 }

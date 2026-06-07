@@ -134,22 +134,6 @@ abstract contract StkGhoMigratorBaseTest is Test {
     );
   }
 
-  function _mockGhoBalance(address account, uint256 balance) internal {
-    vm.mockCall(
-      address(GHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, account),
-      abi.encode(balance)
-    );
-  }
-
-  function _mockSGhoBalance(address account, uint256 balance) internal {
-    vm.mockCall(
-      address(SGHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, account),
-      abi.encode(balance)
-    );
-  }
-
   function _mockCooldownOnBehalfOf(address account) internal {
     vm.mockCall(
       address(STKGHO),
@@ -170,14 +154,6 @@ abstract contract StkGhoMigratorBaseTest is Test {
     vm.mockCall(
       address(SGHO),
       abi.encodeWithSelector(IERC4626.deposit.selector, assets, receiver),
-      abi.encode(shares)
-    );
-  }
-
-  function _mockSGhoPreviewDeposit(uint256 assets, uint256 shares) internal {
-    vm.mockCall(
-      address(SGHO),
-      abi.encodeWithSelector(IERC4626.previewDeposit.selector, assets),
       abi.encode(shares)
     );
   }

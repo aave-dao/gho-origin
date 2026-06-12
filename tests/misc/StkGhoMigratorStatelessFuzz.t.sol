@@ -27,10 +27,7 @@ contract StkGhoMigratorStatelessFuzz is Test, StkGhoMigratorProcedure {
     }
     vm.createSelectFork(rpc);
     migrator = StkGhoMigrator(
-      _deployStkGhoMigrator({
-        initialOwner: ownerMigrator,
-        initialPauseGuardian: pauseGuardian
-      })
+      _deployStkGhoMigrator({initialOwner: ownerMigrator, initialPauseGuardian: pauseGuardian})
     );
 
     address admin = STKGHO.getAdmin(CLAIM_HELPER_ROLE);

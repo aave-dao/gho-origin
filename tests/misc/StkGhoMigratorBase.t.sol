@@ -101,10 +101,7 @@ abstract contract StkGhoMigratorBaseTest is Test, StkGhoMigratorProcedure {
     _mockGhoApprove(address(SGHO), type(uint256).max);
 
     migrator = StkGhoMigrator(
-      _deployStkGhoMigrator({
-        initialOwner: ownerMigrator,
-        initialPauseGuardian: pauseGuardian
-      })
+      _deployStkGhoMigrator({initialOwner: ownerMigrator, initialPauseGuardian: pauseGuardian})
     );
   }
 

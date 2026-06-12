@@ -24,10 +24,7 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
       abi.encodeWithSelector(IERC20.approve.selector, address(SGHO), type(uint256).max)
     );
 
-    _deployStkGhoMigrator({
-      initialOwner: ownerMigrator,
-      initialPauseGuardian: pauseGuardian
-    });
+    _deployStkGhoMigrator({initialOwner: ownerMigrator, initialPauseGuardian: pauseGuardian});
   }
 
   // --- Test claimHelperRole ---

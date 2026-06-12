@@ -1,0 +1,32 @@
+src/deployments/contracts/procedures/StkGhoMigratorProcedure.sol
+  h_dd1a1ee57491bb 1-19
+tests/misc/StkGhoMigratorBase.t.sol
+  s_d56d3190c12274::t_303793b580686d 6,17,44,103-108
+tests/misc/StkGhoMigratorUnitTest.t.sol
+  s_d56d3190c12274::t_507d17ffba32ce 27-30
+tests/misc/StkGhoMigratorForkTest.t.sol
+  s_d56d3190c12274::t_e9b03a6f655c18 40-45,55-60,67-72
+tests/misc/StkGhoMigratorStatelessFuzz.t.sol
+  s_d56d3190c12274::t_32c6cf72c96529 6,11,29-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "01a259f4be1af0e78d22018f247b6a87e524f42b",
+  "prompts": {},
+  "humans": {
+    "h_dd1a1ee57491bb": {
+      "author": "AGMASO <agmguindo@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d56d3190c12274": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ebad6-cee0-78d1-9bea-a3324de1d2b7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "AGMASO <agmguindo@gmail.com>"
+    }
+  }
+}

@@ -37,7 +37,12 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
       return;
     }
     vm.createSelectFork(rpc);
-    migrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
+    migrator = StkGhoMigrator(
+      _deployStkGhoMigrator({
+        initialOwner: ownerMigrator,
+        initialPauseGuardian: pauseGuardian
+      })
+    );
 
     address admin = STKGHO.getAdmin(CLAIM_HELPER_ROLE);
     vm.prank(admin);
@@ -47,14 +52,24 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
 
   // --- Test Constructor ---
   function test_Constructor_ApprovesSGhoMaxOnFork() public {
-    StkGhoMigrator freshMigrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
+    StkGhoMigrator freshMigrator = StkGhoMigrator(
+      _deployStkGhoMigrator({
+        initialOwner: ownerMigrator,
+        initialPauseGuardian: pauseGuardian
+      })
+    );
 
     assertEq(GHO.allowance(address(freshMigrator), address(SGHO)), type(uint256).max);
   }
 
   // --- Test Deployment and Role Claiming ---
   function test_ClaimHelperRole_FreshDeploy() public {
-    StkGhoMigrator freshMigrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
+    StkGhoMigrator freshMigrator = StkGhoMigrator(
+      _deployStkGhoMigrator({
+        initialOwner: ownerMigrator,
+        initialPauseGuardian: pauseGuardian
+      })
+    );
 
     assertNotEq(STKGHO.getAdmin(CLAIM_HELPER_ROLE), address(freshMigrator));
 

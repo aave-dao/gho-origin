@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {Test} from 'forge-std/Test.sol';
 import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
+import {StkGhoMigratorProcedure} from 'src/deployments/contracts/procedures/StkGhoMigratorProcedure.sol';
 import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
@@ -13,7 +14,7 @@ import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol
 
 contract StkGhoMigratorMockTarget {}
 
-abstract contract StkGhoMigratorBaseTest is Test {
+abstract contract StkGhoMigratorBaseTest is Test, StkGhoMigratorProcedure {
   StkGhoMigrator public migrator;
   address public invalidUser = makeAddr('INVALID_USER');
   address public user = makeAddr('USER');
@@ -40,7 +41,7 @@ abstract contract StkGhoMigratorBaseTest is Test {
 
   function test_Revert_Constructor_InvalidPauseGuardian() public {
     vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
-    new StkGhoMigrator(ownerMigrator, address(0));
+    _deployStkGhoMigrator({initialOwner: ownerMigrator, initialPauseGuardian: address(0)});
   }
 
   // --- Test Guardian ---
@@ -99,7 +100,12 @@ abstract contract StkGhoMigratorBaseTest is Test {
     _etchIntegrationTargets();
     _mockGhoApprove(address(SGHO), type(uint256).max);
 
-    migrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
+    migrator = StkGhoMigrator(
+      _deployStkGhoMigrator({
+        initialOwner: ownerMigrator,
+        initialPauseGuardian: pauseGuardian
+      })
+    );
   }
 
   function _etchIntegrationTargets() internal {

@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {StkGhoMigratorBaseTest} from './StkGhoMigratorBase.t.sol';
 import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
@@ -25,7 +24,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
       abi.encodeWithSelector(IERC20.approve.selector, address(SGHO), type(uint256).max)
     );
 
-    new StkGhoMigrator(ownerMigrator, pauseGuardian);
+    _deployStkGhoMigrator({
+      initialOwner: ownerMigrator,
+      initialPauseGuardian: pauseGuardian
+    });
   }
 
   // --- Test claimHelperRole ---

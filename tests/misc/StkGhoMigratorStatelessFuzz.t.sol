@@ -3,11 +3,12 @@ pragma solidity ^0.8.27;
 
 import {Test} from 'forge-std/Test.sol';
 import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
+import {StkGhoMigratorProcedure} from 'src/deployments/contracts/procedures/StkGhoMigratorProcedure.sol';
 import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 
-contract StkGhoMigratorStatelessFuzz is Test {
+contract StkGhoMigratorStatelessFuzz is Test, StkGhoMigratorProcedure {
   StkGhoMigrator public migrator;
   address public user = makeAddr('USER');
   address public ownerMigrator = makeAddr('OWNER_MIGRATOR');
@@ -25,7 +26,12 @@ contract StkGhoMigratorStatelessFuzz is Test {
       return;
     }
     vm.createSelectFork(rpc);
-    migrator = new StkGhoMigrator(ownerMigrator, pauseGuardian);
+    migrator = StkGhoMigrator(
+      _deployStkGhoMigrator({
+        initialOwner: ownerMigrator,
+        initialPauseGuardian: pauseGuardian
+      })
+    );
 
     address admin = STKGHO.getAdmin(CLAIM_HELPER_ROLE);
     vm.prank(admin);

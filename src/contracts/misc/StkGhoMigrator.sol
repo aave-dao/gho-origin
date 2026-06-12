@@ -77,12 +77,12 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2StepWithGuardian {
 
     uint256 ghoBalanceBefore = GHO.balanceOf(address(this));
 
-    STKGHO.cooldownOnBehalfOf(msg.sender);
-    STKGHO.redeemOnBehalf(msg.sender, address(this), amountToRedeem);
+    STKGHO.cooldownOnBehalfOf({from: msg.sender});
+    STKGHO.redeemOnBehalf({from: msg.sender, to: address(this), amount: amountToRedeem});
     uint256 ghoRedeemed = GHO.balanceOf(address(this)) - ghoBalanceBefore;
     require(ghoRedeemed == amountToRedeem, UnexpectedGhoRedeemed());
 
-    uint256 sghoSharesReceived = SGHO.deposit(ghoRedeemed, msg.sender);
+    uint256 sghoSharesReceived = SGHO.deposit({assets: ghoRedeemed, receiver: msg.sender});
     require(sghoSharesReceived != 0, NoSGhoSharesReceived());
 
     emit StkGhoMigrated(msg.sender, ghoRedeemed);

@@ -12,7 +12,7 @@ It is intended for integrators, operators, and reviewers.
 `GhoRouter` exposes a single public entry point:
 
 ```
-swap(tokenIn, tokenOut, exactAmountIn, minAmountOut, recipient, deadline)
+swap(tokenIn, tokenOut, gsm, exactAmountIn, minAmountOut, recipient, deadline)
 ```
 
 Internally, the router dispatches to one of six flows based on the `tokenIn`/`tokenOut` pair:
@@ -29,46 +29,50 @@ Any `tokenIn`/`tokenOut` pair that does not match these six paths reverts with `
 Important shape of the current design:
 
 - `GHO` and `sGHO` are immutable constructor params.
-- The GSM to use for a given token is resolved internally from the `gsms` mapping — callers do not supply a GSM address.
-- GSM paths are gated by on-chain mapping state in `gsms`.
+- The GSM to use is supplied by the caller as the `gsm` argument; the router validates it against the `allowedGsm` allowlist before use.
+- A token may have more than one allowed GSM; the caller selects which one to route through on each swap.
+- GSM paths are gated by on-chain allowlist state in `allowedGsm`.
 - The router keeps no per-user accounting state.
 
 ## GSM mapping and validation model
 
-- Storage: `mapping(address token => address gsm) public gsms`.
+- Storage: `mapping(address token => mapping(address gsm => bool allowed)) public allowedGsm`.
 - Update path:
-  - `setTokenToGsm(address token, address gsm)` (`onlyOwner`) — adds a new mapping.
-  - `removeTokenToGsm(address token)` (`onlyOwner`) — removes an existing mapping.
-- Constraints on `setTokenToGsm`:
+  - `allowTokenGsm(address token, address gsm)` (`onlyOwner`) — allows a token-to-GSM pairing.
+  - `revokeTokenGsm(address token, address gsm)` (`onlyOwner`) — revokes an existing pairing.
+- Constraints on `allowTokenGsm`:
   - Both `token` and `gsm` must be non-zero.
-  - `gsms[token]` must be unset — existing mappings cannot be overwritten; remove first.
+  - `allowedGsm[token][gsm]` must be unset — an already-allowed pairing cannot be re-added (reverts `TokenToGsmAlreadySet()`); revoke first.
   - `_validateGsm(gsm, token)` is run:
     - `gsm.code.length != 0`
     - `IGsm(gsm).GHO_TOKEN() == GHO`
     - `IGsm(gsm).UNDERLYING_ASSET() != address(0)`
     - `token` must be either the static aToken or its underlying asset
+- Constraints on `revokeTokenGsm`:
+  - `allowedGsm[token][gsm]` must be set, otherwise reverts `TokenToGsmNotSet()`.
 - Swap enforcement:
-  - All GSM swap paths require `gsms[token] != address(0)`, reverting with `GsmNotConfigured()`.
+  - All GSM swap paths require `allowedGsm[token][gsm]` for the caller-supplied `gsm`, reverting with `GsmNotConfigured()`.
 - Observability: `TokenToGsmAdded(token, gsm)` and `TokenToGsmRemoved(token, gsm)` are emitted on every update.
 
 ## Runtime route composition
 
-For GSM paths, the GSM is resolved internally at execution time:
+For GSM paths, the caller supplies the `gsm` and the router composes the route from it at execution time:
 
-- Router reads `gsms[tokenIn]` or `gsms[tokenOut]` to get the `gsm` address.
+- Router checks `allowedGsm[token][gsm]` for the caller-supplied `gsm`, reverting `GsmNotConfigured()` if not allowed.
 - Router reads `IGsm(gsm).UNDERLYING_ASSET()` to get `stataToken`.
 - Router reads `IERC4626(stataToken).asset()` to get the underlying token.
+- Router re-checks token compatibility against the route via `_validateTokens` on each swap and preview.
 
 Important caveat:
 
-- `_validateGsm` checks compatibility when a token-to-GSM mapping is set, not on every swap.
-- Preview methods do not re-validate the GSM on each call.
+- `_validateGsm` checks full GSM compatibility (e.g. `GHO_TOKEN`) only when a token-to-GSM pairing is allowed, not on every swap.
+- Preview methods do not re-validate the GSM's `GHO_TOKEN` on each call.
 
 ## Security assumptions
 
 The current implementation assumes:
 
-1. Owner securely manages the `gsms` mapping and curates safe token-to-GSM pairings.
+1. Owner securely manages the `allowedGsm` allowlist and curates safe token-to-GSM pairings.
 2. `IGsm`, static aToken (`IERC4626`), and `sGHO` dependencies are interface-compatible and non-malicious.
 3. `sGHO` is a valid ERC4626 vault over GHO (constructor enforces `IERC4626(sgho).asset() == gho`).
 4. External dependency return values are correct (router accounting uses returned values).
@@ -82,7 +86,7 @@ The current implementation assumes:
   - `minAmountOut` covers all six internal paths.
 - Deadline is validated on every `swap()` call via `DeadlineExpired()`.
 - Recipient is validated as non-zero on all write flows.
-- GSM write flows are gated by `gsms[token] != address(0)`.
+- GSM write flows are gated by `allowedGsm[token][gsm]` for the caller-supplied `gsm`.
 - GSM write flows enforce output/input token compatibility (`underlying` or `static aToken`).
 - `rescueToken` is `onlyOwner`.
 
@@ -122,7 +126,7 @@ What can happen:
 
 Why:
 
-- Mapping updates are owner-controlled and existing mappings cannot be overwritten (must remove then re-add).
+- Allowlist updates are owner-controlled and an already-allowed pairing cannot be re-added (must revoke then re-allow).
 
 Impact:
 
@@ -140,7 +144,7 @@ What can happen:
 
 Why:
 
-- Underlying route components are re-read at runtime, while `_validateGsm` is only checked on `setTokenToGsm`.
+- Underlying route components are re-read at runtime, while `_validateGsm` is only checked on `allowTokenGsm`.
 
 Impact:
 
@@ -225,7 +229,7 @@ Current mitigation:
 
 - `SafeERC20` and known-asset route curation.
 
-### 7) Residual allowance risk
+### 8) Residual allowance risk
 
 What can happen:
 
@@ -245,7 +249,7 @@ Current mitigation:
 - Monitor allowances and balances.
 - Use `rescueToken` under controlled governance.
 
-### 8) Owner rescue authority
+### 9) Owner rescue authority
 
 What can happen:
 
@@ -265,7 +269,7 @@ Current mitigation:
 
 ## Integrator guidance
 
-1. Monitor `TokenToGsmAdded` and `TokenToGsmRemoved` events; verify `gsms(token)` returns a non-zero address before submitting GSM swaps.
+1. Monitor `TokenToGsmAdded` and `TokenToGsmRemoved` events; verify `allowedGsm(token, gsm)` returns `true` for the `gsm` you intend to route through before submitting GSM swaps.
 2. Quote via `previewSwap` immediately before execution and set conservative `minAmountOut`.
 3. Monitor router token balances for residual/stuck funds.
 4. Alert on downstream GSM/static aToken/sGHO upgrades, pauses, and parameter changes.

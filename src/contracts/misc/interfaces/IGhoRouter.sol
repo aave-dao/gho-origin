@@ -74,6 +74,7 @@ interface IGhoRouter {
    * @notice Swap tokenIn for tokenOut and send output to recipient
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
+   * @param gsm Address of the GSM used to perform swap
    * @param exactAmountIn Amount of tokens to swap
    * @param minAmountOut Minimum amount of output token to receive (slippage protection)
    * @param recipient Address that receives output token
@@ -83,6 +84,7 @@ interface IGhoRouter {
   function swap(
     address tokenIn,
     address tokenOut,
+    address gsm,
     uint256 exactAmountIn,
     uint256 minAmountOut,
     address recipient,
@@ -92,15 +94,16 @@ interface IGhoRouter {
   /**
    * @notice Sets a token to corresponding GSM mapping
    * @param token Address of the token that uses the GSM
-   * @param gsm GSM address to update
+   * @param gsm GSM address to allow
    */
-  function setTokenToGsm(address token, address gsm) external;
+  function allowTokenGsm(address token, address gsm) external;
 
   /**
    * @notice Removes a token to GSM mapping
    * @param token Address of the token to remove mapping for
+   * @param gsm GSM address to remove
    */
-  function removeTokenToGsm(address token) external;
+  function revokeTokenGsm(address token, address gsm) external;
 
   /**
    * @notice Rescue ERC20 token from the contract
@@ -125,21 +128,24 @@ interface IGhoRouter {
   /**
    * @notice Returns the corresponding GSM a token should use for swapping
    * @param token Address of the token to check
-   * @return Address of the corresponding GSM
+   * @param gsm Address of the GSM to check
+   * @return True/false on whether GSM is allowed
    */
-  function gsms(address token) external view returns (address);
+  function allowedGsm(address token, address gsm) external view returns (bool);
 
   /**
    * @notice Preview the amount of tokens received for a given input amount
    * @dev This is an estimation and actual results may vary slightly
    * @param tokenIn Input token address
    * @param tokenOut Output token address
+   * @param gsm Address of the GSM used to perform swap
    * @param exactAmountIn Amount of input token to sell
    * @return Expected amount of tokenOut from swap
    */
   function previewSwap(
     address tokenIn,
     address tokenOut,
+    address gsm,
     uint256 exactAmountIn
   ) external view returns (uint256);
 }

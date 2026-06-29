@@ -58,11 +58,29 @@ contract SwapToGHOTest is TestGhoRouterBase {
     vm.startPrank(USER);
     deal(address(WETH), address(USER), 1);
     WETH.approve(address(GHO_ROUTER), 1);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.swap(
       address(WETH),
       address(GHO_TOKEN),
       address(GHO_GSM_4626),
+      1,
+      0,
+      address(this),
+      block.timestamp
+    );
+    vm.stopPrank();
+  }
+
+  function testSwapToGHOGsmNotAllowed() public {
+    // GHO_GSM is not allowed in setUp; the GSM gate trips before any token check
+    vm.startPrank(USER);
+    deal(address(USDX_TOKEN), address(USER), 1);
+    USDX_TOKEN.approve(address(GHO_ROUTER), 1);
+    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    GHO_ROUTER.swap(
+      address(USDX_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM),
       1,
       0,
       address(this),
@@ -164,8 +182,7 @@ contract SwapToGHOTest is TestGhoRouterBase {
   function testSwapToGHORegularGsm(uint256 amount) public {
     amount = bound(amount, 1e6, MAX_FUZZ_AMOUNT_6_DECIMALS);
 
-    GHO_ROUTER.revokeTokenGsm(address(USDX_TOKEN), address(GHO_GSM_4626));
-    GHO_ROUTER.allowTokenGsm(address(USDX_TOKEN), address(GHO_GSM));
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
 
     _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
 
@@ -270,7 +287,7 @@ contract SwapFromGHOTest is TestGhoRouterBase {
     uint256 amount = 1 ether;
     _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
     vm.prank(USER);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.swap(
       address(GHO_TOKEN),
       address(WETH),
@@ -414,7 +431,7 @@ contract SwapToSGhoTest is TestGhoRouterBase {
     vm.startPrank(USER);
     deal(address(WETH), address(USER), 1);
     WETH.approve(address(GHO_ROUTER), 1);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.swap(
       address(WETH),
       address(SGHO),
@@ -552,7 +569,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     _mintSgho(amount);
     vm.startPrank(USER);
     SGHO.approve(address(GHO_ROUTER), amount);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.swap(
       address(SGHO),
       address(WETH),

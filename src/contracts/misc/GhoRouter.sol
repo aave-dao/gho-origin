@@ -25,7 +25,10 @@ contract GhoRouter is Ownable, IGhoRouter {
   address public immutable sGHO;
 
   /// @inheritdoc IGhoRouter
-  mapping(address token => mapping(address gsm => bool allowed)) public allowedGsm;
+  mapping(address gsm => bool allowed) public allowedGsm;
+
+  /// @inheritdoc IGhoRouter
+  mapping(address token => address stataToken) public tokenToStata;
 
   /**
    * @dev Constructor to initialize the contract
@@ -89,23 +92,43 @@ contract GhoRouter is Ownable, IGhoRouter {
   }
 
   /// @inheritdoc IGhoRouter
-  function allowTokenGsm(address token, address gsm) external onlyOwner {
-    require(token != address(0) && gsm != address(0), ZeroAddress());
-    require(allowedGsm[token][gsm] == false, TokenToGsmAlreadySet());
+  function allowGsm(address gsm) external onlyOwner {
+    require(gsm != address(0), ZeroAddress());
+    require(allowedGsm[gsm] == false, GsmAlreadySet());
 
-    _validateGsm(gsm, token);
+    _validateGsm(gsm);
 
-    allowedGsm[token][gsm] = true;
-    emit TokenToGsmAdded(token, gsm);
+    allowedGsm[gsm] = true;
+    emit GsmAdded(gsm);
   }
 
   /// @inheritdoc IGhoRouter
-  function revokeTokenGsm(address token, address gsm) external onlyOwner {
-    require(allowedGsm[token][gsm], TokenToGsmNotSet());
+  function revokeGsm(address gsm) external onlyOwner {
+    require(allowedGsm[gsm], GsmNotSet());
 
-    delete allowedGsm[token][gsm];
+    delete allowedGsm[gsm];
 
-    emit TokenToGsmRemoved(token, gsm);
+    emit GsmRemoved(gsm);
+  }
+
+  /// @inheritdoc IGhoRouter
+  function setTokenToStata(address token, address stata) external onlyOwner {
+    require(token != address(0) && stata != address(0), ZeroAddress());
+    require(tokenToStata[token] == address(0), TokenToStataAlreadySet());
+    require(IERC4626(stata).asset() == token, InvalidToken());
+
+    tokenToStata[token] = stata;
+    emit TokenToStataSet(token, stata);
+  }
+
+  /// @inheritdoc IGhoRouter
+  function removeTokenToStata(address token) external onlyOwner {
+    address stata = tokenToStata[token];
+    require(stata != address(0), TokenToStataNotSet());
+
+    delete tokenToStata[token];
+
+    emit TokenToStataRemoved(token, stata);
   }
 
   /// @inheritdoc IGhoRouter
@@ -161,14 +184,9 @@ contract GhoRouter is Ownable, IGhoRouter {
     address gsm,
     uint256 amount
   ) internal view returns (uint256) {
-    require(allowedGsm[token][gsm], GsmNotConfigured());
+    (address gsmAsset, bool isStata) = _validateGsmInput(token, gsm);
 
-    address underlying = IGsm(gsm).UNDERLYING_ASSET();
-
-    _validateTokens(token, underlying);
-    uint256 sharesAmount = token == underlying
-      ? amount
-      : IERC4626(underlying).previewDeposit(amount);
+    uint256 sharesAmount = isStata ? IERC4626(gsmAsset).previewDeposit(amount) : amount;
     (, uint256 ghoAmount, , ) = IGsm(gsm).getGhoAmountForSellAsset(sharesAmount);
 
     return ghoAmount;
@@ -231,15 +249,16 @@ contract GhoRouter is Ownable, IGhoRouter {
     uint256 minOutputAmount,
     address recipient
   ) internal returns (uint256, uint256) {
-    require(allowedGsm[token][gsm], GsmNotConfigured());
+    (address gsmAsset, bool isStata) = _validateGsmInput(token, gsm);
 
     (uint256 amountToBuy, uint256 ghoUsed, , ) = IGsm(gsm).getAssetAmountForBuyAsset(exactAmountIn);
 
     IERC20(GHO).safeTransferFrom(msg.sender, address(this), ghoUsed);
 
-    (, uint256 outputAmount) = _buyTokenWithGho({
+    uint256 outputAmount = _buyTokenWithGho({
       gsm: gsm,
-      token: token,
+      gsmAsset: gsmAsset,
+      isStata: isStata,
       exactAmountIn: ghoUsed,
       amountToBuy: amountToBuy,
       outputReceiver: recipient,
@@ -306,14 +325,15 @@ contract GhoRouter is Ownable, IGhoRouter {
     uint256 minOutputAmount,
     address recipient
   ) internal returns (uint256) {
-    require(allowedGsm[token][gsm], GsmNotConfigured());
+    (address gsmAsset, bool isStata) = _validateGsmInput(token, gsm);
 
     uint256 ghoAmount = _redeemGho(exactAmountIn, 0);
 
     (uint256 amountToBuy, uint256 ghoUsed, , ) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
-    (, uint256 outputAmount) = _buyTokenWithGho({
+    uint256 outputAmount = _buyTokenWithGho({
       gsm: gsm,
-      token: token,
+      gsmAsset: gsmAsset,
+      isStata: isStata,
       exactAmountIn: ghoUsed,
       amountToBuy: amountToBuy,
       outputReceiver: recipient,
@@ -390,13 +410,15 @@ contract GhoRouter is Ownable, IGhoRouter {
     uint256 exactAmountIn,
     uint256 minGhoAmount
   ) internal returns (uint256) {
-    require(allowedGsm[token][gsm], GsmNotConfigured());
+    (address gsmAsset, bool isStata) = _validateGsmInput(token, gsm);
 
     IERC20(token).safeTransferFrom(msg.sender, address(this), exactAmountIn);
 
-    (, uint256 ghoAmount) = _sellTokenForGho({
+    uint256 ghoAmount = _sellTokenForGho({
       gsm: gsm,
       token: token,
+      gsmAsset: gsmAsset,
+      isStata: isStata,
       exactAmountIn: exactAmountIn,
       minGhoAmount: minGhoAmount
     });
@@ -405,80 +427,76 @@ contract GhoRouter is Ownable, IGhoRouter {
   }
 
   /**
-   * @dev Sells input tokens through GSM for GHO, converting underlying to static aToken when needed.
+   * @dev Sells input tokens through GSM for GHO, wrapping the underlying into the static aToken when needed.
    * @param gsm Whitelisted GSM used for the sell path.
    * @param token Input token address provided by the caller.
+   * @param gsmAsset GSM asset (static aToken) the sale is settled in.
+   * @param isStata Whether `token` must be wrapped into `gsmAsset` before selling.
    * @param exactAmountIn Amount of input tokens pulled from the caller.
    * @param minGhoAmount Minimum acceptable GHO output.
-   * @return inputAmountUsed Amount of input tokens used in the swap.
    * @return ghoAmount Amount of GHO received from GSM.
    */
   function _sellTokenForGho(
     address gsm,
     address token,
+    address gsmAsset,
+    bool isStata,
     uint256 exactAmountIn,
     uint256 minGhoAmount
-  ) internal returns (uint256, uint256) {
-    address underlying = IGsm(gsm).UNDERLYING_ASSET();
+  ) internal returns (uint256) {
     uint256 amount = exactAmountIn;
-    if (token != underlying) {
-      _validateTokens(token, underlying);
-      IERC20(token).forceApprove(underlying, exactAmountIn);
-      amount = IERC4626(underlying).deposit(exactAmountIn, address(this));
+    if (isStata) {
+      IERC20(token).forceApprove(gsmAsset, exactAmountIn);
+      amount = IERC4626(gsmAsset).deposit(exactAmountIn, address(this));
     }
 
-    IERC20(underlying).forceApprove(gsm, amount);
-    (uint256 assetSold, uint256 ghoAmount) = IGsm(gsm).sellAsset({
-      maxAmount: amount,
-      receiver: address(this)
-    });
+    IERC20(gsmAsset).forceApprove(gsm, amount);
+    (, uint256 ghoAmount) = IGsm(gsm).sellAsset({maxAmount: amount, receiver: address(this)});
 
     require(ghoAmount >= minGhoAmount, SlippageExceeded());
-    return (token == underlying ? assetSold : exactAmountIn, ghoAmount);
+    return ghoAmount;
   }
 
   /**
-   * @dev Buys GSM static aTokens with GHO, then returns either static or underlying output based on `token`.
+   * @dev Buys GSM static aTokens with GHO, then returns either the static aToken or its underlying.
    * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param gsm Whitelisted GSM used for the buy path.
-   * @param token Output token requested by the caller (underlying token or static aToken).
+   * @param gsmAsset GSM asset (static aToken) acquired from the GSM.
+   * @param isStata Whether the acquired `gsmAsset` must be unwrapped into its underlying before delivery.
    * @param exactAmountIn GHO budget used to acquire static aTokens.
    * @param amountToBuy Amount of token to acquire from the GSM.
    * @param outputReceiver Address receiving output tokens.
    * @param minOutputAmount Minimum acceptable output amount.
-   * @return ghoSold Amount of GHO consumed by GSM.
    * @return outputAmount Amount of output tokens sent to `outputReceiver`.
    */
   function _buyTokenWithGho(
     address gsm,
-    address token,
+    address gsmAsset,
+    bool isStata,
     uint256 exactAmountIn,
     uint256 amountToBuy,
     address outputReceiver,
     uint256 minOutputAmount
-  ) internal returns (uint256, uint256) {
-    address underlying = IGsm(gsm).UNDERLYING_ASSET();
-    _validateTokens(token, underlying);
-
+  ) internal returns (uint256) {
     IERC20(GHO).forceApprove(gsm, exactAmountIn);
-    (uint256 underlyingAmount, uint256 ghoSold) = IGsm(gsm).buyAsset({
+    (uint256 underlyingAmount, ) = IGsm(gsm).buyAsset({
       minAmount: amountToBuy,
       receiver: address(this)
     });
 
     uint256 outputAmount = underlyingAmount;
-    if (token == underlying) {
-      IERC20(underlying).safeTransfer(outputReceiver, underlyingAmount);
-    } else {
-      outputAmount = IERC4626(underlying).redeem({
+    if (isStata) {
+      outputAmount = IERC4626(gsmAsset).redeem({
         shares: underlyingAmount,
         receiver: outputReceiver,
         owner: address(this)
       });
+    } else {
+      IERC20(gsmAsset).safeTransfer(outputReceiver, underlyingAmount);
     }
 
     require(outputAmount >= minOutputAmount, SlippageExceeded());
-    return (ghoSold, outputAmount);
+    return outputAmount;
   }
 
   /**
@@ -493,31 +511,46 @@ contract GhoRouter is Ownable, IGhoRouter {
     address gsm,
     uint256 ghoAmount
   ) internal view returns (uint256) {
-    require(allowedGsm[token][gsm], GsmNotConfigured());
+    (address gsmAsset, bool isStata) = _validateGsmInput(token, gsm);
 
-    address underlying = IGsm(gsm).UNDERLYING_ASSET();
-
-    _validateTokens(token, underlying);
     (uint256 assetAmount, , , ) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
-    uint256 outputAmount = token == underlying
-      ? assetAmount
-      : IERC4626(underlying).previewRedeem(assetAmount);
+    uint256 outputAmount = isStata ? IERC4626(gsmAsset).previewRedeem(assetAmount) : assetAmount;
     return outputAmount;
   }
 
   /**
-   * @dev Validates GSM compatibility against router configuration and expected interfaces.
+   * @dev Validates that a GSM is structurally compatible with the router before it is whitelisted.
    * @param gsm GSM address to validate.
-   * @param token Token address to validate.
    */
-  function _validateGsm(address gsm, address token) internal view {
+  function _validateGsm(address gsm) internal view {
     require(gsm.code.length != 0, InvalidGsm());
 
     require(IGsm(gsm).GHO_TOKEN() == GHO, InvalidGsm());
-    address stataToken = IGsm(gsm).UNDERLYING_ASSET();
-    require(stataToken != address(0), InvalidGsm());
+    require(IGsm(gsm).UNDERLYING_ASSET() != address(0), InvalidGsm());
+  }
 
-    _validateTokens(token, stataToken);
+  /**
+   * @dev Validates a swap's `token`/`gsm` pairing and resolves how to route it.
+   *      The GSM must be whitelisted, and `token` must be either the GSM asset itself
+   *      or an underlying registered in `tokenToStata` whose static aToken is the GSM asset.
+   *      Validation never calls `asset()` on the GSM asset, so a plain (non-stata) GSM
+   *      paired with an incompatible token reverts cleanly with `InvalidToken`.
+   * @param token Input or output token supplied by the caller.
+   * @param gsm GSM the caller selected to route through.
+   * @return gsmAsset The GSM asset (`UNDERLYING_ASSET`), i.e. the static aToken the GSM settles in.
+   * @return isStata True when `token` is the underlying and must be wrapped into/unwrapped from `gsmAsset`.
+   */
+  function _validateGsmInput(address token, address gsm) internal view returns (address, bool) {
+    require(allowedGsm[gsm], GsmNotConfigured());
+
+    address gsmAsset = IGsm(gsm).UNDERLYING_ASSET();
+    bool isStata;
+    if (token != gsmAsset) {
+      require(tokenToStata[token] == gsmAsset, InvalidToken());
+      isStata = true;
+    }
+
+    return (gsmAsset, isStata);
   }
 
   /**
@@ -530,14 +563,5 @@ contract GhoRouter is Ownable, IGhoRouter {
     require(amount > 0, InvalidAmount());
     require(deadline >= block.timestamp, DeadlineExpired());
     require(recipient != address(0), ZeroAddress());
-  }
-
-  /**
-   * @dev Validates GSM tokens.
-   * @param token Address of input token
-   * @param underlying Address of GSM underlying token
-   */
-  function _validateTokens(address token, address underlying) internal view {
-    require(token == underlying || token == IERC4626(underlying).asset(), InvalidToken());
   }
 }

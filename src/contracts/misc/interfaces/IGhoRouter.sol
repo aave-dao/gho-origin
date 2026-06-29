@@ -29,11 +29,17 @@ interface IGhoRouter {
   /// @dev Swap amount is lower than minimum expected amount
   error SlippageExceeded();
 
-  /// @dev The token to GSM mapping is already set
-  error TokenToGsmAlreadySet();
+  /// @dev The GSM is already allowed
+  error GsmAlreadySet();
 
-  /// @dev The token to GSM mapping is not set
-  error TokenToGsmNotSet();
+  /// @dev The GSM is not allowed
+  error GsmNotSet();
+
+  /// @dev The token already has a stata mapping set
+  error TokenToStataAlreadySet();
+
+  /// @dev The token has no stata mapping set
+  error TokenToStataNotSet();
 
   /// @dev Zero address is not allowed
   error ZeroAddress();
@@ -57,18 +63,30 @@ interface IGhoRouter {
   );
 
   /**
-   * @notice Emitted when a token to GSM mapping is added
-   * @param token Address of the token that can swap via the specified GSM
+   * @notice Emitted when a GSM is allowed by the router.
    * @param gsm GSM address
    */
-  event TokenToGsmAdded(address indexed token, address gsm);
+  event GsmAdded(address gsm);
 
   /**
-   * @notice Emitted when a token to GSM mapping is removed
-   * @param token Address of the token that can swap via the specified GSM
+   * @notice Emitted when a GSM is disallowed by the router.
    * @param gsm GSM address
    */
-  event TokenToGsmRemoved(address indexed token, address gsm);
+  event GsmRemoved(address gsm);
+
+  /**
+   * @notice Emitted when an underlying token is mapped to its static aToken (stata).
+   * @param token Underlying token address
+   * @param stata Static aToken (ERC4626) that wraps `token`
+   */
+  event TokenToStataSet(address indexed token, address indexed stata);
+
+  /**
+   * @notice Emitted when an underlying token's stata mapping is removed.
+   * @param token Underlying token address
+   * @param stata Static aToken (ERC4626) that was mapped to `token`
+   */
+  event TokenToStataRemoved(address indexed token, address indexed stata);
 
   /**
    * @notice Swap tokenIn for tokenOut and send output to recipient
@@ -92,18 +110,32 @@ interface IGhoRouter {
   ) external returns (uint256);
 
   /**
-   * @notice Sets a token to corresponding GSM mapping
-   * @param token Address of the token that uses the GSM
+   * @notice Allows a GSM to be used for swaps
    * @param gsm GSM address to allow
    */
-  function allowTokenGsm(address token, address gsm) external;
+  function allowGsm(address gsm) external;
 
   /**
-   * @notice Removes a token to GSM mapping
-   * @param token Address of the token to remove mapping for
+   * @notice Revokes a GSM from being allowed for swaps
    * @param gsm GSM address to remove
    */
-  function revokeTokenGsm(address token, address gsm) external;
+  function revokeGsm(address gsm) external;
+
+  /**
+   * @notice Maps an underlying token to its static aToken (stata) so the router can route
+   *         swaps that wrap/unwrap through a stata GSM.
+   * @dev Reverts if `token` already has a mapping (remove it first), or unless `stata` is an
+   *      ERC4626 whose `asset()` is `token`.
+   * @param token Underlying token address
+   * @param stata Static aToken (ERC4626) that wraps `token`
+   */
+  function setTokenToStata(address token, address stata) external;
+
+  /**
+   * @notice Removes the stata mapping for an underlying token.
+   * @param token Underlying token address whose mapping to remove
+   */
+  function removeTokenToStata(address token) external;
 
   /**
    * @notice Rescue ERC20 token from the contract
@@ -126,12 +158,18 @@ interface IGhoRouter {
   function sGHO() external view returns (address);
 
   /**
-   * @notice Returns the corresponding GSM a token should use for swapping
-   * @param token Address of the token to check
+   * @notice Returns whether a GSM is allowed to be used for swaps.
    * @param gsm Address of the GSM to check
    * @return True/false on whether GSM is allowed
    */
-  function allowedGsm(address token, address gsm) external view returns (bool);
+  function allowedGsm(address gsm) external view returns (bool);
+
+  /**
+   * @notice Returns address of corresponding stataToken for an underlying token.
+   * @param token Address of the token to check
+   * @return Address of corresponding stataToken if set
+   */
+  function tokenToStata(address token) external view returns (address);
 
   /**
    * @notice Preview the amount of tokens received for a given input amount

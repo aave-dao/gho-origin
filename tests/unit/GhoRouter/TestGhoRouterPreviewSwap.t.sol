@@ -16,8 +16,15 @@ contract PreviewSwapsTest is TestGhoRouterBase {
 
   function testPreviewSwapToGHOInconsistentTokens() public {
     vm.prank(USER);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.previewSwap(address(WETH), address(GHO_TOKEN), address(GHO_GSM_4626), 1);
+  }
+
+  function testPreviewSwapGsmNotAllowed() public {
+    // GHO_GSM is not allowed in setUp
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    GHO_ROUTER.previewSwap(address(USDX_TOKEN), address(GHO_TOKEN), address(GHO_GSM), 1);
   }
 
   function testPreviewSwapInvalidTokenPair() public {
@@ -67,7 +74,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
 
   function testPreviewSwapFromGHOInconsistentTokens() public {
     vm.prank(USER);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.previewSwap(address(GHO_TOKEN), address(WETH), address(GHO_GSM_4626), 1);
   }
 
@@ -106,7 +113,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
 
   function testPreviewSwapToSGHOInconsistentTokens() public {
     vm.prank(USER);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.previewSwap(address(WETH), address(SGHO), address(GHO_GSM_4626), 1);
   }
 
@@ -143,7 +150,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
 
   function testPreviewSwapFromSGHOInconsistentTokens() public {
     vm.prank(USER);
-    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.previewSwap(address(SGHO), address(WETH), address(GHO_GSM_4626), 1);
   }
 

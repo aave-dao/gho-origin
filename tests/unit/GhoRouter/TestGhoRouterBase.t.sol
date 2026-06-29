@@ -23,8 +23,8 @@ contract TestGhoRouterBase is TestGhoBase {
   address public immutable RECIPIENT = makeAddr('0xCAFEF00D');
 
   function setUp() public {
-    GHO_ROUTER.allowTokenGsm(address(USDX_4626_TOKEN), address(GHO_GSM_4626));
-    GHO_ROUTER.allowTokenGsm(address(USDX_TOKEN), address(GHO_GSM_4626));
+    GHO_ROUTER.allowGsm(address(GHO_GSM_4626));
+    GHO_ROUTER.setTokenToStata(address(USDX_TOKEN), address(USDX_4626_TOKEN));
 
     deal(address(USDX_TOKEN), address(this), MAX_FUZZ_AMOUNT_6_DECIMALS);
     USDX_TOKEN.approve(address(USDX_4626_TOKEN), MAX_FUZZ_AMOUNT_6_DECIMALS);

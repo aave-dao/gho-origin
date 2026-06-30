@@ -1,0 +1,112 @@
+tests/unit/TestSGhoBase.t.sol
+  s_662aafdc02a32b::t_cb632a63468018 64,71
+  s_662aafdc02a32b::t_6cf737884bd585 21
+  s_662aafdc02a32b::t_5e4946b48aeffb 43-44,73,111,119
+tests/unit/TestSGhoERC4626.t.sol
+  s_662aafdc02a32b::t_7170cff64ae24b 390-392,399-402,412
+  s_662aafdc02a32b::t_e2dff3f0e34d3f 396-397,407-408
+src/contracts/sgho/interfaces/IsGho.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 91,138
+  s_662aafdc02a32b::t_ad41c11b7214e0 94
+  s_662aafdc02a32b::t_47a42bdf21a72b 134
+  s_662aafdc02a32b::t_5ced4612d0b8a0 155
+  s_662aafdc02a32b::t_60bf70e593789c 141
+docs/sgho.md
+  s_662aafdc02a32b::t_546c66e0d5208e 10,13
+  s_662aafdc02a32b::t_834d29ac4e3383 71
+  s_662aafdc02a32b::t_5539f9ba3457c4 32-34,38
+foundry.toml
+  s_662aafdc02a32b::t_adc6d023626a4c 26-28
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_662aafdc02a32b::t_0625922b5aaddc 49,53
+  s_662aafdc02a32b::t_a2eaa2fd5a912c 113-125,131-166
+  s_662aafdc02a32b::t_6b7366b697ed30 24,27-35
+  s_662aafdc02a32b::t_d72ee310176242 1-13,15,17-23,25-26,36-37,40-43,51-52,54-55,80-81,83-99,108-112,168-182
+  s_662aafdc02a32b::t_f20fe771f984e8 100-101,107
+  s_662aafdc02a32b::t_ae01a9ebf44fe6 167
+  s_662aafdc02a32b::t_e74d955f794e5f 14,16
+  s_662aafdc02a32b::t_24bf5d0eff112d 82
+  s_662aafdc02a32b::t_adb357f32f56d4 102-106,126-130
+  s_662aafdc02a32b::t_3e34908d4ebc58 38-39,44-48,50,56-79
+tests/unit/TestSGhoPause.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 85
+snapshots/sGho.Operations.json
+  s_662aafdc02a32b::t_d7eda5965d981b 2-3,7
+  s_662aafdc02a32b::t_398d3c6d9524b0 5
+  s_662aafdc02a32b::t_43a3d651587b98 4
+  s_662aafdc02a32b::t_959400eb305c6f 6
+src/contracts/misc/sGhoSteward.sol
+  s_662aafdc02a32b::t_6cce5d5b31abd1 99
+tests/unit/TestSGhoYield.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 13,15,21,24,26,28-31,33,35,37-39,70,72,74,78-82,88,101-102,105,107,110-118,120,125,131,133-139,141-187,193-221,349,354,356-357,359,390,456-457,479,483,487,490-491,509,511,555-557,560,580-582,603,606-607
+  s_662aafdc02a32b::t_c600eece59bcc3 222
+  s_662aafdc02a32b::t_adb357f32f56d4 42-43,46,126,128-129,188-192,245-248,492-497
+  s_662aafdc02a32b::t_2263d5fbed08b5 223-244
+  s_662aafdc02a32b::t_a17bec82d84a8b 140
+tests/unit/TestSGhoConfig.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 37
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_662aafdc02a32b::t_cb286651fa7561 1-11,15-19,24,31-32
+  s_662aafdc02a32b::t_e127c205a5eaba 12-14,29
+  s_662aafdc02a32b::t_b6438c749e5c68 25
+  s_662aafdc02a32b::t_ee1be8a5153bdb 20-23,26-28,30
+.prettierignore
+  s_662aafdc02a32b::t_fe48a47262c46c 7-8
+src/contracts/sgho/sGho.sol
+  s_662aafdc02a32b::t_205d65469317a8 208
+  s_662aafdc02a32b::t_60e98e35ff2208 231
+  s_662aafdc02a32b::t_053f5a5ea94bac 10-12
+  s_662aafdc02a32b::t_5e4946b48aeffb 30,44-46,48,55,74,76,79,81,83,97,137,139,210,287-290,293,295,302,306-309,314,316
+  s_662aafdc02a32b::t_247fb81c38bded 52
+  s_662aafdc02a32b::t_6215df4863b653 219
+  s_662aafdc02a32b::t_5ddc65a94bb807 96
+  s_662aafdc02a32b::t_0ab8053f550cc5 165
+  s_662aafdc02a32b::t_f6719e751cb9a1 283
+  s_662aafdc02a32b::t_01c5d4058eb822 300
+  s_662aafdc02a32b::t_6ea1492639e9fa 268
+  s_662aafdc02a32b::t_f61afed3a9e33d 144-145
+  s_662aafdc02a32b::t_15d2d6883154eb 301
+tests/misc/sGhoSteward.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 312,315,318,326,330,333,337,340,343,346
+tests/unit/TestSGhoPrecision.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 45,117-126,140,142-143,145-146,149-154,202,207-213,229-230,235-236,287,289-290,293,377,382
+  s_662aafdc02a32b::t_18dabdc9e2922b 59
+  s_662aafdc02a32b::t_649d883c7b7433 32
+  s_662aafdc02a32b::t_adb357f32f56d4 378-381
+  s_662aafdc02a32b::t_0a7676e19a1785 7
+  s_662aafdc02a32b::t_8b9de4c8213779 71
+  s_662aafdc02a32b::t_cbcdc342c467d2 383-384
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_662aafdc02a32b::t_931762073ebbc4 5-7
+  s_662aafdc02a32b::t_676ab805db2477 16-18,42-44
+  s_662aafdc02a32b::t_2b3011f5b1409e 8-15
+  s_662aafdc02a32b::t_a2efa23537b1fe 1-4,19-41,49-58
+  s_662aafdc02a32b::t_4a9ac96cf9e90d 45
+  s_662aafdc02a32b::t_5e7c6fbc216994 46-48
+.env.example
+  s_662aafdc02a32b::t_85268003af14a3 1-2
+tests/unit/TestSGhoInitialization.t.sol
+  s_662aafdc02a32b::t_c21659b9334b8a 94
+  s_662aafdc02a32b::t_5e4946b48aeffb 58,65,67,80,85,87,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "7cec71f454d6e8331d1376189a72c32e6c9dd811",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_662aafdc02a32b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfd0dfbd-4b9f-4dc1-9083-7c5ec1a58ee6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

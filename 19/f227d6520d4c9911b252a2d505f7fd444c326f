@@ -1,0 +1,28 @@
+snapshots/sGho.Operations.json
+  s_662aafdc02a32b::t_5c5492d976fa8b 4
+  s_662aafdc02a32b::t_69eecaed299489 1-3,5-8
+tests/gas/sGho.Operations.gas.t.sol
+  s_662aafdc02a32b::t_88774cdb9986bb 1-36,38,40-54
+  s_662aafdc02a32b::t_4491a2d6b43aec 37,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "19f227d6520d4c9911b252a2d505f7fd444c326f",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_662aafdc02a32b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfd0dfbd-4b9f-4dc1-9083-7c5ec1a58ee6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

@@ -7,10 +7,10 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ## Key Features
 
 - **Full EIP-4626 Compliance**: Complete implementation of the ERC-4626 standard for tokenized vaults
-- **Automatic Yield Accrual**: Yield compounds linearly between operations and is tracked via a yield index
+- **Linear Yield Accrual**: Yield accrues at a fixed APR (simple interest, no compounding), tracked via a yield index
 - **Role-Based Access Control**: Granular permissions for yield management and emergency operations
 - **Permit Support**: Gasless deposits using EIP-2612 permits
-- **Supply Cap Management**: Configurable maximum vault capacity
+- **Supply Cap Management**: Configurable maximum vault capacity, set in whole GHO units (no decimals)
 
 ## Architecture
 
@@ -29,14 +29,13 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ### How It Works
 
-1. **Yield Index**: Tracks cumulative yield multiplier (in RAY precision, 1e27)
-2. **Linear Accrual**: Yield compounds linearly (via index updates) between operations
-3. **Share Conversion**: Asset/share conversions use current yield index
+1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
+2. **Linear Accrual**: The index grows by `targetRate * timeElapsed` (simple interest at a fixed APR — it does not compound). It is only checkpointed to storage when the rate changes; in between, conversions read the live accrued value
+3. **Share Conversion**: Asset/share conversions use the current yield index
 
 ### Key Parameters
 
-- **Target Rate**: Annual percentage rate in basis points (max 50% = 5000). Maximum rate can be higher with frequent updates.
-- **Rate Per Second**: Rate at which the index will increase for each second passed (calculated from the set Target Rate)
+- **Target Rate**: Fixed annual percentage rate (APR) in basis points (max 50% = 5000)
 - **Yield Index**: Index used for share/asset conversions
 
 ## Role Management
@@ -69,8 +68,6 @@ sGHO uses high-precision arithmetic to ensure accurate yield calculations and pr
 The following are key considerations for arithmetic precision in math operations:
 
 - **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
+- **Rate Calculations**: The annual rate is applied linearly, dividing by seconds-per-year last so a full APR period is exact
 - **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
 - **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
-
-For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the [detailed precision analysis document](./sgho-precision-analysis/precision.md).

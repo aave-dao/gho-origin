@@ -88,10 +88,10 @@ interface IsGho {
   /**
    * @notice Sets the supply cap for the vault.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
-   * @dev Supply cap is in asset terms.
+   * @dev Supply cap is in whole GHO units (no decimals).
    * @param newSupplyCap The new supply cap.
    */
-  function setSupplyCap(uint160 newSupplyCap) external;
+  function setSupplyCap(uint256 newSupplyCap) external;
 
   /**
    * @notice Returns the maximum safe rate for the vault.
@@ -131,21 +131,14 @@ interface IsGho {
    * @notice Returns the timestamp of the last time the yield index was updated.
    * @return The Unix timestamp of the last update.
    */
-  function lastUpdate() external view returns (uint64);
-
-  /**
-   * @notice Returns the current rate per second for yield generation.
-   * @dev The rate is expressed in basis points (1% = 100).
-   * @return The rate per second multiplied in RAY.
-   */
-  function ratePerSecond() external view returns (uint96);
+  function lastUpdate() external view returns (uint256);
 
   /**
    * @notice Returns the total supply cap of the vault.
-   * @dev Supply cap is in asset terms.
+   * @dev Supply cap is in whole GHO units (no decimals).
    * @return The total supply cap.
    */
-  function supplyCap() external view returns (uint160);
+  function supplyCap() external view returns (uint256);
 
   /**
    * @notice Returns the current target annual percentage rate (APR) for yield generation.
@@ -159,5 +152,5 @@ interface IsGho {
    * @dev This index is used to calculate the value of sGHO in terms of GHO. Index scale is in RAY.
    * @return The current yield index.
    */
-  function yieldIndex() external view returns (uint176);
+  function yieldIndex() external view returns (uint256);
 }

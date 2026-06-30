@@ -1,0 +1,95 @@
+src/contracts/sgho/interfaces/IsGho.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 91,94,134,138,141,155
+snapshots/sGho.Operations.json
+  s_662aafdc02a32b::t_d7eda5965d981b 2-4,7
+  s_662aafdc02a32b::t_398d3c6d9524b0 5
+  s_662aafdc02a32b::t_959400eb305c6f 6
+src/contracts/sgho/sGho.sol
+  s_662aafdc02a32b::t_5ddc65a94bb807 96
+  s_662aafdc02a32b::t_205d65469317a8 208
+  s_662aafdc02a32b::t_f6719e751cb9a1 283
+  s_662aafdc02a32b::t_053f5a5ea94bac 10-12
+  s_662aafdc02a32b::t_247fb81c38bded 52
+  s_662aafdc02a32b::t_6ea1492639e9fa 268
+  s_662aafdc02a32b::t_01c5d4058eb822 300
+  s_662aafdc02a32b::t_5e4946b48aeffb 30,44-46,48,55,74,76,79,81,83,97,137,139,144,165,210,219,231,287-290,293,295,302,306-309,314,316
+  s_662aafdc02a32b::t_15d2d6883154eb 301
+.env.example
+  s_662aafdc02a32b::t_85268003af14a3 1-2
+tests/unit/TestSGhoERC4626.t.sol
+  s_662aafdc02a32b::t_7170cff64ae24b 390-392,399-402,412
+  s_662aafdc02a32b::t_e2dff3f0e34d3f 396-397,407-408
+tests/unit/TestSGhoInitialization.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 58,65,67,80,85,87,130
+  s_662aafdc02a32b::t_c21659b9334b8a 94
+tests/misc/sGhoSteward.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 312,315,318,326,330,333,337,340,343,346
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_662aafdc02a32b::t_f20fe771f984e8 73-76
+  s_662aafdc02a32b::t_e74d955f794e5f 14,16
+  s_662aafdc02a32b::t_a2eaa2fd5a912c 82-131
+  s_662aafdc02a32b::t_d72ee310176242 1-13,15,17-23,25-26,36-54,56-72,77-81,133-147
+  s_662aafdc02a32b::t_24bf5d0eff112d 55
+  s_662aafdc02a32b::t_ae01a9ebf44fe6 132
+  s_662aafdc02a32b::t_6b7366b697ed30 24,27-35
+src/contracts/misc/sGhoSteward.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 99
+tests/unit/TestSGhoYield.t.sol
+  s_662aafdc02a32b::t_2263d5fbed08b5 211-233
+  s_662aafdc02a32b::t_5e4946b48aeffb 13,15,21,24,26,28-31,33,35,37-39,42,66,68,70,74-78,84,97-98,101,103,106-114,116,121-123,125-127,129-209,333,338,340-341,343,374,440-441,463,467,471,474-476,488,490,534-536,539,559-561,582,585-586
+  s_662aafdc02a32b::t_c600eece59bcc3 210
+tests/unit/TestSGhoBase.t.sol
+  s_662aafdc02a32b::t_6cf737884bd585 21
+  s_662aafdc02a32b::t_cb632a63468018 64,71
+  s_662aafdc02a32b::t_5e4946b48aeffb 43-44,73,111,119
+tests/unit/TestSGhoPause.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 85
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_662aafdc02a32b::t_2b3011f5b1409e 8-15
+  s_662aafdc02a32b::t_4a9ac96cf9e90d 45
+  s_662aafdc02a32b::t_931762073ebbc4 5-7
+  s_662aafdc02a32b::t_676ab805db2477 16-18,42-44
+  s_662aafdc02a32b::t_5e7c6fbc216994 46-48
+  s_662aafdc02a32b::t_a2efa23537b1fe 1-4,19-41,49-58
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_662aafdc02a32b::t_b6438c749e5c68 25
+  s_662aafdc02a32b::t_cb286651fa7561 1-11,15-19,24,31-32
+  s_662aafdc02a32b::t_e127c205a5eaba 12-14,29
+  s_662aafdc02a32b::t_ee1be8a5153bdb 20-23,26-28,30
+foundry.toml
+  s_662aafdc02a32b::t_adc6d023626a4c 26-28
+tests/unit/TestSGhoPrecision.t.sol
+  s_662aafdc02a32b::t_8b9de4c8213779 71
+  s_662aafdc02a32b::t_649d883c7b7433 32
+  s_662aafdc02a32b::t_5e4946b48aeffb 45,117-126,140,142-143,145-146,149-154,202,207-213,229-230,235-236,287,289-290,293,377-379
+  s_662aafdc02a32b::t_0a7676e19a1785 7
+  s_662aafdc02a32b::t_18dabdc9e2922b 59
+  s_662aafdc02a32b::t_cbcdc342c467d2 380-381
+docs/sgho.md
+  s_662aafdc02a32b::t_834d29ac4e3383 71
+  s_662aafdc02a32b::t_546c66e0d5208e 10,13
+  s_662aafdc02a32b::t_5539f9ba3457c4 32-34,38
+tests/unit/TestSGhoConfig.t.sol
+  s_662aafdc02a32b::t_5e4946b48aeffb 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "e88fec4b59402d7d48d5ccbb8ce8e8558815704f",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_662aafdc02a32b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfd0dfbd-4b9f-4dc1-9083-7c5ec1a58ee6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

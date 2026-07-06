@@ -5,7 +5,9 @@ import {Test} from 'forge-std/Test.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {ProxyAdmin} from 'openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol';
 import {ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
 import {sGho} from 'src/contracts/sgho/sGho.sol';
+import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {sGhoInstanceStoragePatch} from 'src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol';
 
 /// @dev Forks Ethereum mainnet and verifies the storage-layout migration of the live sGHO instance.
@@ -55,10 +57,19 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     );
   }
 
-  /// @dev Mirrors the governance upgrade: checkpoint the index, then upgrade the proxy with the patch.
+  /// @dev Swaps the patch for the canonical implementation, without any initializer call.
+  function _finalize() internal {
+    address newImpl = address(new sGhoInstance());
+    vm.prank(OWNER);
+    ProxyAdmin(PROXY_ADMIN).upgradeAndCall(ITransparentUpgradeableProxy(PROXY), newImpl, '');
+  }
+
+  /// @dev Mirrors the governance upgrade: checkpoint the index, apply the storage patch, then
+  /// swap to the canonical implementation.
   function _upgrade() internal {
     _checkpoint();
     _patch();
+    _finalize();
   }
 
   function test_fork_upgrade_preservesStorageValues() external onlyForked {
@@ -85,6 +96,7 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     uint256 assetsBefore = sgho.convertToAssets(sharesBefore);
     uint256 totalSupplyBefore = sgho.totalSupply();
     uint16 rateBefore = sgho.targetRate();
+    uint256 supplyCapBefore = sgho.supplyCap(); // asset terms in the old layout
 
     _upgrade();
 
@@ -95,7 +107,11 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     // Migrated fields are correct in the new layout
     assertEq(sgho.targetRate(), rateBefore, 'targetRate not preserved');
-    assertEq(sgho.supplyCap(), 400_000_000, 'supplyCap not converted to whole units');
+    assertEq(
+      sgho.supplyCap(),
+      supplyCapBefore / 10 ** sgho.decimals(),
+      'supplyCap not converted to whole units'
+    );
 
     // The repacked layout uses only the low 216 bits of slot 0 (uint120 + uint40 + uint16 + uint40);
     // the unused high bits must be clear of any leftover from the old layout
@@ -108,6 +124,30 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     // The orphaned second slot of the old layout is wiped
     bytes32 slot1 = bytes32(uint256(STORAGE_LOCATION) + 1);
     assertEq(vm.load(PROXY, slot1), bytes32(0), 'old slot 1 not cleared');
+  }
+
+  function test_fork_patch_revertsIfIndexNotCheckpointed() external onlyForked {
+    // Move past the last checkpoint so the patch must refuse to migrate
+    vm.warp(block.timestamp + 1);
+
+    address newImpl = address(new sGhoInstanceStoragePatch());
+    vm.prank(OWNER);
+    vm.expectRevert(sGhoInstanceStoragePatch.YieldIndexNotCheckpointed.selector);
+    ProxyAdmin(PROXY_ADMIN).upgradeAndCall(
+      ITransparentUpgradeableProxy(PROXY),
+      newImpl,
+      abi.encodeCall(sGhoInstanceStoragePatch.initialize, ())
+    );
+  }
+
+  function test_fork_upgrade_initializeLocked() external onlyForked {
+    address gho = sgho.asset();
+
+    _upgrade();
+
+    // The patch consumed SGHO_REVISION, so the canonical initializer is not callable
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    sGhoInstance(PROXY).initialize(gho, 0, address(this));
   }
 
   function test_fork_postUpgrade_existingUserAccruesLinearly() external onlyForked {

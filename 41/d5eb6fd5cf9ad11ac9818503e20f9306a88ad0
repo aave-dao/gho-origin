@@ -1,0 +1,26 @@
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_71e639d2392b4e::t_fe9e0d2b5b0925 13
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_71e639d2392b4e::t_c5cf37ed961c75 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "41d5eb6fd5cf9ad11ac9818503e20f9306a88ad0",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_71e639d2392b4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "888f1dd0-ecef-4a94-87d3-b34bac4ae7f1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_71e639d2392b4e::t_d8fb692b8275f2 12
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_71e639d2392b4e::t_cc54261089f202 12-15,20-21,24-26,36-37,52,54-55
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_71e639d2392b4e::t_6744d6aa061af0 8,10,60-68,72,99,110-114,129-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "259381e0e9ce81dcaa404bf2a8147c9f69965189",
+  "prompts": {},
+  "sessions": {
+    "s_71e639d2392b4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "888f1dd0-ecef-4a94-87d3-b34bac4ae7f1",
+        "model": "unknown"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

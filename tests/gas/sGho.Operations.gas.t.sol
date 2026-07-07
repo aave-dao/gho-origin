@@ -51,4 +51,33 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
     sgho.setTargetRate(2000);
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate');
   }
+
+  function test_gas_setTargetRate_schedule() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled');
+  }
+
+  function test_gas_setTargetRate_scheduleApplied() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    vm.warp(block.timestamp + 2 days);
+    vm.prank(yManager);
+    sgho.setTargetRate(3000, uint40(block.timestamp + 1 days));
+    vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled, previous applied');
+  }
+
+  function test_gas_deposit_pendingRateDue() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    vm.warp(block.timestamp + 2 days);
+    vm.prank(user2);
+    sgho.deposit(AMOUNT, user2);
+    vm.snapshotGasLastCall('sGho.Operations', 'deposit: scheduled rate due');
+  }
+
+  function test_gas_syncYieldIndex() external {
+    sgho.syncYieldIndex(uint120(2 * RAY), uint40(block.timestamp - 1 days), 2000);
+    vm.snapshotGasLastCall('sGho.Operations', 'syncYieldIndex');
+  }
 }

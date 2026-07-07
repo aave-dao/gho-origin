@@ -11,7 +11,7 @@ contract TestSGhoConfig is TestSGhoBase {
     vm.startPrank(yManager);
     uint16 newRate = 2000; // 20% APR
     vm.expectEmit(true, true, true, true, address(sgho));
-    emit IsGho.TargetRateUpdated(newRate);
+    emit IsGho.TargetRateUpdated(newRate, block.timestamp);
     sgho.setTargetRate(newRate);
     vm.stopPrank();
     assertEq(sgho.targetRate(), newRate, 'Target rate should be updated');

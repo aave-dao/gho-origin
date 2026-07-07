@@ -138,6 +138,12 @@ contract TestSGhoInitialization is TestSGhoBase {
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
   }
 
+  function test_getter_pendingTargetRate() external view {
+    (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
+    assertEq(pendingRate, 0, 'Initial pending rate should be 0');
+    assertEq(pendingEffectiveAt, 0, 'Initial pending effective timestamp should be 0');
+  }
+
   function test_getter_PAUSE_GUARDIAN_ROLE() external view {
     assertEq(
       sgho.PAUSE_GUARDIAN_ROLE(),

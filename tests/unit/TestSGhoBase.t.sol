@@ -119,6 +119,54 @@ contract TestSGhoBase is TestnetProcedures {
     return prevYieldIndex + (uint256(targetRate) * RAY * timeSinceLastUpdate) / (10000 * 365 days);
   }
 
+  /// @dev Deploys a fresh sGho proxy with the same config as the one from `setUp`
+  function _deploySGho() internal returns (sGho newSgho) {
+    address impl = address(new sGhoInstance());
+    newSgho = sGho(
+      address(
+        new TransparentUpgradeableProxy(
+          impl,
+          Admin,
+          abi.encodeWithSelector(
+            sGhoInstance.initialize.selector,
+            address(gho),
+            SUPPLY_CAP_UNITS,
+            address(this)
+          )
+        )
+      )
+    );
+    newSgho.grantRole(newSgho.YIELD_MANAGER_ROLE(), yManager);
+  }
+
+  // Mirrors sGho.sGhoStorageLocation
+  bytes32 internal constant SGHO_STORAGE_SLOT =
+    0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400;
+
+  /// @dev Reads the raw (persisted) sGho storage, bypassing the lazy pending-aware getters
+  function _rawStorage(
+    sGho target
+  )
+    internal
+    view
+    returns (
+      uint120 yieldIndex_,
+      uint40 lastUpdate_,
+      uint16 targetRate_,
+      uint40 pendingRateEffectiveAt_,
+      uint16 pendingTargetRate_
+    )
+  {
+    uint256 slot0 = uint256(vm.load(address(target), SGHO_STORAGE_SLOT));
+    yieldIndex_ = uint120(slot0);
+    lastUpdate_ = uint40(slot0 >> 120);
+    targetRate_ = uint16(slot0 >> 160);
+    pendingRateEffectiveAt_ = uint40(slot0 >> 216);
+    pendingTargetRate_ = uint16(
+      uint256(vm.load(address(target), bytes32(uint256(SGHO_STORAGE_SLOT) + 1)))
+    );
+  }
+
   function _createPermitSignature(
     address owner,
     address spender,

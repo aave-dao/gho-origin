@@ -1,0 +1,65 @@
+src/contracts/misc/sGhoSteward.sol
+  s_3d8e5c38ee92ae::t_c614adf85f5e76 121
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_3d8e5c38ee92ae::t_bfc6b3a5c28350 68-69,72-75,77,80-82,84
+  s_3d8e5c38ee92ae::t_ff5665978aa27b 5
+  s_3d8e5c38ee92ae::t_5bdc2a4af63723 168,170-174,176-177
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 21-22,76,78-79,175
+tests/unit/TestSGhoPrecision.t.sol
+  s_3d8e5c38ee92ae::t_b50300e9dff469 74-77,80-81
+  s_3d8e5c38ee92ae::t_ff5665978aa27b 10
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 25-26,78-79,95,118,129,147,156,175,205,233,240,246,293,300
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_3d8e5c38ee92ae::t_213f8d8fb05396 13-15,20-21
+tests/unit/TestSGhoInitialization.t.sol
+  s_3d8e5c38ee92ae::t_40cebe9016ec61 60,67-74,77-81,83-85,87,92,95,98,100-106,109-135,138-153,156-171,174-178,180
+  s_3d8e5c38ee92ae::t_24ad08b4e80e1b 179
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 7-8,75-76,93-94,107-108,136-137,154-155,172-173
+snapshots/sGho.Operations.json
+  s_3d8e5c38ee92ae::t_22812ca4294a45 6
+  s_3d8e5c38ee92ae::t_0e3efea33d1448 7-9
+docs/sgho.md
+  s_3d8e5c38ee92ae::t_184beee623bd8c 55
+tests/unit/TestSGhoBase.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 25-26,78-79,94,130
+  s_3d8e5c38ee92ae::t_ff5665978aa27b 16
+  s_3d8e5c38ee92ae::t_9748c61b4cb6ae 164-165
+  s_3d8e5c38ee92ae::t_14e7a931b0d175 77,80
+  s_3d8e5c38ee92ae::t_53330924877517 129,131-138,149-152
+src/contracts/sgho/sGho.sol
+  s_3d8e5c38ee92ae::t_3c661c59791b38 173
+  s_3d8e5c38ee92ae::t_7d86bcb12ad919 77-79,83-85,90-93,105-106
+  s_3d8e5c38ee92ae::t_8a24dfe977db48 392-416
+  s_3d8e5c38ee92ae::t_f63edb63b1c91d 156
+  s_3d8e5c38ee92ae::t_0f651efc9eec7e 391
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 7-8,16,32,48,55,61,73,99,129,144,147,164-165,191-192,213,232,248,266,272,302-303,327,330,352-353,356-357,405,425-429,434-435,439,450,469-470,472,499
+tests/unit/TestSGhoPause.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 7-8,81
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_3d8e5c38ee92ae::t_b7da6e5dd6b12c 12-15,23-24,28-30,35-38,40-47
+tests/unit/TestSGhoYield.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 7-8,15,55,91,93,107,218,240,261,336,519,559,594,609
+tests/unit/TestSGhoConfig.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 7-8,17,26,32,51,68,76
+tests/gas/sGho.Operations.gas.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 8-9,53,59,65,68,74,82
+tests/unit/TestSGhoSyncYieldIndex.t.sol
+  s_3d8e5c38ee92ae::t_c40c6bd1d9ebc6 7-8,20-21,49-50,59,78,85,90,95,103,107-108,119,125-126,141-143,164,173,179,185,199,202,204,210-211,220,235-236,240,253-254,264-266,268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2f3993c914627a95c30b12796c6288b0a84ce1a8",
+  "prompts": {},
+  "sessions": {
+    "s_3d8e5c38ee92ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e411bd44-5e7a-45e8-9400-df0b5bcd99c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

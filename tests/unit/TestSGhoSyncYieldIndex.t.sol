@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoSyncYieldIndex is TestSGhoBase {
+  using SafeCast for uint256;
+
   function setUp() public override {
     super.setUp();
     // Headroom for checkpoints in the past
@@ -15,8 +17,8 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   // ========================================
 
   function test_sync_setsStateAndEmits() external {
-    uint120 newIndex = uint120((11 * RAY) / 10);
-    uint40 newLastUpdate = uint40(block.timestamp - 30 days);
+    uint120 newIndex = ((11 * RAY) / 10).toUint120();
+    uint40 newLastUpdate = (block.timestamp - 30 days).toUint40();
 
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.YieldIndexSynced(newIndex, newLastUpdate, 2000);
@@ -44,8 +46,8 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   }
 
   function test_sync_timestampNow() external {
-    uint120 newIndex = uint120((12 * RAY) / 10);
-    sgho.syncYieldIndex(newIndex, uint40(block.timestamp), 1500);
+    uint120 newIndex = ((12 * RAY) / 10).toUint120();
+    sgho.syncYieldIndex(newIndex, block.timestamp.toUint40(), 1500);
 
     assertEq(sgho.yieldIndex(), newIndex, 'Index not synced');
     assertEq(sgho.lastUpdate(), block.timestamp, 'lastUpdate not synced');
@@ -54,7 +56,7 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   }
 
   function test_sync_indexAtRayFloor() external {
-    sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp), 0);
+    sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 0);
     assertEq(sgho.yieldIndex(), RAY, 'RAY must be an accepted index');
   }
 
@@ -73,24 +75,24 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
           sgho.DEFAULT_ADMIN_ROLE()
         )
       );
-      sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp), 1000);
+      sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);
       vm.stopPrank();
     }
   }
 
   function test_revert_sync_timestampInFuture() external {
     vm.expectRevert(IsGho.SyncTimestampInFuture.selector);
-    sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp + 1), 1000);
+    sgho.syncYieldIndex(RAY.toUint120(), (block.timestamp + 1).toUint40(), 1000);
   }
 
   function test_revert_sync_maxRateExceeded() external {
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
-    sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp), MAX_SAFE_RATE + 1);
+    sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), MAX_SAFE_RATE + 1);
   }
 
   function test_revert_sync_indexBelowRay() external {
     vm.expectRevert(IsGho.YieldIndexTooLow.selector);
-    sgho.syncYieldIndex(uint120(RAY - 1), uint40(block.timestamp), 1000);
+    sgho.syncYieldIndex((RAY - 1).toUint120(), block.timestamp.toUint40(), 1000);
   }
 
   // ========================================
@@ -98,12 +100,12 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   // ========================================
 
   function test_sync_discardsPendingUpdate() external {
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(3000, effectiveAt);
 
-    uint120 newIndex = uint120((11 * RAY) / 10);
-    sgho.syncYieldIndex(newIndex, uint40(block.timestamp), 1000);
+    uint120 newIndex = ((11 * RAY) / 10).toUint120();
+    sgho.syncYieldIndex(newIndex, block.timestamp.toUint40(), 1000);
 
     (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
     assertEq(pendingRate, 0, 'Pending rate not discarded');
@@ -114,14 +116,14 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   }
 
   function test_sync_discardsDueUnappliedUpdate() external {
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(3000, effectiveAt);
     vm.warp(effectiveAt + 10 days);
 
     // The sync is authoritative: the due-but-unpersisted update is discarded, not folded in
-    uint120 newIndex = uint120((11 * RAY) / 10);
-    uint40 newLastUpdate = uint40(block.timestamp - 1 days);
+    uint120 newIndex = ((11 * RAY) / 10).toUint120();
+    uint40 newLastUpdate = (block.timestamp - 1 days).toUint40();
     sgho.syncYieldIndex(newIndex, newLastUpdate, 1000);
 
     assertEq(sgho.yieldIndex(), newIndex, 'Synced index must win');
@@ -136,9 +138,9 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
 
   function test_sync_thenSchedule_samePayload() external {
     // A reconciliation payload can restore the checkpoint and re-schedule an upcoming update
-    uint120 newIndex = uint120((11 * RAY) / 10);
-    uint40 newLastUpdate = uint40(block.timestamp - 10 days);
-    uint40 effectiveAt = uint40(block.timestamp + 5 days);
+    uint120 newIndex = ((11 * RAY) / 10).toUint120();
+    uint40 newLastUpdate = (block.timestamp - 10 days).toUint40();
+    uint40 effectiveAt = (block.timestamp + 5 days).toUint40();
 
     sgho.syncYieldIndex(newIndex, newLastUpdate, 1000);
     vm.prank(yManager);
@@ -159,7 +161,7 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
 
   function test_sync_canDecreaseShareValue() external {
     // Deposit at a known RAY index
-    sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp), 1000);
+    sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);
     vm.prank(user1);
     sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
@@ -168,19 +170,19 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     assertEq(sgho.previewRedeem(shares), 110 ether, 'Yield must have accrued');
 
     // Reconciliation may legitimately rewind over-accrual, decreasing share value
-    sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp), 1000);
+    sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);
     assertEq(sgho.previewRedeem(shares), 100 ether, 'Share value must follow the synced index');
   }
 
   function test_sync_canIncreaseShareValue() external {
     // Deposit at a known RAY index
-    sgho.syncYieldIndex(uint120(RAY), uint40(block.timestamp), 1000);
+    sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);
     vm.prank(user1);
     sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
 
     // Syncing to a higher checkpoint (missed accrual) increases share value
-    sgho.syncYieldIndex(uint120((11 * RAY) / 10), uint40(block.timestamp), 1000);
+    sgho.syncYieldIndex(((11 * RAY) / 10).toUint120(), block.timestamp.toUint40(), 1000);
     assertEq(sgho.previewRedeem(shares), 110 ether, 'Share value must follow the synced index');
   }
 
@@ -194,19 +196,19 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     // Source chain with organic history: immediate update, then a lazily-applied scheduled one
     sGho source = _deploySGho();
     vm.prank(yManager);
-    source.setTargetRate(1000, uint40(block.timestamp));
+    source.setTargetRate(1000, block.timestamp.toUint40());
     vm.warp(block.timestamp + 100 days);
     vm.prank(yManager);
-    source.setTargetRate(2000, uint40(block.timestamp));
+    source.setTargetRate(2000, block.timestamp.toUint40());
     vm.prank(yManager);
-    source.setTargetRate(3000, uint40(block.timestamp + 10 days));
+    source.setTargetRate(3000, (block.timestamp + 10 days).toUint40());
     vm.warp(block.timestamp + 60 days);
 
     // New chain: deploy and sync from the source's logical checkpoint
     sGho newChain = _deploySGho();
     newChain.syncYieldIndex(
-      uint120(source.yieldIndex()),
-      uint40(source.lastUpdate()),
+      source.yieldIndex().toUint120(),
+      source.lastUpdate().toUint40(),
       source.targetRate()
     );
     _assertInSync(source, newChain);
@@ -215,7 +217,7 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     vm.warp(block.timestamp + 200 days);
     _assertInSync(source, newChain);
 
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.startPrank(yManager);
     source.setTargetRate(1500, effectiveAt);
     newChain.setTargetRate(1500, effectiveAt);
@@ -230,12 +232,12 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     sGho chainA = _deploySGho();
     sGho chainB = _deploySGho();
     vm.startPrank(yManager);
-    chainA.setTargetRate(1000, uint40(block.timestamp));
-    chainB.setTargetRate(1000, uint40(block.timestamp));
+    chainA.setTargetRate(1000, block.timestamp.toUint40());
+    chainB.setTargetRate(1000, block.timestamp.toUint40());
     vm.stopPrank();
 
     // The multi-chain AIP lands on chain A but fails on chain B
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     chainA.setTargetRate(2000, effectiveAt);
 
@@ -248,8 +250,8 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     // Reconciliation AIP: copy chain A's logical checkpoint (the due update folded in at its
     // effective timestamp) onto chain B
     chainB.syncYieldIndex(
-      uint120(chainA.yieldIndex()),
-      uint40(chainA.lastUpdate()),
+      chainA.yieldIndex().toUint120(),
+      chainA.lastUpdate().toUint40(),
       chainA.targetRate()
     );
     _assertInSync(chainA, chainB);
@@ -259,11 +261,11 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   }
 
   function test_sync_fuzz(uint120 newIndex, uint32 checkpointAge, uint16 newRate) external {
-    newIndex = uint120(bound(newIndex, RAY, 1000 * RAY));
-    checkpointAge = uint32(bound(checkpointAge, 0, 365 days));
-    newRate = uint16(bound(newRate, 0, MAX_SAFE_RATE));
+    newIndex = (bound(newIndex, RAY, 1000 * RAY)).toUint120();
+    checkpointAge = (bound(checkpointAge, 0, 365 days)).toUint32();
+    newRate = (bound(newRate, 0, MAX_SAFE_RATE)).toUint16();
 
-    uint40 newLastUpdate = uint40(block.timestamp - checkpointAge);
+    uint40 newLastUpdate = (block.timestamp - checkpointAge).toUint40();
     sgho.syncYieldIndex(newIndex, newLastUpdate, newRate);
 
     assertEq(sgho.yieldIndex(), newIndex, 'Index not synced');

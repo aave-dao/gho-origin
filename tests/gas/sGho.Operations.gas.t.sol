@@ -5,6 +5,8 @@ import '../unit/TestSGhoBase.t.sol';
 
 /// forge-config: default.isolate = true
 contract sGhoOperations_Gas_Tests is TestSGhoBase {
+  using SafeCast for uint256;
+
   uint256 internal constant AMOUNT = 1_000 ether;
 
   function setUp() public override {
@@ -48,28 +50,28 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
 
   function test_gas_setTargetRate() external {
     vm.prank(yManager);
-    sgho.setTargetRate(2000, uint40(block.timestamp));
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate');
   }
 
   function test_gas_setTargetRate_schedule() external {
     vm.prank(yManager);
-    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled');
   }
 
   function test_gas_setTargetRate_scheduleApplied() external {
     vm.prank(yManager);
-    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
     vm.warp(block.timestamp + 2 days);
     vm.prank(yManager);
-    sgho.setTargetRate(3000, uint40(block.timestamp + 1 days));
+    sgho.setTargetRate(3000, (block.timestamp + 1 days).toUint40());
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled, previous applied');
   }
 
   function test_gas_deposit_pendingRateDue() external {
     vm.prank(yManager);
-    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
     vm.warp(block.timestamp + 2 days);
     vm.prank(user2);
     sgho.deposit(AMOUNT, user2);
@@ -77,7 +79,7 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
   }
 
   function test_gas_syncYieldIndex() external {
-    sgho.syncYieldIndex(uint120(2 * RAY), uint40(block.timestamp - 1 days), 2000);
+    sgho.syncYieldIndex((2 * RAY).toUint120(), (block.timestamp - 1 days).toUint40(), 2000);
     vm.snapshotGasLastCall('sGho.Operations', 'syncYieldIndex');
   }
 }

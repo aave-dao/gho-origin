@@ -52,7 +52,7 @@ The scheduled update is applied lazily. Views resolve it as soon as it is due, a
 
 `syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the yield index checkpoint with values read from an in-sync deployment (`yieldIndex()`, `lastUpdate()`, `targetRate()` — the getters already fold in a due scheduled update). The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. It covers:
 
-- **Cold start**: right after initializing sGHO on a new chain, sync it from a live deployment
+- **Cold start**: `initialize` takes the same checkpoint values, so a deployment on a new chain starts in sync directly from a live deployment's checkpoint (a genesis deployment starts at `(RAY, now, 0)`); `syncYieldIndex` covers the same need post-initialization
 - **Reconciliation**: if a multi-chain rate update fails on one chain, sync that chain from a healthy one (any scheduled update is discarded and must be re-scheduled afterwards)
 
 Note that syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to the DEFAULT_ADMIN role (governance).

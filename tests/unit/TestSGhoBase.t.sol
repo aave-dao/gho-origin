@@ -13,6 +13,7 @@ import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol
 import {IERC20Errors} from 'openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol';
 import {IERC20Metadata as IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
 
@@ -21,6 +22,8 @@ import {sGho} from '../../src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol';
 
 contract TestSGhoBase is TestnetProcedures {
+  using SafeCast for uint256;
+
   using stdStorage for StdStorage;
   using Math for uint256;
 
@@ -71,7 +74,10 @@ contract TestSGhoBase is TestnetProcedures {
             sGhoInstance.initialize.selector,
             address(gho),
             SUPPLY_CAP_UNITS,
-            address(this) // executor
+            address(this), // executor
+            RAY.toUint120(),
+            block.timestamp.toUint40(),
+            uint16(0)
           )
         )
       )
@@ -85,7 +91,7 @@ contract TestSGhoBase is TestnetProcedures {
 
     // Set target rate as yield manager
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000, uint40(block.timestamp)); // 10% APR
+    sgho.setTargetRate(1000, block.timestamp.toUint40()); // 10% APR
     vm.stopPrank();
 
     // Calculate domain separator for permits
@@ -120,7 +126,16 @@ contract TestSGhoBase is TestnetProcedures {
   }
 
   /// @dev Deploys a fresh sGho proxy with the same config as the one from `setUp`
-  function _deploySGho() internal returns (sGho newSgho) {
+  function _deploySGho() internal returns (sGho) {
+    return _deploySGho(RAY.toUint120(), block.timestamp.toUint40(), 0);
+  }
+
+  /// @dev Deploys a fresh sGho proxy initialized with the given checkpoint (cold start)
+  function _deploySGho(
+    uint120 initialYieldIndex,
+    uint40 initialLastUpdate,
+    uint16 initialTargetRate
+  ) internal returns (sGho newSgho) {
     address impl = address(new sGhoInstance());
     newSgho = sGho(
       address(
@@ -131,7 +146,10 @@ contract TestSGhoBase is TestnetProcedures {
             sGhoInstance.initialize.selector,
             address(gho),
             SUPPLY_CAP_UNITS,
-            address(this)
+            address(this),
+            initialYieldIndex,
+            initialLastUpdate,
+            initialTargetRate
           )
         )
       )
@@ -143,7 +161,8 @@ contract TestSGhoBase is TestnetProcedures {
   bytes32 internal constant SGHO_STORAGE_SLOT =
     0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400;
 
-  /// @dev Reads the raw (persisted) sGho storage, bypassing the lazy pending-aware getters
+  /// @dev Reads the raw (persisted) sGho storage, bypassing the lazy pending-aware getters.
+  /// The plain casts truncate deliberately: they extract the fields of the packed slot.
   function _rawStorage(
     sGho target
   )

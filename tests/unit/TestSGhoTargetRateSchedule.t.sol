@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoTargetRateSchedule is TestSGhoBase {
+  using SafeCast for uint256;
+
   // ========================================
   // SCHEDULING
   // ========================================
@@ -11,7 +13,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
   function test_schedule_storesPendingWithoutCheckpoint() external {
     uint256 indexBefore = sgho.yieldIndex();
     uint256 lastUpdateBefore = sgho.lastUpdate();
-    uint40 effectiveAt = uint40(block.timestamp + 1 days);
+    uint40 effectiveAt = (block.timestamp + 1 days).toUint40();
 
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
@@ -27,7 +29,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
   }
 
   function test_schedule_event() external {
-    uint40 effectiveAt = uint40(block.timestamp + 1 days);
+    uint40 effectiveAt = (block.timestamp + 1 days).toUint40();
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.TargetRateUpdated(2000, effectiveAt);
     vm.prank(yManager);
@@ -43,20 +45,20 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
         sgho.YIELD_MANAGER_ROLE()
       )
     );
-    sgho.setTargetRate(2000, uint40(block.timestamp + 1 days));
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
     vm.stopPrank();
   }
 
   function test_revert_schedule_maxRateExceeded() external {
     vm.prank(yManager);
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
-    sgho.setTargetRate(MAX_SAFE_RATE + 1, uint40(block.timestamp + 1 days));
+    sgho.setTargetRate(MAX_SAFE_RATE + 1, (block.timestamp + 1 days).toUint40());
   }
 
   function test_revert_schedule_effectiveTimestampInPast() external {
     vm.prank(yManager);
     vm.expectRevert(IsGho.EffectiveTimestampInPast.selector);
-    sgho.setTargetRate(2000, uint40(block.timestamp - 1));
+    sgho.setTargetRate(2000, (block.timestamp - 1).toUint40());
   }
 
   function test_schedule_effectiveAtNow_appliesImmediately() external {
@@ -68,7 +70,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.TargetRateUpdated(2000, block.timestamp);
     vm.prank(yManager);
-    sgho.setTargetRate(2000, uint40(block.timestamp));
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
 
     assertEq(sgho.targetRate(), 2000, 'Rate not applied immediately');
     assertEq(sgho.yieldIndex(), expectedIndex, 'Index not checkpointed at the old rate');
@@ -94,7 +96,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_rateSwitchesExactlyAtEffectiveTime() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
@@ -124,7 +126,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_zeroRate_stopsAccrualAtEffectiveTime() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(0, effectiveAt);
 
@@ -139,10 +141,10 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_fromZeroRate() external {
     vm.prank(yManager);
-    sgho.setTargetRate(0, uint40(block.timestamp));
+    sgho.setTargetRate(0, block.timestamp.toUint40());
     uint256 index0 = sgho.yieldIndex();
 
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(1000, effectiveAt);
 
@@ -159,8 +161,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_gettersReflectDueUpdateBeforePersisting() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 lastUpdateBefore = uint40(block.timestamp);
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 lastUpdateBefore = block.timestamp.toUint40();
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
@@ -186,8 +188,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
   }
 
   function test_schedule_operationsDoNotPersistDueUpdate() external {
-    uint40 lastUpdateBefore = uint40(block.timestamp);
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 lastUpdateBefore = block.timestamp.toUint40();
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
@@ -208,7 +210,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_conversionsUseDueUpdateIndex() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
@@ -227,7 +229,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_dueUpdatePersistedOnNextImmediateSet() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
@@ -243,7 +245,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.TargetRateUpdated(3000, block.timestamp);
     vm.prank(yManager);
-    sgho.setTargetRate(3000, uint40(block.timestamp));
+    sgho.setTargetRate(3000, block.timestamp.toUint40());
 
     (
       uint120 rawIndex,
@@ -261,13 +263,13 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_dueUpdatePersistedOnNextSchedule() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
     vm.warp(effectiveAt + 30 days);
     uint256 indexAtEffective = _emulateYieldIndex(index0, 1000, 10 days);
-    uint40 nextEffectiveAt = uint40(block.timestamp + 10 days);
+    uint40 nextEffectiveAt = (block.timestamp + 10 days).toUint40();
 
     // Scheduling persists the due update at its effective timestamp, without a checkpoint at `now`
     vm.expectEmit(true, true, true, true, address(sgho));
@@ -297,8 +299,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_overwritesPendingBeforeEffective() external {
     uint256 index0 = sgho.yieldIndex();
-    uint40 effectiveAt1 = uint40(block.timestamp + 10 days);
-    uint40 effectiveAt2 = uint40(block.timestamp + 20 days);
+    uint40 effectiveAt1 = (block.timestamp + 10 days).toUint40();
+    uint40 effectiveAt2 = (block.timestamp + 20 days).toUint40();
 
     vm.startPrank(yManager);
     sgho.setTargetRate(2000, effectiveAt1);
@@ -322,10 +324,10 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
   }
 
   function test_schedule_immediateSetDiscardsPending() external {
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.startPrank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
-    sgho.setTargetRate(1500, uint40(block.timestamp));
+    sgho.setTargetRate(1500, block.timestamp.toUint40());
     vm.stopPrank();
 
     (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
@@ -347,12 +349,12 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     sGho chainA = _deploySGho();
     sGho chainB = _deploySGho();
     vm.startPrank(yManager);
-    chainA.setTargetRate(1000, uint40(block.timestamp));
-    chainB.setTargetRate(1000, uint40(block.timestamp));
+    chainA.setTargetRate(1000, block.timestamp.toUint40());
+    chainB.setTargetRate(1000, block.timestamp.toUint40());
     vm.stopPrank();
 
-    uint40 effectiveAt1 = uint40(block.timestamp + 10 days);
-    uint40 effectiveAt2 = uint40(block.timestamp + 20 days);
+    uint40 effectiveAt1 = (block.timestamp + 10 days).toUint40();
+    uint40 effectiveAt2 = (block.timestamp + 20 days).toUint40();
 
     // First AIP: chain A executes 1 day before chain B
     vm.prank(yManager);
@@ -400,7 +402,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
     // Third AIP: a same-rate re-schedule also checkpoints (splitting the floored accrual), so it
     // must be mirrored on every chain like any other update
-    uint40 effectiveAt3 = uint40(block.timestamp + 30 days);
+    uint40 effectiveAt3 = (block.timestamp + 30 days).toUint40();
     vm.prank(yManager);
     chainA.setTargetRate(3000, effectiveAt3);
     _assertInSync(chainA, chainB);
@@ -420,21 +422,21 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     uint32 timeToEffective,
     uint32 timeAfterEffective
   ) external {
-    rate1 = uint16(bound(rate1, 0, MAX_SAFE_RATE));
-    rate2 = uint16(bound(rate2, 0, MAX_SAFE_RATE));
-    timeToEffective = uint32(bound(timeToEffective, 1, 30 days));
-    executionSkew = uint32(bound(executionSkew, 0, timeToEffective - 1));
-    timeAfterEffective = uint32(bound(timeAfterEffective, 0, 3650 days));
+    rate1 = (bound(rate1, 0, MAX_SAFE_RATE)).toUint16();
+    rate2 = (bound(rate2, 0, MAX_SAFE_RATE)).toUint16();
+    timeToEffective = (bound(timeToEffective, 1, 30 days)).toUint32();
+    executionSkew = (bound(executionSkew, 0, timeToEffective - 1)).toUint32();
+    timeAfterEffective = (bound(timeAfterEffective, 0, 3650 days)).toUint32();
 
     sGho chainA = _deploySGho();
     sGho chainB = _deploySGho();
     vm.startPrank(yManager);
-    chainA.setTargetRate(rate1, uint40(block.timestamp));
-    chainB.setTargetRate(rate1, uint40(block.timestamp));
+    chainA.setTargetRate(rate1, block.timestamp.toUint40());
+    chainB.setTargetRate(rate1, block.timestamp.toUint40());
     vm.stopPrank();
 
     // Both chains schedule the same update with the same effective timestamp, at skewed times
-    uint40 effectiveAt = uint40(block.timestamp + timeToEffective);
+    uint40 effectiveAt = (block.timestamp + timeToEffective).toUint40();
     vm.prank(yManager);
     chainA.setTargetRate(rate2, effectiveAt);
     vm.warp(block.timestamp + executionSkew);
@@ -445,7 +447,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.warp(effectiveAt + timeAfterEffective);
     // Persist on chain A only (via a same-rate schedule far in the future); chain B stays lazy
     vm.prank(yManager);
-    chainA.setTargetRate(rate2, uint40(block.timestamp + 365 days));
+    chainA.setTargetRate(rate2, (block.timestamp + 365 days).toUint40());
     _assertInSync(chainA, chainB);
 
     vm.warp(block.timestamp + 180 days);
@@ -464,10 +466,10 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
   // ========================================
 
   function test_schedule_indexContinuity_fuzz(uint16 newRate, uint32 timeAfterEffective) external {
-    newRate = uint16(bound(newRate, 0, MAX_SAFE_RATE));
-    timeAfterEffective = uint32(bound(timeAfterEffective, 1, 365 days));
+    newRate = (bound(newRate, 0, MAX_SAFE_RATE)).toUint16();
+    timeAfterEffective = (bound(timeAfterEffective, 1, 365 days)).toUint32();
 
-    uint40 effectiveAt = uint40(block.timestamp + 10 days);
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(newRate, effectiveAt);
 
@@ -494,7 +496,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
 
-    uint40 effectiveAt = uint40(block.timestamp + 182 days);
+    uint40 effectiveAt = (block.timestamp + 182 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 

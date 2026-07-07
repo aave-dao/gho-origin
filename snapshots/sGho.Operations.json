@@ -3,10 +3,10 @@
   "deposit: scheduled rate due": "92069",
   "mint": "90178",
   "redeem": "70419",
-  "setTargetRate": "41472",
-  "setTargetRate: scheduled": "58429",
-  "setTargetRate: scheduled, previous applied": "44258",
-  "syncYieldIndex": "38753",
+  "setTargetRate": "41522",
+  "setTargetRate: scheduled": "58418",
+  "setTargetRate: scheduled, previous applied": "44247",
+  "syncYieldIndex": "38817",
   "transfer": "58841",
   "withdraw": "70387"
 }

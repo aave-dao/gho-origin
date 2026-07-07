@@ -74,14 +74,23 @@ abstract contract sGho is
 
   /**
    * @dev Initializes the vault state. Must be called within an initializer or reinitializer.
+   * @dev The yield index checkpoint is an input so a deployment on a new chain can cold start in
+   * sync, from a checkpoint read from a live deployment; a genesis deployment starts at
+   * (RAY, current timestamp, 0).
    * @param gho Address of the underlying GHO token.
    * @param initialSupplyCap The supply cap for the vault, in whole GHO units.
    * @param owner The address that will be granted the DEFAULT_ADMIN_ROLE.
+   * @param initialYieldIndex The initial yield index (RAY scale, at least RAY).
+   * @param initialLastUpdate The initial checkpoint timestamp (must not be in the future).
+   * @param initialTargetRate The initial target rate in basis points.
    */
   function __sGho_init(
     address gho,
     uint40 initialSupplyCap,
-    address owner
+    address owner,
+    uint120 initialYieldIndex,
+    uint40 initialLastUpdate,
+    uint16 initialTargetRate
   ) internal onlyInitializing {
     if (gho == address(0) || owner == address(0)) revert ZeroAddressNotAllowed();
 
@@ -93,11 +102,8 @@ abstract contract sGho is
     _grantRole(DEFAULT_ADMIN_ROLE, owner);
     _grantRole(PAUSE_GUARDIAN_ROLE, owner);
 
-    sGhoStorage storage $ = _getSGhoStorage();
-    $.supplyCap = initialSupplyCap;
-    $.yieldIndex = uint120(WadRayMath.RAY);
-    $.lastUpdate = uint40(block.timestamp);
-    $.targetRate = 0;
+    _getSGhoStorage().supplyCap = initialSupplyCap;
+    _syncYieldIndex(initialYieldIndex, initialLastUpdate, initialTargetRate);
   }
 
   /// @inheritdoc IsGho
@@ -147,7 +153,7 @@ abstract contract sGho is
       // Checkpoint the index with the old rate before changing it
       uint120 newYieldIndex = _getCurrentYieldIndex();
       bool alreadyCheckpointed = $.lastUpdate == block.timestamp;
-      _setCheckpoint(newYieldIndex, uint40(block.timestamp), newRate);
+      _setCheckpoint(newYieldIndex, block.timestamp.toUint40(), newRate);
       if (!alreadyCheckpointed) {
         emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
       }
@@ -164,18 +170,7 @@ abstract contract sGho is
     uint40 newLastUpdate,
     uint16 newTargetRate
   ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    if (newTargetRate > MAX_SAFE_RATE) {
-      revert MaxRateExceeded();
-    }
-    if (newLastUpdate > block.timestamp) {
-      revert SyncTimestampInFuture();
-    }
-    if (newYieldIndex < WadRayMath.RAY) {
-      revert YieldIndexTooLow();
-    }
-
-    _setCheckpoint(newYieldIndex, newLastUpdate, newTargetRate);
-    emit YieldIndexSynced(newYieldIndex, newLastUpdate, newTargetRate);
+    _syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate);
   }
 
   /// @inheritdoc IsGho
@@ -391,6 +386,32 @@ abstract contract sGho is
 
     _setCheckpoint(index, timestamp, rate);
     emit ExchangeRateUpdated(timestamp, index);
+  }
+
+  /**
+   * @notice Validates and overwrites the yield index checkpoint, discarding any scheduled rate change.
+   * @dev Backs both `syncYieldIndex` and the checkpoint initialization in `__sGho_init`.
+   * @param newYieldIndex The new yield index (RAY scale, at least RAY).
+   * @param newLastUpdate The new checkpoint timestamp (must not be in the future).
+   * @param newTargetRate The new target rate in basis points.
+   */
+  function _syncYieldIndex(
+    uint120 newYieldIndex,
+    uint40 newLastUpdate,
+    uint16 newTargetRate
+  ) internal {
+    if (newTargetRate > MAX_SAFE_RATE) {
+      revert MaxRateExceeded();
+    }
+    if (newLastUpdate > block.timestamp) {
+      revert SyncTimestampInFuture();
+    }
+    if (newYieldIndex < WadRayMath.RAY) {
+      revert YieldIndexTooLow();
+    }
+
+    _setCheckpoint(newYieldIndex, newLastUpdate, newTargetRate);
+    emit YieldIndexSynced(newYieldIndex, newLastUpdate, newTargetRate);
   }
 
   /**

@@ -1,0 +1,39 @@
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3d8e5c38ee92ae::t_d30ae04b6f1740 111
+  s_3d8e5c38ee92ae::t_fae9ab04ac6689 112-113
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3d8e5c38ee92ae::t_4adc632e1ef6a9 190-191,200,209-211,213-225,227,230-231
+  s_3d8e5c38ee92ae::t_481a18eff9563c 196-198,202-203,205-208,212,228-229
+  s_3d8e5c38ee92ae::t_ec1c2ca8596b02 390-391,393-399
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_3d8e5c38ee92ae::t_d5eba0bf808bc3 170-177
+tests/unit/TestSGhoInitialization.t.sol
+  s_3d8e5c38ee92ae::t_d5eba0bf808bc3 71-78
+src/contracts/sgho/sGho.sol
+  s_3d8e5c38ee92ae::t_4066bd719ffc23 292-304,306-319,327
+  s_3d8e5c38ee92ae::t_18be6075baaa21 305,383-384
+  s_3d8e5c38ee92ae::t_6b3d218f79e5e7 320-326,401-402
+  s_3d8e5c38ee92ae::t_733c82b7a4e307 328
+docs/sgho.md
+  s_3d8e5c38ee92ae::t_a1244eb38a6e7a 49
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_3d8e5c38ee92ae::t_18be6075baaa21 40-47
+snapshots/sGho.Operations.json
+  s_3d8e5c38ee92ae::t_481a18eff9563c 2-5,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7aa1a44331d32f154f138dcf2cec0577faa01c53",
+  "prompts": {},
+  "sessions": {
+    "s_3d8e5c38ee92ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e411bd44-5e7a-45e8-9400-df0b5bcd99c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

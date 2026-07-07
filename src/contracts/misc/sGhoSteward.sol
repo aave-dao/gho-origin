@@ -118,7 +118,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {
     uint16 targetRate = _computeRateConfig(rateConfig);
 
-    _sGho.setTargetRate(targetRate);
+    _sGho.setTargetRate(targetRate, uint40(block.timestamp));
     _rateConfig = rateConfig;
 
     emit RateConfigUpdated(

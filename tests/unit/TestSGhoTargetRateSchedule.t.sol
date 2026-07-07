@@ -139,7 +139,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   function test_schedule_fromZeroRate() external {
     vm.prank(yManager);
-    sgho.setTargetRate(0);
+    sgho.setTargetRate(0, uint40(block.timestamp));
     uint256 index0 = sgho.yieldIndex();
 
     uint40 effectiveAt = uint40(block.timestamp + 10 days);
@@ -243,7 +243,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.TargetRateUpdated(3000, block.timestamp);
     vm.prank(yManager);
-    sgho.setTargetRate(3000);
+    sgho.setTargetRate(3000, uint40(block.timestamp));
 
     (
       uint120 rawIndex,
@@ -325,7 +325,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     uint40 effectiveAt = uint40(block.timestamp + 10 days);
     vm.startPrank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
-    sgho.setTargetRate(1500);
+    sgho.setTargetRate(1500, uint40(block.timestamp));
     vm.stopPrank();
 
     (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
@@ -347,8 +347,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     sGho chainA = _deploySGho();
     sGho chainB = _deploySGho();
     vm.startPrank(yManager);
-    chainA.setTargetRate(1000);
-    chainB.setTargetRate(1000);
+    chainA.setTargetRate(1000, uint40(block.timestamp));
+    chainB.setTargetRate(1000, uint40(block.timestamp));
     vm.stopPrank();
 
     uint40 effectiveAt1 = uint40(block.timestamp + 10 days);
@@ -429,8 +429,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     sGho chainA = _deploySGho();
     sGho chainB = _deploySGho();
     vm.startPrank(yManager);
-    chainA.setTargetRate(rate1);
-    chainB.setTargetRate(rate1);
+    chainA.setTargetRate(rate1, uint40(block.timestamp));
+    chainB.setTargetRate(rate1, uint40(block.timestamp));
     vm.stopPrank();
 
     // Both chains schedule the same update with the same effective timestamp, at skewed times

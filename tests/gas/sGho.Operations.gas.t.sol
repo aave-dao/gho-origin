@@ -48,7 +48,7 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
 
   function test_gas_setTargetRate() external {
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, uint40(block.timestamp));
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate');
   }
 

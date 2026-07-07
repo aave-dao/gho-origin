@@ -132,16 +132,30 @@ abstract contract sGho is
   }
 
   /// @inheritdoc IsGho
-  function setTargetRate(uint16 newRate) public onlyRole(YIELD_MANAGER_ROLE) {
-    _setTargetRate(newRate, uint40(block.timestamp));
-  }
-
-  /// @inheritdoc IsGho
   function setTargetRate(uint16 newRate, uint40 effectiveAt) public onlyRole(YIELD_MANAGER_ROLE) {
+    if (newRate > MAX_SAFE_RATE) {
+      revert MaxRateExceeded();
+    }
     if (effectiveAt < block.timestamp) {
       revert EffectiveTimestampInPast();
     }
-    _setTargetRate(newRate, effectiveAt);
+
+    _applyPendingTargetRate();
+
+    sGhoStorage storage $ = _getSGhoStorage();
+    if (effectiveAt == block.timestamp) {
+      // Checkpoint the index with the old rate before changing it
+      uint120 newYieldIndex = _getCurrentYieldIndex();
+      bool alreadyCheckpointed = $.lastUpdate == block.timestamp;
+      _setCheckpoint(newYieldIndex, uint40(block.timestamp), newRate);
+      if (!alreadyCheckpointed) {
+        emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
+      }
+    } else {
+      $.pendingRateEffectiveAt = effectiveAt;
+      $.pendingTargetRate = newRate;
+    }
+    emit TargetRateUpdated(newRate, effectiveAt);
   }
 
   /// @inheritdoc IsGho
@@ -160,12 +174,7 @@ abstract contract sGho is
       revert YieldIndexTooLow();
     }
 
-    sGhoStorage storage $ = _getSGhoStorage();
-    $.yieldIndex = newYieldIndex;
-    $.lastUpdate = newLastUpdate;
-    $.targetRate = newTargetRate;
-    $.pendingRateEffectiveAt = 0;
-    $.pendingTargetRate = 0;
+    _setCheckpoint(newYieldIndex, newLastUpdate, newTargetRate);
     emit YieldIndexSynced(newYieldIndex, newLastUpdate, newTargetRate);
   }
 
@@ -380,58 +389,24 @@ abstract contract sGho is
     (uint120 index, uint40 timestamp, uint16 rate, bool pendingDue) = _getCheckpoint();
     if (!pendingDue) return;
 
+    _setCheckpoint(index, timestamp, rate);
+    emit ExchangeRateUpdated(timestamp, index);
+  }
+
+  /**
+   * @notice Persists the yield index checkpoint, discarding any scheduled rate change.
+   * @dev Only invoked when the rate changes or is synced. Leaving the index untouched on regular
+   * operations prevents accrual from being lost to rounding when actions happen in quick succession.
+   * @param index The yield index at the checkpoint.
+   * @param timestamp The checkpoint timestamp.
+   * @param rate The target rate in force from the checkpoint.
+   */
+  function _setCheckpoint(uint120 index, uint40 timestamp, uint16 rate) internal {
     sGhoStorage storage $ = _getSGhoStorage();
     $.yieldIndex = index;
     $.lastUpdate = timestamp;
     $.targetRate = rate;
     $.pendingRateEffectiveAt = 0;
     $.pendingTargetRate = 0;
-    emit ExchangeRateUpdated(timestamp, index);
-  }
-
-  /**
-   * @notice Checkpoints the yield index, accruing yield up to the current timestamp.
-   * @dev Only invoked when the rate changes. Leaving the index untouched on regular operations
-   * prevents accrual from being lost to rounding when actions happen in quick succession.
-   * Uses SafeCast to revert on overflow instead of silently wrapping.
-   */
-  function _updateYieldIndex() internal {
-    _applyPendingTargetRate();
-    sGhoStorage storage $ = _getSGhoStorage();
-    if ($.lastUpdate != block.timestamp) {
-      uint120 newYieldIndex = _getCurrentYieldIndex();
-      $.yieldIndex = newYieldIndex;
-      $.lastUpdate = uint40(block.timestamp);
-      emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
-    }
-  }
-
-  /**
-   * @notice Sets the target rate, immediately when `effectiveAt` is the current timestamp and
-   * scheduled for lazy application otherwise.
-   * @dev An immediate update checkpoints the index at the current timestamp; a scheduled one
-   * leaves the checkpoint untouched so it is later taken exactly at `effectiveAt`. Either way a
-   * previously scheduled update is first persisted if due, or discarded otherwise.
-   * @param newRate The new target rate in basis points.
-   * @param effectiveAt The timestamp at which the new rate takes effect (at or after the current one).
-   */
-  function _setTargetRate(uint16 newRate, uint40 effectiveAt) internal {
-    if (newRate > MAX_SAFE_RATE) {
-      revert MaxRateExceeded();
-    }
-
-    sGhoStorage storage $ = _getSGhoStorage();
-    if (effectiveAt == block.timestamp) {
-      // Checkpoint the index with the old rate before changing it
-      _updateYieldIndex();
-      $.targetRate = newRate;
-      $.pendingRateEffectiveAt = 0;
-      $.pendingTargetRate = 0;
-    } else {
-      _applyPendingTargetRate();
-      $.pendingRateEffectiveAt = effectiveAt;
-      $.pendingTargetRate = newRate;
-    }
-    emit TargetRateUpdated(newRate, effectiveAt);
   }
 }

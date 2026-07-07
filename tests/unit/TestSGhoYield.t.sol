@@ -50,7 +50,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_10_percent_one_year() external {
     // Set target rate to 10% APR
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR is 1000 bps
+    sgho.setTargetRate(1000, uint40(block.timestamp)); // 10% APR is 1000 bps
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -88,7 +88,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_isLinear_withIntermediateRateUpdates(uint16 rate) external {
     rate = uint16(bound(rate, 100, 5000));
     vm.startPrank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, uint40(block.timestamp));
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -102,7 +102,7 @@ contract TestSGhoYield is TestSGhoBase {
     for (uint256 i = 0; i < 365; i++) {
       vm.warp(block.timestamp + 1 days);
       vm.prank(yManager);
-      sgho.setTargetRate(rate);
+      sgho.setTargetRate(rate, uint40(block.timestamp));
     }
 
     uint256 user1FinalAssets = sgho.previewRedeem(user1Shares);
@@ -213,7 +213,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     // Switch to 20% for another year
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, uint40(block.timestamp));
     vm.warp(block.timestamp + 365 days);
 
     // Yield adds across rate periods: 10% + 20% = exactly 30%, not the 32% of compounding
@@ -235,7 +235,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     // Changing the rate checkpoints accrual at the old rate (10% over 180 days)
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, uint40(block.timestamp));
 
     uint256 expectedIndex = _emulateYieldIndex(storedBefore, 1000, 180 days);
     assertEq(sgho.yieldIndex(), expectedIndex, 'index not checkpointed at the old rate');
@@ -256,7 +256,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_zeroTargetRate() external {
     // Set target rate to 0
     vm.startPrank(yManager);
-    sgho.setTargetRate(0);
+    sgho.setTargetRate(0, uint40(block.timestamp));
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -331,7 +331,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_accrual_atSupplyCap() external {
     // Set a higher target rate to ensure significant yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(5000); // 50% APR to ensure significant yield
+    sgho.setTargetRate(5000, uint40(block.timestamp)); // 50% APR to ensure significant yield
     vm.stopPrank();
 
     // Fill the vault to supply cap
@@ -554,7 +554,7 @@ contract TestSGhoYield is TestSGhoBase {
     vm.warp(block.timestamp + timeSkip);
     // Re-setting the rate checkpoints the index
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, uint40(block.timestamp));
     uint256 contractYieldIndex = sgho.yieldIndex();
     uint256 emulatedYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
     assertEq(contractYieldIndex, emulatedYieldIndex, 'Yield index calculation mismatch');
@@ -589,7 +589,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_ExchangeRateUpdatedEvent_basic() external {
     // Set a target rate to ensure yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
+    sgho.setTargetRate(1000, uint40(block.timestamp)); // 10% APR
     vm.stopPrank();
 
     // Initial state
@@ -604,7 +604,7 @@ contract TestSGhoYield is TestSGhoBase {
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.ExchangeRateUpdated(block.timestamp, emulatedYieldIndex);
     vm.prank(yManager);
-    sgho.setTargetRate(1000);
+    sgho.setTargetRate(1000, uint40(block.timestamp));
 
     // Verify yield index has increased
     uint256 newYieldIndex = sgho.yieldIndex();

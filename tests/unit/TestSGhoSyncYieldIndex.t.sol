@@ -194,10 +194,10 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     // Source chain with organic history: immediate update, then a lazily-applied scheduled one
     sGho source = _deploySGho();
     vm.prank(yManager);
-    source.setTargetRate(1000);
+    source.setTargetRate(1000, uint40(block.timestamp));
     vm.warp(block.timestamp + 100 days);
     vm.prank(yManager);
-    source.setTargetRate(2000);
+    source.setTargetRate(2000, uint40(block.timestamp));
     vm.prank(yManager);
     source.setTargetRate(3000, uint40(block.timestamp + 10 days));
     vm.warp(block.timestamp + 60 days);
@@ -230,8 +230,8 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     sGho chainA = _deploySGho();
     sGho chainB = _deploySGho();
     vm.startPrank(yManager);
-    chainA.setTargetRate(1000);
-    chainB.setTargetRate(1000);
+    chainA.setTargetRate(1000, uint40(block.timestamp));
+    chainB.setTargetRate(1000, uint40(block.timestamp));
     vm.stopPrank();
 
     // The multi-chain AIP lands on chain A but fails on chain B

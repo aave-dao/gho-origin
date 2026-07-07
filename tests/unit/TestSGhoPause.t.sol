@@ -76,7 +76,7 @@ contract TestSGhoPause is TestSGhoBase {
     // Test 1: Set target rate while paused (should work)
     vm.startPrank(yManager);
     uint16 newRate = 2000; // 20% APR
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, uint40(block.timestamp));
     assertEq(sgho.targetRate(), newRate, 'Target rate should be updated while paused');
     vm.stopPrank();
 

@@ -103,17 +103,6 @@ interface IsGho {
   function unpause() external;
 
   /**
-   * @notice Sets the target rate for yield generation, effective immediately.
-   * @dev This function can only be called by an address with the YIELD_MANAGER role.
-   * The new rate must be less than 50% (5000 basis points).
-   * @dev Checkpoints the yield index at the current timestamp and discards any scheduled rate
-   * change, so it is only suitable for single-chain deployments; on multi-chain deployments use
-   * the scheduled variant to keep yield indexes in sync.
-   * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
-   */
-  function setTargetRate(uint16 newRate) external;
-
-  /**
    * @notice Schedules a target rate update that takes effect at `effectiveAt`.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * The new rate must be less than 50% (5000 basis points).
@@ -121,6 +110,8 @@ interface IsGho {
    * identical across chains at all times: the index is checkpointed exactly at `effectiveAt`
    * regardless of when the update is executed or first touched afterwards. A previously scheduled
    * update that is not yet effective is overwritten.
+   * @dev Passing the current timestamp applies the update immediately, checkpointing the index at
+   * the (chain-specific) execution time — only suitable for single-chain deployments.
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
    * @param effectiveAt The timestamp at which the new rate takes effect (must not be in the past).
    */

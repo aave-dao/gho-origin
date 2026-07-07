@@ -10,6 +10,11 @@ import {sGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {sGhoInstanceStoragePatch} from 'src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol';
 
+/// @dev Rate setter of the pre-upgrade implementation, removed from the current interface
+interface IsGhoLegacy {
+  function setTargetRate(uint16 newRate) external;
+}
+
 /// @dev Forks Ethereum mainnet and verifies the storage-layout migration of the live sGHO instance.
 contract sGhoInstanceStoragePatchForkTest is Test {
   address internal constant PROXY = 0xE1753F2e00940cC31213dd92013cF019DFE4ca1d;
@@ -42,7 +47,7 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     vm.startPrank(OWNER);
     // OWNER is DEFAULT_ADMIN; grant itself YIELD_MANAGER so it can checkpoint the index
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), OWNER);
-    sgho.setTargetRate(sgho.targetRate());
+    IsGhoLegacy(PROXY).setTargetRate(sgho.targetRate());
     vm.stopPrank();
   }
 

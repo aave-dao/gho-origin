@@ -85,7 +85,7 @@ contract TestSGhoBase is TestnetProcedures {
 
     // Set target rate as yield manager
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
+    sgho.setTargetRate(1000, uint40(block.timestamp)); // 10% APR
     vm.stopPrank();
 
     // Calculate domain separator for permits

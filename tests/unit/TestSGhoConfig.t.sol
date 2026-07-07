@@ -12,7 +12,7 @@ contract TestSGhoConfig is TestSGhoBase {
     uint16 newRate = 2000; // 20% APR
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.TargetRateUpdated(newRate, block.timestamp);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, uint40(block.timestamp));
     vm.stopPrank();
     assertEq(sgho.targetRate(), newRate, 'Target rate should be updated');
   }
@@ -21,13 +21,13 @@ contract TestSGhoConfig is TestSGhoBase {
     vm.startPrank(yManager);
     uint16 newRate = MAX_SAFE_RATE + 1;
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, uint40(block.timestamp));
     vm.stopPrank();
   }
 
   function test_setTargetRate_atMaxRate() external {
     vm.startPrank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, uint40(block.timestamp));
     vm.stopPrank();
     assertEq(sgho.targetRate(), MAX_SAFE_RATE, 'Target rate should be updated to max rate');
   }
@@ -46,7 +46,7 @@ contract TestSGhoConfig is TestSGhoBase {
     uint16 newRate = 2000; // 20% APR
 
     vm.startPrank(yManager);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, uint40(block.timestamp));
     vm.stopPrank();
 
     assertEq(sgho.targetRate(), newRate, 'Target rate not set correctly');
@@ -63,7 +63,7 @@ contract TestSGhoConfig is TestSGhoBase {
         sgho.YIELD_MANAGER_ROLE()
       )
     );
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, uint40(block.timestamp));
     vm.stopPrank();
   }
 
@@ -71,7 +71,7 @@ contract TestSGhoConfig is TestSGhoBase {
     uint16 newRate = 5001; // 50.01% APR
     vm.startPrank(yManager);
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, uint40(block.timestamp));
     vm.stopPrank();
   }
 }

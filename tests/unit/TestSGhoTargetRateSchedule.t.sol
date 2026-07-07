@@ -187,25 +187,48 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     assertEq(rawEffectiveAt, effectiveAt, 'Raw pending timestamp must be untouched');
   }
 
-  function test_schedule_operationsDoNotPersistDueUpdate() external {
-    uint40 lastUpdateBefore = block.timestamp.toUint40();
+  function test_schedule_operationsPersistDueUpdate() external {
+    uint256 index0 = sgho.yieldIndex();
     uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
-    vm.warp(effectiveAt + 30 days);
-
-    // Deposits, withdrawals and transfers must not checkpoint, as before
-    vm.startPrank(user1);
+    vm.prank(user1);
     sgho.deposit(100 ether, user1);
-    sgho.withdraw(10 ether, user1, user1);
-    sgho.transfer(user2, 1 ether);
-    vm.stopPrank();
 
-    (, uint40 rawLastUpdate, uint16 rawRate, uint40 rawEffectiveAt, ) = _rawStorage(sgho);
-    assertEq(rawLastUpdate, lastUpdateBefore, 'Operations must not checkpoint');
-    assertEq(rawRate, 1000, 'Operations must not apply the pending rate');
-    assertEq(rawEffectiveAt, effectiveAt, 'Operations must not clear the pending rate');
+    vm.warp(effectiveAt + 30 days);
+    uint256 indexAtEffective = _emulateYieldIndex(index0, 1000, 10 days);
+
+    // Plain transfers are exempt from persisting the due update
+    vm.prank(user1);
+    sgho.transfer(user2, 1 ether);
+    (, , , uint40 rawEffectiveAtAfterTransfer, ) = _rawStorage(sgho);
+    assertEq(rawEffectiveAtAfterTransfer, effectiveAt, 'Transfers must not persist the update');
+
+    // The first deposit or withdrawal persists it, checkpointed at its effective timestamp
+    vm.expectEmit(true, true, true, true, address(sgho));
+    emit IsGho.ExchangeRateUpdated(effectiveAt, indexAtEffective);
+    vm.prank(user1);
+    sgho.withdraw(10 ether, user1, user1);
+
+    (
+      uint120 rawIndex,
+      uint40 rawLastUpdate,
+      uint16 rawRate,
+      uint40 rawEffectiveAt,
+      uint16 rawPendingRate
+    ) = _rawStorage(sgho);
+    assertEq(rawIndex, indexAtEffective, 'Index not checkpointed at the effective timestamp');
+    assertEq(rawLastUpdate, effectiveAt, 'lastUpdate must be the effective timestamp');
+    assertEq(rawRate, 2000, 'Due rate not persisted');
+    assertEq(rawEffectiveAt, 0, 'Pending timestamp not cleared');
+    assertEq(rawPendingRate, 0, 'Pending rate not cleared');
+
+    // Follow-up operations run on the committed checkpoint, without further writes
+    vm.prank(user1);
+    sgho.deposit(10 ether, user1);
+    (, uint40 rawLastUpdateAfter, , , ) = _rawStorage(sgho);
+    assertEq(rawLastUpdateAfter, effectiveAt, 'Operations must not checkpoint at their own time');
   }
 
   function test_schedule_conversionsUseDueUpdateIndex() external {
@@ -364,9 +387,16 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     chainB.setTargetRate(2000, effectiveAt1);
     _assertInSync(chainA, chainB);
 
-    // Second AIP, executed after the first is effective: persists the first checkpoint,
-    // again at skewed execution times
+    // A deposit on chain A persists the first update (checkpointed at its effective timestamp,
+    // not at the deposit time); chain B stays lazy
     vm.warp(effectiveAt1 + 1 days);
+    vm.startPrank(user1);
+    gho.approve(address(chainA), type(uint256).max);
+    chainA.deposit(1_000 ether, user1);
+    vm.stopPrank();
+    _assertInSync(chainA, chainB);
+
+    // Second AIP, executed after the first is effective, again at skewed execution times
     vm.prank(yManager);
     chainA.setTargetRate(3000, effectiveAt2);
     _assertInSync(chainA, chainB);

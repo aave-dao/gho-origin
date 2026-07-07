@@ -167,14 +167,14 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     // The final swap consumed SGHO_REVISION, so the initializer is not callable again
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    sGhoInstance(PROXY).initialize(
-      gho,
-      0,
-      address(this),
-      uint120(1e27),
-      block.timestamp.toUint40(),
-      0
-    );
+    sGhoInstance(PROXY).initialize({
+      gho: gho,
+      initialSupplyCap: 0,
+      owner: address(this),
+      initialYieldIndex: uint120(1e27),
+      initialLastUpdate: block.timestamp.toUint40(),
+      initialTargetRate: 0
+    });
   }
 
   function test_fork_postUpgrade_existingUserAccruesLinearly() external onlyForked {

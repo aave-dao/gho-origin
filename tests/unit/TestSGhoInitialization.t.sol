@@ -68,14 +68,14 @@ contract TestSGhoInitialization is TestSGhoBase {
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    sGhoInstance(address(newSgho)).initialize(
-      address(gho),
-      SUPPLY_CAP_UNITS,
-      address(this),
-      RAY.toUint120(),
-      block.timestamp.toUint40(),
-      0
-    );
+    sGhoInstance(address(newSgho)).initialize({
+      gho: address(gho),
+      initialSupplyCap: SUPPLY_CAP_UNITS,
+      owner: address(this),
+      initialYieldIndex: RAY.toUint120(),
+      initialLastUpdate: block.timestamp.toUint40(),
+      initialTargetRate: 0
+    });
   }
 
   function test_initialize_emitsYieldIndexSynced() external {

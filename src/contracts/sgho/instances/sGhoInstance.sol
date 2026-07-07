@@ -37,13 +37,13 @@ contract sGhoInstance is sGho {
     uint40 initialLastUpdate,
     uint16 initialTargetRate
   ) external reinitializer(SGHO_REVISION) {
-    __sGho_init(
-      gho,
-      initialSupplyCap,
-      owner,
-      initialYieldIndex,
-      initialLastUpdate,
-      initialTargetRate
-    );
+    __sGho_init({
+      gho: gho,
+      initialSupplyCap: initialSupplyCap,
+      owner: owner,
+      initialYieldIndex: initialYieldIndex,
+      initialLastUpdate: initialLastUpdate,
+      initialTargetRate: initialTargetRate
+    });
   }
 }

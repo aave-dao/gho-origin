@@ -290,6 +290,43 @@ abstract contract sGho is
   }
 
   /**
+   * @dev Override `ERC4626._deposit`
+   * @dev Persists a due scheduled rate change, so the two-segment accrual is paid at most once
+   * instead of on every conversion until the next rate update. Plain transfers are exempt, as
+   * they would pay a storage read they otherwise never need.
+   */
+  function _deposit(
+    address caller,
+    address receiver,
+    uint256 assets,
+    uint256 shares
+  ) internal override {
+    _applyPendingTargetRate();
+    super._deposit({caller: caller, receiver: receiver, assets: assets, shares: shares});
+  }
+
+  /**
+   * @dev Override `ERC4626._withdraw`
+   * @dev Persists a due scheduled rate change, see `_deposit`.
+   */
+  function _withdraw(
+    address caller,
+    address receiver,
+    address owner,
+    uint256 assets,
+    uint256 shares
+  ) internal override {
+    _applyPendingTargetRate();
+    super._withdraw({
+      caller: caller,
+      receiver: receiver,
+      owner: owner,
+      assets: assets,
+      shares: shares
+    });
+  }
+
+  /**
    * @dev Override to check the sender has `TOKEN_RESCUER_ROLE` role
    */
   function _checkRescueGuardian() internal view override {
@@ -343,8 +380,8 @@ abstract contract sGho is
     sGhoStorage storage $ = _getSGhoStorage();
     uint40 effectiveAt = $.pendingRateEffectiveAt;
     if (effectiveAt != 0 && block.timestamp >= effectiveAt) {
-      uint120 index = ($.yieldIndex + _accruedYield($.targetRate, effectiveAt - $.lastUpdate))
-        .toUint120();
+      uint120 index = ($.yieldIndex +
+        _accruedYield({rate: $.targetRate, timeDelta: effectiveAt - $.lastUpdate})).toUint120();
       return (index, effectiveAt, $.pendingTargetRate, true);
     }
     return ($.yieldIndex, $.lastUpdate, $.targetRate, false);
@@ -361,7 +398,8 @@ abstract contract sGho is
     (uint120 index, uint40 timestamp, uint16 rate, ) = _getCheckpoint();
     if (rate == 0 || block.timestamp == timestamp) return index;
 
-    return (index + _accruedYield(rate, block.timestamp - timestamp)).toUint120();
+    return
+      (index + _accruedYield({rate: rate, timeDelta: block.timestamp - timestamp})).toUint120();
   }
 
   /**

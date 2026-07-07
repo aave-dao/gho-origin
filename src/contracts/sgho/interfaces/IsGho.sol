@@ -108,8 +108,9 @@ interface IsGho {
    * The new rate must be less than 50% (5000 basis points).
    * @dev Scheduling the same rate with the same `effectiveAt` on every chain keeps yield indexes
    * identical across chains at all times: the index is checkpointed exactly at `effectiveAt`
-   * regardless of when the update is executed or first touched afterwards. A previously scheduled
-   * update that is not yet effective is overwritten.
+   * regardless of when the update is executed or first touched afterwards. Views resolve a due
+   * update instantly; the next rate update, deposit/mint or withdrawal/redemption persists it.
+   * A previously scheduled update that is not yet effective is overwritten.
    * @dev Passing the current timestamp applies the update immediately, checkpointing the index at
    * the (chain-specific) execution time — only suitable for single-chain deployments.
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).

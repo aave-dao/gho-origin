@@ -1,0 +1,51 @@
+tests/unit/TestSGhoInitialization.t.sol
+  s_3d8e5c38ee92ae::t_304377b53be2cf 141-146
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3d8e5c38ee92ae::t_afba9cc3500f9f 397,400-403,405,407-412
+  s_3d8e5c38ee92ae::t_35200044f13448 483,486
+  s_3d8e5c38ee92ae::t_283f7a33248689 216,248-254,280-286,377-390
+  s_3d8e5c38ee92ae::t_dc6ab9a28ee165 1-215,217-247,255-279,287-376,391-396,398-399,404,406,413-482,484-485,487-514
+tests/gas/sGho.Operations.gas.t.sol
+  s_3d8e5c38ee92ae::t_bf8d569cef9797 54-82
+tests/unit/TestSGhoConfig.t.sol
+  s_3d8e5c38ee92ae::t_5ed479781e1acd 14
+tests/unit/TestSGhoSyncYieldIndex.t.sol
+  s_3d8e5c38ee92ae::t_08ec99bbdeba83 161-162,168,176-177
+  s_3d8e5c38ee92ae::t_3b96d810d5b4c2 1-24,32-160,163-167,169-175,178-285
+  s_3d8e5c38ee92ae::t_283f7a33248689 25-31
+snapshots/sGho.Operations.json
+  s_3d8e5c38ee92ae::t_d4d65e3ea225ed 2-9,11
+tests/unit/TestSGhoBase.t.sol
+  s_3d8e5c38ee92ae::t_2b93acc733e7f9 122-169
+docs/sgho.md
+  s_3d8e5c38ee92ae::t_a7dc4af1324c88 41-59,64-65
+src/contracts/sgho/sGho.sol
+  s_3d8e5c38ee92ae::t_5edc76787506e0 136-153,156-169
+  s_3d8e5c38ee92ae::t_dcc3f07cb8f259 195-196,201-212
+  s_3d8e5c38ee92ae::t_a56110b747350e 44,49-50
+  s_3d8e5c38ee92ae::t_534570a2416621 273-274
+  s_3d8e5c38ee92ae::t_211a4c03870c46 328-348,357-358,360-361,363-371,373-389,399,408-436
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3d8e5c38ee92ae::t_20eaeeeebc63a0 192
+  s_3d8e5c38ee92ae::t_eecb614fdd9c6b 20-35,37,39,43-44,49-55
+  s_3d8e5c38ee92ae::t_89afaef003eea8 207,213,215-216,219-226
+  s_3d8e5c38ee92ae::t_7906618216a5c0 106,109-111,116-146
+  s_3d8e5c38ee92ae::t_c5df61e5576dee 56
+  s_3d8e5c38ee92ae::t_29558c6be97236 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8b8afebc23080f7fc9f5213af6dd867c103591e7",
+  "prompts": {},
+  "sessions": {
+    "s_3d8e5c38ee92ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e411bd44-5e7a-45e8-9400-df0b5bcd99c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

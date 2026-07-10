@@ -27,19 +27,22 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: Certora/certora-run-action@v2
+      - uses: Certora/certora-run-action@v2.10.0
         with:
-          cli-version: 7.31.2
+          cli-release: stable
+          cli-version: "8.17.1"
+          auto-rerun-timeouts: "true"
           configurations: |-
             certora/gsm/conf/gsm4626/gho-gsm4626-1.conf
-            certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule accruedFeesLEGhoBalanceOfThis 
-            certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule accruedFeesNeverDecrease  
+            certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule accruedFeesLEGhoBalanceOfThis
+            certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule accruedFeesNeverDecrease
             #certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule systemBalanceStabilitySell waiting for ticket CERT-9408
             certora/gsm/conf/gsm4626/gho-gsm4626-inverse.conf --rule buySellInverse27 buySellInverse26 buySellInverse25 buySellInverse24 buySellInverse23 buySellInverse22 buySellInverse21 buySellInverse20 buySellInverse19
             certora/gsm/conf/gsm4626/balances-buy-4626.conf
             certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R1_getAssetAmountForSellAsset_arg_vs_return R1a_buyGhoUpdatesGhoBalanceCorrectly1 R2_getAssetAmountForSellAsset_sellAsset_eq
             certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R3a_sellAssetUpdatesAssetBalanceCorrectly
-            certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly R4a_buyGhoAmountGtGhoBalanceChange
+            certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly
+            certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R4a_buyGhoAmountGtGhoBalanceChange
             certora/gsm/conf/gsm4626/fees-buy-4626.conf
             certora/gsm/conf/gsm4626/fees-sell-4626.conf --rule R3a_estimatedSellFeeCanBeLowerThanActualSellFee R2_getAssetAmountForSellAssetVsActualSellFee R4a_getSellFeeVsgetAssetAmountForSellAsset R4_getSellFeeVsgetAssetAmountForSellAsset R1a_getAssetAmountForSellAssetFeeNeGetSellFee R2a_getAssetAmountForSellAssetNeActualSellFee R4b_getSellFeeVsgetAssetAmountForSellAsset R1_getAssetAmountForSellAssetFeeGeGetSellFee R3b_estimatedSellFeeEqActualSellFee
             certora/gsm/conf/gsm4626/optimality4626.conf --rule R5a_externalOptimalityOfSellAsset R6a_externalOptimalityOfBuyAsset

@@ -1,28 +1,12 @@
 import "methods_base.spec";
-
-
-
+import "../shared/mulDiv_summaries.spec";
 
 methods {
-    function _.mulDiv(uint256 x, uint256 y, uint256 denominator) internal => mulDivSummary(x, y, denominator) expect (uint256); 
-    function _.mulDiv(uint256 x, uint256 y, uint256 denominator, Math.Rounding rounding) internal => mulDivSummaryWithRounding(x, y, denominator, rounding) expect (uint256); 
-}
-
-function mulDivSummary(uint256 x, uint256 y, uint256 denominator) returns uint256
-{
-    require denominator > 0;
-    return require_uint256((x * y) / denominator);
-}
-
-
-function mulDivSummaryWithRounding(uint256 x, uint256 y, uint256 denominator, Math.Rounding rounding) returns uint256
-{
-    require denominator > 0;
-    if (rounding == Math.Rounding.Up)
-    {
-        return require_uint256((x * y + denominator - 1) / denominator);
-    }
-	else return require_uint256((x * y) / denominator);
+    function _.mulDiv(uint256 x, uint256 y, uint256 denominator) internal => mulDivSummary(x, y, denominator) expect (uint256);
+    // 4-arg rounding overload: `Math.Rounding` is ambiguous (two `Math` libraries with different
+    // members), so we qualify by the originating contract importing OZ v5 Math (Floor/Ceil/Trunc/Expand).
+    function _.mulDiv(uint256 x, uint256 y, uint256 denominator, FixedPriceStrategyHarness.Rounding rounding) internal =>
+        mulDivRounding(x, y, denominator, rounding == FixedPriceStrategyHarness.Rounding.Ceil) expect (uint256);
 }
 
 // FULL REPORT AT: https://prover.certora.com/output/17512/c87a46588a694009988c74cd330e3451?anonymousKey=81afc1084fb6e444019f84f769cbce4cd06cdc11

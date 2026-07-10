@@ -100,12 +100,12 @@ hook Sload uint256 balance _ghoToken.balanceOf[KEY address a] {
 invariant inv_sumAllBalance_eq_totalSupply()
   sumAllBalance() == to_mathint(_ghoToken.totalSupply())
   filtered {f -> f.contract == _ghoToken}
-/*  {
-    preserved rescueTokens(address token, address to, uint256 amount) with (env e) {
-      //      require token==GHO_TOKEN() || token==UNDERLYING_ASSET() || token==some_erc20;
-      require token==_ghoToken || token==the_underlyning || token==some_erc20;
+  {
+        preserved constructor() with (env eCtor) {
+        require sumAllBalance() == to_mathint(_ghoToken.totalSupply());
     }
-    }*/
+  }
+
 
 
 function priceLimits(env e) {

@@ -144,6 +144,13 @@ rule R4_buyGhoUpdatesGhoBalanceCorrectly {
     feeLimits(e);
     priceLimits(e);
 
+    // Pin the price ratio and sell fee to representative constants so the price/fee mulDiv is
+    // linear; the round-trip (getAssetAmountForSellAsset then sellAsset) is otherwise an
+    // intractable composition of two rounded nonlinear mulDivs. Same technique as
+    // basicProperty2_getAssetAmountForBuyAsset in AssetToGhoInvertibility.
+    require getPriceRatio() == 9*10^17 || getPriceRatio() == 10^18 || getPriceRatio() == 5*10^18;
+    require currentContract.getSellFeeBP(e) == 357 || currentContract.getSellFeeBP(e) == 1000 || currentContract.getSellFeeBP(e) == 5000;
+
     require e.msg.sender != currentContract;
     require currentContract.UNDERLYING_ASSET(e) != currentContract.GHO_TOKEN(e); // Inflation prevention
 

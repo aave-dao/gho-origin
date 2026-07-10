@@ -1,29 +1,13 @@
 // import "methods_base.spec";
-
+import "../shared/mulDiv_summaries.spec";
 
 methods {
     function getAssetPriceInGho(uint256, bool) external returns (uint256) envfree;
     function getGhoPriceInAsset(uint256, bool) external returns (uint256) envfree;
-    function _.mulDiv(uint256 x, uint256 y, uint256 denominator) internal => mulDivSummary(x, y, denominator) expect (uint256); 
-    function _.mulDiv(uint256 x, uint256 y, uint256 denominator, Math.Rounding rounding) internal => mulDivSummaryWithRounding(x, y, denominator, rounding) expect (uint256); 
-}
-
-
-function mulDivSummary(uint256 x, uint256 y, uint256 denominator) returns uint256
-{
-    require denominator > 0;
-    return require_uint256((x * y) / denominator);
-}
-
-
-function mulDivSummaryWithRounding(uint256 x, uint256 y, uint256 denominator, Math.Rounding rounding) returns uint256
-{
-    require denominator > 0;
-    if (rounding == Math.Rounding.Up)
-    {
-        return require_uint256((x * y + denominator - 1) / denominator);
-    }
-	else return require_uint256((x * y) / denominator);
+    function _.mulDiv(uint256 x, uint256 y, uint256 denominator) internal => mulDivSummary(x, y, denominator) expect (uint256);
+    // Single `Math` in scene here, so the rounding enum is referenced unqualified as `Math.Rounding`.
+    function _.mulDiv(uint256 x, uint256 y, uint256 denominator, Math.Rounding rounding) internal =>
+        mulDivRounding(x, y, denominator, rounding == Math.Rounding.Ceil) expect (uint256);
 }
 
 // Full report at https://prover.certora.com/output/17512/ed7722cf57e54d228e6f3487bd15661e?anonymousKey=4bf315b7502b8c338c4b4cd8bcfe7ae9eb858782

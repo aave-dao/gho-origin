@@ -236,7 +236,7 @@ contract GhoRouter is Ownable, IGhoRouter {
    * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param token Output token (either GSM underlying token or its static aToken).
    * @param gsm Whitelisted GSM used for the swap.
-   * @param exactAmountIn Amount of GHO pulled from the caller.
+   * @param exactAmountIn Maximum allowed amount of GHO to be pulled from the caller.
    * @param minOutputAmount Minimum acceptable output-token amount.
    * @param recipient Address that receives the resulting token.
    * @return outputAmount Amount of output tokens sent to `recipient`.
@@ -252,6 +252,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     (address gsmAsset, bool isStata) = _validateGsmInput(token, gsm);
 
     (uint256 amountToBuy, uint256 ghoUsed, , ) = IGsm(gsm).getAssetAmountForBuyAsset(exactAmountIn);
+    require(ghoUsed <= exactAmountIn, RequiredGhoGreaterThanExpectedAmount());
 
     IERC20(GHO).safeTransferFrom(msg.sender, address(this), ghoUsed);
 
@@ -430,7 +431,7 @@ contract GhoRouter is Ownable, IGhoRouter {
    * @dev Sells input tokens through GSM for GHO, wrapping the underlying into the static aToken when needed.
    * @param gsm Whitelisted GSM used for the sell path.
    * @param token Input token address provided by the caller.
-   * @param gsmAsset GSM asset (static aToken) the sale is settled in.
+   * @param gsmAsset GSM underlying asset the sale is settled in.
    * @param isStata Whether `token` must be wrapped into `gsmAsset` before selling.
    * @param exactAmountIn Amount of input tokens pulled from the caller.
    * @param minGhoAmount Minimum acceptable GHO output.
@@ -447,21 +448,22 @@ contract GhoRouter is Ownable, IGhoRouter {
     uint256 amount = exactAmountIn;
     if (isStata) {
       IERC20(token).forceApprove(gsmAsset, exactAmountIn);
-      amount = IERC4626(gsmAsset).deposit(exactAmountIn, address(this));
+      amount = IERC4626(gsmAsset).deposit({assets: exactAmountIn, receiver: address(this)});
     }
 
     IERC20(gsmAsset).forceApprove(gsm, amount);
     (, uint256 ghoAmount) = IGsm(gsm).sellAsset({maxAmount: amount, receiver: address(this)});
+    IERC20(gsmAsset).forceApprove(gsm, 0);
 
     require(ghoAmount >= minGhoAmount, SlippageExceeded());
     return ghoAmount;
   }
 
   /**
-   * @dev Buys GSM static aTokens with GHO, then returns either the static aToken or its underlying.
+   * @dev Buys GSM underlying token with GHO, then returns either the static aToken or its underlying.
    * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param gsm Whitelisted GSM used for the buy path.
-   * @param gsmAsset GSM asset (static aToken) acquired from the GSM.
+   * @param gsmAsset GSM underlying asset acquired from the GSM.
    * @param isStata Whether the acquired `gsmAsset` must be unwrapped into its underlying before delivery.
    * @param exactAmountIn GHO budget used to acquire static aTokens.
    * @param amountToBuy Amount of token to acquire from the GSM.
@@ -537,7 +539,7 @@ contract GhoRouter is Ownable, IGhoRouter {
    *      paired with an incompatible token reverts cleanly with `InvalidToken`.
    * @param token Input or output token supplied by the caller.
    * @param gsm GSM the caller selected to route through.
-   * @return gsmAsset The GSM asset (`UNDERLYING_ASSET`), i.e. the static aToken the GSM settles in.
+   * @return gsmAsset The GSM asset (`UNDERLYING_ASSET`), i.e. the static aToken or underlying the GSM settles in.
    * @return isStata True when `token` is the underlying and must be wrapped into/unwrapped from `gsmAsset`.
    */
   function _validateGsmInput(address token, address gsm) internal view returns (address, bool) {

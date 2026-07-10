@@ -35,6 +35,9 @@ interface IGhoRouter {
   /// @dev The GSM is not allowed
   error GsmNotSet();
 
+  /// @dev The required GHO to swap for token is greater than expected amount
+  error RequiredGhoGreaterThanExpectedAmount();
+
   /// @dev The token already has a stata mapping set
   error TokenToStataAlreadySet();
 
@@ -54,12 +57,12 @@ interface IGhoRouter {
    * @param recipient The address of the recipient of tokenOut
    */
   event Swap(
-    address caller,
+    address indexed caller,
     address indexed tokenIn,
     address indexed tokenOut,
     uint256 exactAmountIn,
     uint256 amountOut,
-    address indexed recipient
+    address recipient
   );
 
   /**
@@ -90,6 +93,7 @@ interface IGhoRouter {
 
   /**
    * @notice Swap tokenIn for tokenOut and send output to recipient
+   * @dev In GHO <-> sGHO paths, GSM is ignored
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
    * @param gsm Address of the GSM used to perform swap
@@ -173,7 +177,6 @@ interface IGhoRouter {
 
   /**
    * @notice Preview the amount of tokens received for a given input amount
-   * @dev This is an estimation and actual results may vary slightly
    * @param tokenIn Input token address
    * @param tokenOut Output token address
    * @param gsm Address of the GSM used to perform swap

@@ -7,8 +7,8 @@ import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
-import {BadGsm} from '../../mocks/MockBadGsm.sol';
-import {BadStata} from '../../mocks/MockBadStataToken.sol';
+import {MockBadGsm} from '../../mocks/MockBadGsm.sol';
+import {MockBadStata} from '../../mocks/MockBadStataToken.sol';
 
 /**
  * @title GhoRouterTest

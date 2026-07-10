@@ -60,7 +60,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
 
     uint256 outputAmount = GHO_ROUTER.previewSwap(
       address(GHO_TOKEN),
-      address(USDX_4626_TOKEN),
+      address(USDX_TOKEN),
       address(GHO_GSM_4626),
       amount
     );
@@ -130,12 +130,12 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     assertEq(outputAmount, amount, 'sGHO copy preview should be 1:1 at initial index');
   }
 
-  function testPreviewSwapFromSGHOUSDX_4626_TOKEN(uint256 amount) public view {
+  function testPreviewSwapFromSGHOUSDX_TOKEN(uint256 amount) public view {
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
 
     uint256 outputAmount = GHO_ROUTER.previewSwap(
       address(SGHO),
-      address(USDX_4626_TOKEN),
+      address(USDX_TOKEN),
       address(GHO_GSM_4626),
       amount
     );

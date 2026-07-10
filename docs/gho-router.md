@@ -24,7 +24,9 @@ Internally, the router dispatches to one of six flows based on the `tokenIn`/`to
 - `tokenIn == other, tokenOut == GHO` — GSM token → GHO
 - `tokenIn == other, tokenOut == sGHO` — GSM token → sGHO
 
+On `GHO <-> sGHO` paths, the GSM address is ignored.
 Any `tokenIn`/`tokenOut` pair that does not match these six paths reverts with `InvalidTokenPair(tokenIn, tokenOut)`.
+A `GHO <-> GHO` path will revert with `InvalidToken` rather than the above mentioned `InvalidTokenPair(tokenIn, tokenOut)`.
 
 Important shape of the current design:
 

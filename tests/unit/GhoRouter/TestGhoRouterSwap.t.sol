@@ -353,22 +353,51 @@ contract SwapFromGHOTest is TestGhoRouterBase {
     assertEq(outputAmount, expectedAmount, 'Should receive output token');
   }
 
-  function testSwapFromGHOToUSDX_4626_TOKEN(uint256 amount) public {
+  function testSwapFromGHORevertsWhenRequiredGhoExceedsInput() public {
+    uint256 amount = 100 ether;
+    _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+
+    // Force the GSM to report it needs more GHO than the caller supplied
+    vm.mockCall(
+      address(GHO_GSM_4626),
+      abi.encodeWithSelector(IGsm.getAssetAmountForBuyAsset.selector),
+      abi.encode(uint256(1), amount + 1, uint256(0), uint256(0))
+    );
+
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.RequiredGhoGreaterThanExpectedAmount.selector);
+    GHO_ROUTER.swap(
+      address(GHO_TOKEN),
+      address(USDX_4626_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
+  function testSwapFromGHOToUSDX_TOKEN(uint256 amount) public {
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
+    deal(address(USDX_TOKEN), address(this), MAX_FUZZ_AMOUNT_6_DECIMALS);
+    USDX_TOKEN.approve(address(GHO_GSM), MAX_FUZZ_AMOUNT_6_DECIMALS);
+    GHO_GSM.sellAsset(MAX_FUZZ_AMOUNT_6_DECIMALS, address(this));
+
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
     _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
 
     uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
-    uint256 expectedAmount = USDX_4626_TOKEN.convertToShares(vaultAssets);
+    // USDX is 6 decimals, GHO is 18 — scale the gross GHO amount down to the asset amount
+    uint256 expectedAmount = (grossAmount * 1e6) / 1e18;
 
     // Router only pulls and emits the GHO actually needed for the buy, not the full input
-    (, uint256 ghoUsed, , ) = GHO_GSM_4626.getAssetAmountForBuyAsset(amount);
+    (, uint256 ghoUsed, , ) = GHO_GSM.getAssetAmountForBuyAsset(amount);
 
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
     emit IGhoRouter.Swap(
       USER,
       address(GHO_TOKEN),
-      address(USDX_4626_TOKEN),
+      address(USDX_TOKEN),
       ghoUsed,
       expectedAmount,
       USER
@@ -376,8 +405,8 @@ contract SwapFromGHOTest is TestGhoRouterBase {
     vm.prank(USER);
     uint256 outputAmount = GHO_ROUTER.swap(
       address(GHO_TOKEN),
-      address(USDX_4626_TOKEN),
-      address(GHO_GSM_4626),
+      address(USDX_TOKEN),
+      address(GHO_GSM),
       amount,
       0,
       USER,
@@ -554,7 +583,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     vm.prank(USER);
     vm.expectRevert(IGhoRouter.InvalidAmount.selector);
     GHO_ROUTER.swap(
-      address(GHO_TOKEN),
+      address(SGHO),
       address(USDX_4626_TOKEN),
       address(GHO_GSM_4626),
       0,

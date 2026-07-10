@@ -26,13 +26,13 @@ contract AllowGsmTest is TestGhoRouterBase {
   }
 
   function testAllowGsmNotGhoToken() public {
-    BadGsm gsm = new BadGsm(makeAddr('bad-gho'), address(USDX_TOKEN));
+    MockBadGsm gsm = new MockBadGsm(makeAddr('bad-gho'), address(USDX_TOKEN));
     vm.expectRevert(IGhoRouter.InvalidGsm.selector);
     GHO_ROUTER.allowGsm(address(gsm));
   }
 
   function testAllowGsmNoUnderlying() public {
-    BadGsm gsm = new BadGsm(address(GHO_TOKEN), address(0));
+    MockBadGsm gsm = new MockBadGsm(address(GHO_TOKEN), address(0));
     vm.expectRevert(IGhoRouter.InvalidGsm.selector);
     GHO_ROUTER.allowGsm(address(gsm));
   }
@@ -98,7 +98,7 @@ contract SetTokenToStataTest is TestGhoRouterBase {
 
   function testSetTokenToStataAssetMismatch() public {
     // A stata whose asset() does not return the provided token reverts cleanly
-    BadStata stata = new BadStata();
+    MockBadStata stata = new MockBadStata();
     vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.setTokenToStata(makeAddr('token'), address(stata));
   }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-contract BadGsm {
+contract MockBadGsm {
   address public immutable GHO_TOKEN;
   address public immutable UNDERLYING_ASSET;
 

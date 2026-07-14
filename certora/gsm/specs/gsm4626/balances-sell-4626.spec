@@ -1,7 +1,9 @@
 import "methods4626_base.spec";
 
 import "../shared/erc20.spec";
-import "../shared/methods_divint_summary.spec";
+// Nondet (multiplicative) mulDiv encoding: R4 composes ceil/floor mulDivs over the symbolic
+// price ratio, asset units and fee denominators, and the exact div/mod encoding times out.
+import "../shared/methods_divint_summary_nondet.spec";
 //import "../GsmMethods/aave_price_fee_limits.spec";
 import "erc4626.spec";
 
@@ -138,18 +140,11 @@ rule R3a_sellAssetUpdatesAssetBalanceCorrectly {
 
 // // @Title 4626: The GHO amount added to the user's account at `sellAsset` is at least the value `x` passed to `getAssetAmountForSellAsset(x)`
 // // (4)
-// // Timeout: https://prover.certora.com/output/11775/b2a7e3687b504f3dbe03457b4b5ed3be?anonymousKey=0e6938a302b565c3d5e7b158d4b20a23d2605db1
+// // Holds (nondet mulDiv encoding, no constant pins): https://prover.certora.com/output/60724/7d8c04009d0c4af792145912553aacda?anonymousKey=9818bcecdd59e18f3ba673e8ef3f03be321feee3
 rule R4_buyGhoUpdatesGhoBalanceCorrectly {
     env e;
     feeLimits(e);
     priceLimits(e);
-
-    // Pin the price ratio and sell fee to representative constants so the price/fee mulDiv is
-    // linear; the round-trip (getAssetAmountForSellAsset then sellAsset) is otherwise an
-    // intractable composition of two rounded nonlinear mulDivs. Same technique as
-    // basicProperty2_getAssetAmountForBuyAsset in AssetToGhoInvertibility.
-    require getPriceRatio() == 9*10^17 || getPriceRatio() == 10^18 || getPriceRatio() == 5*10^18;
-    require currentContract.getSellFeeBP(e) == 357 || currentContract.getSellFeeBP(e) == 1000 || currentContract.getSellFeeBP(e) == 5000;
 
     require e.msg.sender != currentContract;
     require currentContract.UNDERLYING_ASSET(e) != currentContract.GHO_TOKEN(e); // Inflation prevention

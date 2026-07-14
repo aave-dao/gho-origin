@@ -19,18 +19,12 @@ function mulDivRounding(uint256 x, uint256 y, uint256 denominator, bool roundUp)
 }
 
 // Same value as mulDivSummary/mulDivRounding, but encoded nondeterministically: the result
-// is a fresh variable pinned only by its multiplicative floor/ceil bounds plus implied
-// linear hints, so no div/mod terms over symbolic denominators reach the solver. floor and
-// ceil are unique, so this is an encoding change, not a weakening. Rules composing several
-// mulDivs over symbolic denominators (e.g. R4 in balances-sell-4626) time out on the exact
-// div-based summaries — even with the bounds and hints added on top of the div term — and
-// prove in minutes on this encoding.
+// is a fresh variable pinned only by its multiplicative floor/ceil bounds.
 function mulDivNondet(uint256 x, uint256 y, uint256 denominator) returns uint256 {
     require denominator > 0;
     uint256 q;
     require q * denominator <= x * y;
     require x * y < (q + 1) * denominator;
-    mulDivLinearHints(x, y, denominator, q);
     return q;
 }
 
@@ -42,21 +36,8 @@ function mulDivNondetRounding(uint256 x, uint256 y, uint256 denominator, bool ro
     uint256 q;
     require x * y <= q * denominator;
     require q * denominator < x * y + denominator;
-    mulDivLinearHints(x, y, denominator, q);
     return q;
 }
-
-// Implied linear consequences of the multiplicative bounds on q (valid for both floor and
-// ceil, for any x, y, d > 0). Semantically redundant, but product-free: they hand the LIA
-// overapproximation magnitude facts about q that it otherwise only gets by reasoning about
-// the nonlinear bounds, which is what made single splits run for hours.
-function mulDivLinearHints(uint256 x, uint256 y, uint256 denominator, uint256 q) {
-    require y <= denominator => q <= x;
-    require y >= denominator => q >= x;
-    require x <= denominator => q <= y;
-    require x >= denominator => q >= y;
-}
-
 // Same value as mulDivRounding, written as the single closed form (x*y+d-1)/d for Ceil.
 // The optimality proofs reason about this closed form far better than the reuse-floor form.
 function mulDivRoundingClosed(uint256 x, uint256 y, uint256 denominator, bool roundUp) returns uint256 {

@@ -47,15 +47,6 @@ hook Sstore _facilitators[KEY address a].(offset 16) uint128 level (uint128 old_
 // Invariants
 //
 
-// INV #1
-/**
-* @title Length of AddressSet is less than 2^160
-* @dev the assumption is safe because there are at most 2^160 unique addresses
-* @dev the proof of the assumption is vacuous because length > loop_iter
-*/
-invariant length_leq_max_uint160()
-	getFacilitatorsListLen() < TWO_TO_160();
-
 // INV #2
 /**
 * @title User's balance not greater than totalSupply()
@@ -140,7 +131,7 @@ invariant address_in_set_values_iff_in_set_indexes(address facilitator)
 	is_in_facilitator_set_array(facilitator) <=> is_in_facilitator_set_map(facilitator)
 	{preserved{
 		requireInvariant addressSetInvariant_2();
-		requireInvariant length_leq_max_uint160();
+		require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 
@@ -168,7 +159,7 @@ invariant addr_in_set_list_iff_in_map(address facilitator)
 	is_in_facilitator_mapping(facilitator) <=> is_in_facilitator_set_array(facilitator)
 	{preserved{
 		requireInvariant addressSetInvariant_2();
-		requireInvariant length_leq_max_uint160();
+		require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 
@@ -363,7 +354,7 @@ rule facilitator_in_list_after_mint_and_burn(method f){
 rule address_not_in_list_after_removeFacilitator(address facilitator){
 	env e;
 	requireInvariant addressSetInvariant_2();
-	requireInvariant length_leq_max_uint160();
+	require getFacilitatorsListLen() < TWO_TO_160();
 	requireInvariant addr_in_set_iff_in_map(facilitator);
 	removeFacilitator(e, facilitator);
 	assert !is_in_facilitator_set_array(facilitator);
@@ -494,7 +485,7 @@ invariant ARRAY_IS_INVERSE_OF_MAP_Invariant()
 	{
 		preserved{
 			require ADDRESS_SET_INVARIANT();
-			requireInvariant length_leq_max_uint160();
+			require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 
@@ -504,7 +495,7 @@ invariant addressSetInvariant_2()
     ADDRESS_SET_INVARIANT()
 	{
 		preserved{
-			requireInvariant length_leq_max_uint160();
+			require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 

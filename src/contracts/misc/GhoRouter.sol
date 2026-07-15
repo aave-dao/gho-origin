@@ -5,6 +5,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
@@ -15,7 +16,7 @@ import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
  * @notice Router for token swaps through whitelisted GSMs and direct GHO/sGHO conversion paths
  * @dev This contract never stores user funds and uses exact approvals only
  */
-contract GhoRouter is Ownable, IGhoRouter {
+contract GhoRouter is Ownable, ReentrancyGuard, IGhoRouter {
   using SafeERC20 for IERC20;
 
   /// @inheritdoc IGhoRouter
@@ -54,7 +55,7 @@ contract GhoRouter is Ownable, IGhoRouter {
     uint256 minAmountOut,
     address recipient,
     uint256 deadline
-  ) external returns (uint256) {
+  ) external nonReentrant returns (uint256) {
     _validateInputs(exactAmountIn, recipient, deadline);
 
     uint256 amountOut;
@@ -331,6 +332,8 @@ contract GhoRouter is Ownable, IGhoRouter {
     uint256 ghoAmount = _redeemGho(exactAmountIn, 0);
 
     (uint256 amountToBuy, uint256 ghoUsed, , ) = IGsm(gsm).getAssetAmountForBuyAsset(ghoAmount);
+    require(ghoUsed <= ghoAmount, RequiredGhoGreaterThanExpectedAmount());
+
     uint256 outputAmount = _buyTokenWithGho({
       gsm: gsm,
       gsmAsset: gsmAsset,

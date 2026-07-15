@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
+import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+
 import './TestGhoRouterBase.t.sol';
+import {MockReentrantGsm} from '../../mocks/MockReentrantGsm.sol';
 
 /**
  * @title GhoRouterTest
@@ -624,6 +627,80 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     );
   }
 
+  function testSwapFromSGHORevertsWhenRequiredGhoExceedsRedeemed() public {
+    uint256 amount = 100 ether;
+    _mintSgho(amount);
+
+    vm.startPrank(USER);
+    SGHO.approve(address(GHO_ROUTER), amount);
+
+    // GHO obtained from redeeming the caller's sGHO — the budget the buy must fit within
+    uint256 ghoAmount = SGHO.previewRedeem(amount);
+
+    // Force the GSM to report it needs more GHO than the redeemed sGHO provides
+    vm.mockCall(
+      address(GHO_GSM_4626),
+      abi.encodeWithSelector(IGsm.getAssetAmountForBuyAsset.selector),
+      abi.encode(uint256(1), ghoAmount + 1, uint256(0), uint256(0))
+    );
+
+    vm.expectRevert(IGhoRouter.RequiredGhoGreaterThanExpectedAmount.selector);
+    GHO_ROUTER.swap(
+      address(SGHO),
+      address(USDX_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+    vm.stopPrank();
+  }
+
+  function testSwapFromSGHOSucceedsAfterYieldAccrual() public {
+    uint256 amount = 100 ether;
+
+    // Turn on sGHO yield, then mint the caller shares while the index is still 1:1
+    SGHO.grantRole(SGHO.YIELD_MANAGER_ROLE(), address(this));
+    SGHO.setTargetRate(1000); // 10% APR
+    _mintSgho(amount);
+
+    // Let the index climb above 1:1 so redeemed GHO exceeds the shares burned.
+    // This is the case the old `ghoUsed <= exactAmountIn` (shares) check wrongly rejected.
+    vm.warp(block.timestamp + 365 days);
+
+    // Fund the vault so it can pay out the accrued yield on redeem
+    deal(address(GHO_TOKEN), address(SGHO), amount * 2);
+
+    vm.startPrank(USER);
+    SGHO.approve(address(GHO_ROUTER), amount);
+
+    uint256 ghoAmount = SGHO.previewRedeem(amount);
+    // Sanity: shares now redeem for strictly more GHO than were burned
+    assertGt(ghoAmount, amount, 'Index should have accrued yield');
+
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 stataAmount = USDX_4626_TOKEN.convertToShares(vaultAssets);
+    uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(stataAmount);
+
+    vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+    emit IGhoRouter.Swap(USER, address(SGHO), address(USDX_TOKEN), amount, expectedOut, USER);
+    uint256 outputAmount = GHO_ROUTER.swap(
+      address(SGHO),
+      address(USDX_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      1,
+      USER,
+      block.timestamp
+    );
+    vm.stopPrank();
+
+    assertEq(outputAmount, expectedOut, 'Should receive USDX_TOKEN');
+    assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, 'User should spend all sGHO');
+  }
+
   function testSwapFromSGHO(uint256 amount) public {
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
     _mintSgho(amount);
@@ -923,5 +1000,55 @@ contract RedeemSGhoTest is TestGhoRouterBase {
       'Recipient should receive GHO'
     );
     assertEq(GHO_TOKEN.balanceOf(USER), userBalanceBefore, 'Caller should not receive GHO');
+  }
+}
+
+contract SwapReentrancyTest is TestGhoRouterBase {
+  function _deployAndAllowReentrantGsm() internal returns (MockReentrantGsm) {
+    MockReentrantGsm reentrantGsm = new MockReentrantGsm(
+      address(GHO_TOKEN),
+      address(USDX_TOKEN),
+      address(GHO_ROUTER)
+    );
+    GHO_ROUTER.allowGsm(address(reentrantGsm));
+    return reentrantGsm;
+  }
+
+  function testSwapRevertsOnReentrantGsmSellPath() public {
+    MockReentrantGsm reentrantGsm = _deployAndAllowReentrantGsm();
+
+    uint256 amount = 1_000e6;
+    _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
+
+    vm.prank(USER);
+    vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+    GHO_ROUTER.swap(
+      address(USDX_TOKEN),
+      address(GHO_TOKEN),
+      address(reentrantGsm),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
+  function testSwapRevertsOnReentrantGsmBuyPath() public {
+    MockReentrantGsm reentrantGsm = _deployAndAllowReentrantGsm();
+
+    uint256 amount = 100 ether;
+    _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+
+    vm.prank(USER);
+    vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+    GHO_ROUTER.swap(
+      address(GHO_TOKEN),
+      address(USDX_TOKEN),
+      address(reentrantGsm),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
   }
 }

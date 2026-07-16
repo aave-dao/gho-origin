@@ -34,14 +34,16 @@ jobs:
           auto-rerun-timeouts: "true"
           configurations: |-
             certora/gsm/conf/gsm/gho-gsm-1.conf
-            certora/gsm/conf/gsm/gho-gsm-2.conf
+            certora/gsm/conf/gsm/gho-gsm-2.conf --exclude_rule systemBalanceStabilityBuy
+            certora/gsm/conf/gsm/gho-gsm-2.conf --rule systemBalanceStabilityBuy
             certora/gsm/conf/gsm/gho-gsm-inverse.conf
             certora/gsm/conf/gsm/balances-buy.conf
             certora/gsm/conf/gsm/balances-sell.conf --exclude_rule R3_sellAssetUpdatesAssetBalanceCorrectly R4_buyGhoUpdatesGhoBalanceCorrectly
             #certora/gsm/conf/gsm/balances-sell.conf --rule R3_sellAssetUpdatesAssetBalanceCorrectly   waiting for ticket CERT-9408
             #certora/gsm/conf/gsm/balances-sell.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly     waiting for ticket CERT-9408
             certora/gsm/conf/gsm/fees-buy.conf
-            certora/gsm/conf/gsm/fees-sell.conf
+            certora/gsm/conf/gsm/fees-sell.conf --exclude_rule R3a_estimatedSellFeeCanBeLowerThanActualSellFee
+            certora/gsm/conf/gsm/fees-sell.conf --rule R3a_estimatedSellFeeCanBeLowerThanActualSellFee
             certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty_getAssetAmountForBuyAsset sellAssetInverse_all buyAssetInverse_all basicProperty_getGhoAmountForSellAsset basicProperty_getAssetAmountForSellAsset basicProperty_getGhoAmountForBuyAsset
             certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty2_getAssetAmountForBuyAsset
             certora/gsm/conf/gsm/optimality.conf --rule R3_optimalityOfSellAsset_v1 R1_optimalityOfBuyAsset_v1 R6a_externalOptimalityOfBuyAsset R5a_externalOptimalityOfSellAsset

@@ -95,7 +95,7 @@ contract GhoRouter is Ownable, ReentrancyGuard, IGhoRouter {
   /// @inheritdoc IGhoRouter
   function allowGsm(address gsm) external onlyOwner {
     require(gsm != address(0), ZeroAddress());
-    require(allowedGsm[gsm] == false, GsmAlreadySet());
+    require(!allowedGsm[gsm], GsmAlreadySet());
 
     _validateGsm(gsm);
 
@@ -488,6 +488,7 @@ contract GhoRouter is Ownable, ReentrancyGuard, IGhoRouter {
       minAmount: amountToBuy,
       receiver: address(this)
     });
+    IERC20(GHO).forceApprove(gsm, 0);
 
     uint256 outputAmount = underlyingAmount;
     if (isStata) {

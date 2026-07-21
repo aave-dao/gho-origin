@@ -208,6 +208,11 @@ contract SwapToGHOTest is TestGhoRouterBase {
 
     assertEq(ghoReceived, expectedOut, 'Received GHO does not match');
     assertEq(GHO_TOKEN.balanceOf(USER), expectedOut, 'User should receive GHO');
+    assertEq(
+      USDX_TOKEN.allowance(address(GHO_ROUTER), address(GHO_GSM)),
+      0,
+      'GSM asset approval should be reset'
+    );
   }
 
   function testSwapToGHOWithRecipient(uint256 amount) public {
@@ -416,6 +421,11 @@ contract SwapFromGHOTest is TestGhoRouterBase {
       block.timestamp
     );
     assertEq(outputAmount, expectedAmount, 'Should receive output token');
+    assertEq(
+      GHO_TOKEN.allowance(address(GHO_ROUTER), address(GHO_GSM)),
+      0,
+      'GHO approval to GSM should be reset'
+    );
   }
 
   function testSwapFromGHOToStataUSDX_4626_TOKENWithRecipient(uint256 amount) public {

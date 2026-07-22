@@ -4,7 +4,7 @@ pragma solidity 0.8.27;
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {Ownable, Ownable2Step} from '@openzeppelin/contracts/access/Ownable2Step.sol';
 import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
@@ -16,7 +16,7 @@ import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
  * @notice Router for token swaps through whitelisted GSMs and direct GHO/sGHO conversion paths
  * @dev This contract never stores user funds and uses exact approvals only
  */
-contract GhoRouter is Ownable, ReentrancyGuard, IGhoRouter {
+contract GhoRouter is Ownable2Step, ReentrancyGuard, IGhoRouter {
   using SafeERC20 for IERC20;
 
   /// @inheritdoc IGhoRouter

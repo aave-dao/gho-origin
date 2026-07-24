@@ -5,6 +5,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {Ownable, Ownable2Step} from '@openzeppelin/contracts/access/Ownable2Step.sol';
+import {Pausable} from '@openzeppelin/contracts/utils/Pausable.sol';
 import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
@@ -16,7 +17,7 @@ import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
  * @notice Router for token swaps through whitelisted GSMs and direct GHO/sGHO conversion paths
  * @dev This contract never stores user funds and uses exact approvals only
  */
-contract GhoRouter is Ownable2Step, ReentrancyGuard, IGhoRouter {
+contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   using SafeERC20 for IERC20;
 
   /// @inheritdoc IGhoRouter
@@ -55,7 +56,7 @@ contract GhoRouter is Ownable2Step, ReentrancyGuard, IGhoRouter {
     uint256 minAmountOut,
     address recipient,
     uint256 deadline
-  ) external nonReentrant returns (uint256) {
+  ) external nonReentrant whenNotPaused returns (uint256) {
     _validateInputs(exactAmountIn, recipient, deadline);
 
     uint256 amountOut;
@@ -139,12 +140,22 @@ contract GhoRouter is Ownable2Step, ReentrancyGuard, IGhoRouter {
   }
 
   /// @inheritdoc IGhoRouter
+  function pause() external onlyOwner {
+    _pause();
+  }
+
+  /// @inheritdoc IGhoRouter
+  function unpause() external onlyOwner {
+    _unpause();
+  }
+
+  /// @inheritdoc IGhoRouter
   function previewSwap(
     address tokenIn,
     address tokenOut,
     address gsm,
     uint256 exactAmountIn
-  ) external view returns (uint256) {
+  ) external view whenNotPaused returns (uint256) {
     require(exactAmountIn > 0, InvalidAmount());
 
     uint256 amountOut;

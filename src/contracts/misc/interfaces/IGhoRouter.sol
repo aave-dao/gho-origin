@@ -94,6 +94,7 @@ interface IGhoRouter {
   /**
    * @notice Swap tokenIn for tokenOut and send output to recipient
    * @dev In GHO <-> sGHO paths, GSM is ignored
+   * @dev Reverts while the router is paused
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
    * @param gsm Address of the GSM used to perform swap
@@ -142,6 +143,18 @@ interface IGhoRouter {
   function removeTokenToStata(address token) external;
 
   /**
+   * @notice Pauses the router, blocking `swap` and `previewSwap`
+   * @dev Only callable by the owner. Reverts if the router is already paused
+   */
+  function pause() external;
+
+  /**
+   * @notice Unpauses the router, re-enabling `swap` and `previewSwap`
+   * @dev Only callable by the owner. Reverts if the router is not paused
+   */
+  function unpause() external;
+
+  /**
    * @notice Rescue ERC20 token from the contract
    * @param token Address of the token to rescue
    * @param to Address to send the tokens to
@@ -177,6 +190,7 @@ interface IGhoRouter {
 
   /**
    * @notice Preview the amount of tokens received for a given input amount
+   * @dev Reverts while the router is paused
    * @param tokenIn Input token address
    * @param tokenOut Output token address
    * @param gsm Address of the GSM used to perform swap

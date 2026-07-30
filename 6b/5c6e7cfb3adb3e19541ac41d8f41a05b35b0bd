@@ -1,0 +1,31 @@
+docs/sGhoSteward.md
+  s_3d8e5c38ee92ae::t_ef9e9484e26ea7 120-121,123-127
+  s_3d8e5c38ee92ae::t_d7d0ef4ca3670f 45,50,122
+src/contracts/misc/sGhoSteward.sol
+  s_3d8e5c38ee92ae::t_3eeeb607ea9a8a 91
+  s_3d8e5c38ee92ae::t_d89e46ec7164ee 121-124,127,130-137
+  s_3d8e5c38ee92ae::t_87d0a49efc16a5 59-62
+tests/misc/sGhoSteward.t.sol
+  s_3d8e5c38ee92ae::t_8c09a752a7323b 9
+  s_3d8e5c38ee92ae::t_6d5c8fbf7a04d8 15-16,100,174,196,219,236,258,279,296,318,341,359,416,449,463,482
+  s_3d8e5c38ee92ae::t_7bedd570a9b519 111-159
+src/contracts/misc/interfaces/IsGhoSteward.sol
+  s_3d8e5c38ee92ae::t_a6af37e697cb09 86-89,91,94-97
+  s_3d8e5c38ee92ae::t_6759f31448abb1 30,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6b5c6e7cfb3adb3e19541ac41d8f41a05b35b0bd",
+  "prompts": {},
+  "sessions": {
+    "s_3d8e5c38ee92ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e411bd44-5e7a-45e8-9400-df0b5bcd99c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

@@ -6,11 +6,14 @@ import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 import {AccessControl} from 'openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
 
 contract sGhoStewardTest is TestSGhoBase {
+  using SafeCast for uint256;
+
   sGhoSteward public steward;
 
   address public riskCouncil = makeAddr('riskCouncil');
@@ -94,7 +97,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -103,6 +106,55 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(configAfterUpdate.fixedRate, 200);
 
     assertEq(sgho.targetRate(), 400);
+  }
+
+  function test_setRateConfig_scheduled() public {
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 100_00, // AMPLIFICATION_NUMERATOR
+      floatRate: 200, // 2%
+      fixedRate: 200 // 2%
+    });
+    uint40 effectiveAt = (block.timestamp + 1 days).toUint40();
+
+    // Scheduling the same config with the same effectiveAt on every chain's steward keeps the
+    // sGho yield indexes in sync
+    vm.expectEmit(true, true, true, true, address(steward));
+    emit IsGhoSteward.RateConfigUpdated({
+      caller: riskCouncil,
+      targetRate: 400,
+      effectiveAt: effectiveAt,
+      amplification: 100_00,
+      floatRate: 200,
+      fixedRate: 200
+    });
+    vm.prank(riskCouncil);
+    steward.setRateConfig(newConfig, effectiveAt);
+
+    // The steward config updates instantly; the sGho rate only at the effective timestamp
+    IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
+    assertEq(configAfterUpdate.amplification, 100_00);
+    assertEq(configAfterUpdate.floatRate, 200);
+    assertEq(configAfterUpdate.fixedRate, 200);
+
+    (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
+    assertEq(pendingRate, 400);
+    assertEq(pendingEffectiveAt, effectiveAt);
+    assertEq(sgho.targetRate(), 1000);
+
+    vm.warp(effectiveAt);
+    assertEq(sgho.targetRate(), 400);
+  }
+
+  function test_setRateConfig_revertsOnPastEffectiveAt() public {
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 100_00, // AMPLIFICATION_NUMERATOR
+      floatRate: 200, // 2%
+      fixedRate: 200 // 2%
+    });
+
+    vm.expectRevert(IsGho.EffectiveTimestampInPast.selector);
+    vm.prank(riskCouncil);
+    steward.setRateConfig(newConfig, (block.timestamp - 1).toUint40());
   }
 
   function test_setRateConfigAmplificationRateOnly() public {
@@ -119,7 +171,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -141,7 +193,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     configAfterUpdate = steward.getRateConfig();
 
@@ -164,7 +216,7 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.startPrank(riskCouncil);
 
     vm.expectRevert(_craftError(riskCouncil, AMPLIFICATION_MANAGER_ROLE));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_setRateConfigFloatRateOnly() public {
@@ -181,7 +233,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -203,7 +255,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     configAfterUpdate = steward.getRateConfig();
 
@@ -224,7 +276,7 @@ contract sGhoStewardTest is TestSGhoBase {
 
     vm.startPrank(riskCouncil);
     vm.expectRevert(_craftError(riskCouncil, FLOAT_RATE_MANAGER_ROLE));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_setRateConfigFixedRateOnly() public {
@@ -241,7 +293,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -263,7 +315,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     configAfterUpdate = steward.getRateConfig();
 
@@ -286,7 +338,7 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.startPrank(riskCouncil);
 
     vm.expectRevert(_craftError(riskCouncil, FIXED_RATE_MANAGER_ROLE));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_setRateSameValue() public {
@@ -304,7 +356,7 @@ contract sGhoStewardTest is TestSGhoBase {
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateUnchanged.selector));
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_supplyCap() public {
@@ -361,7 +413,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     uint16 target = steward.previewTargetRate(newConfig);
-    uint16 resultTarget = steward.setRateConfig(newConfig);
+    uint16 resultTarget = steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -394,7 +446,7 @@ contract sGhoStewardTest is TestSGhoBase {
       uint16 previewFuzzRate = steward.previewTargetRate(fuzzConfig);
       assertEq(previewFuzzRate, fuzzTarget);
 
-      steward.setRateConfig(fuzzConfig);
+      steward.setRateConfig(fuzzConfig, block.timestamp.toUint40());
 
       IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -408,7 +460,7 @@ contract sGhoStewardTest is TestSGhoBase {
       steward.previewTargetRate(fuzzConfig);
 
       vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
-      steward.setRateConfig(fuzzConfig);
+      steward.setRateConfig(fuzzConfig, block.timestamp.toUint40());
     }
   }
 
@@ -427,7 +479,7 @@ contract sGhoStewardTest is TestSGhoBase {
     steward.previewTargetRate(newConfig);
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {

@@ -59,7 +59,11 @@ function basicBuySellSetup( env e, address receiver) {
 // The following invariant is to avoid overflow in the balanceOf of GHO
 //*********************************************************************************************
 invariant inv_sumAllBalance_eq_totalSupply()
-  sumAllBalance() == to_mathint(_ghoToken.totalSupply());
+  sumAllBalance() == to_mathint(_ghoToken.totalSupply())
+  // Base case: the ghost is initialized to 0, so it can only match the linked, pre-existing
+  // GHO token if that token starts with zero supply (the GSM specs don't verify GHO internals,
+  // so the initial totalSupply is otherwise symbolic and the base case can't be discharged).
+  { preserved constructor() with (env eCtor) { require _ghoToken.totalSupply() == 0; } }
 
 ghost sumAllBalance() returns mathint {
     init_state axiom sumAllBalance() == 0;

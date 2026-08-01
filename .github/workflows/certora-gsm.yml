@@ -38,9 +38,7 @@ jobs:
             certora/gsm/conf/gsm/gho-gsm-2.conf --rule systemBalanceStabilityBuy
             certora/gsm/conf/gsm/gho-gsm-inverse.conf
             certora/gsm/conf/gsm/balances-buy.conf
-            certora/gsm/conf/gsm/balances-sell.conf --exclude_rule R3_sellAssetUpdatesAssetBalanceCorrectly R4_buyGhoUpdatesGhoBalanceCorrectly
-            #certora/gsm/conf/gsm/balances-sell.conf --rule R3_sellAssetUpdatesAssetBalanceCorrectly   waiting for ticket CERT-9408
-            #certora/gsm/conf/gsm/balances-sell.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly     waiting for ticket CERT-9408
+            certora/gsm/conf/gsm/balances-sell.conf
             certora/gsm/conf/gsm/fees-buy.conf
             certora/gsm/conf/gsm/fees-sell.conf --exclude_rule R3a_estimatedSellFeeCanBeLowerThanActualSellFee
             certora/gsm/conf/gsm/fees-sell.conf --rule R3a_estimatedSellFeeCanBeLowerThanActualSellFee

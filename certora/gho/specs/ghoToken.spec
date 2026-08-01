@@ -131,7 +131,6 @@ invariant address_in_set_values_iff_in_set_indexes(address facilitator)
 	is_in_facilitator_set_array(facilitator) <=> is_in_facilitator_set_map(facilitator)
 	{preserved{
 		requireInvariant addressSetInvariant_2();
-		require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 
@@ -159,7 +158,6 @@ invariant addr_in_set_list_iff_in_map(address facilitator)
 	is_in_facilitator_mapping(facilitator) <=> is_in_facilitator_set_array(facilitator)
 	{preserved{
 		requireInvariant addressSetInvariant_2();
-		require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 
@@ -354,7 +352,6 @@ rule facilitator_in_list_after_mint_and_burn(method f){
 rule address_not_in_list_after_removeFacilitator(address facilitator){
 	env e;
 	requireInvariant addressSetInvariant_2();
-	require getFacilitatorsListLen() < TWO_TO_160();
 	requireInvariant addr_in_set_iff_in_map(facilitator);
 	removeFacilitator(e, facilitator);
 	assert !is_in_facilitator_set_array(facilitator);
@@ -485,19 +482,13 @@ invariant ARRAY_IS_INVERSE_OF_MAP_Invariant()
 	{
 		preserved{
 			require ADDRESS_SET_INVARIANT();
-			require getFacilitatorsListLen() < TWO_TO_160();
 		}
 	}
 
 //pass with workaround for https://certora.atlassian.net/browse/CERT-1060
 
 invariant addressSetInvariant_2()
-    ADDRESS_SET_INVARIANT()
-	{
-		preserved{
-			require getFacilitatorsListLen() < TWO_TO_160();
-		}
-	}
+    ADDRESS_SET_INVARIANT();
 
 //Debugging  https://certora.atlassian.net/browse/CERT-1060 
 //timeout with staging

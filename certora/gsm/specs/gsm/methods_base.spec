@@ -101,7 +101,11 @@ invariant inv_sumAllBalance_eq_totalSupply()
   sumAllBalance() == to_mathint(_ghoToken.totalSupply())
   filtered {f -> f.contract == _ghoToken}
   {
-        preserved constructor() with (env eCtor) {
+    // Base case is a deployment-consistency assumption, not a provable fact here:
+    // `_ghoToken` is a linked, pre-deployed contract, so its `totalSupply()` is
+    // unconstrained at construction while the ghost is 0 by its init axiom. This
+    // pins the GSM to a GHO token whose accounting the ghost already mirrors.
+    preserved constructor() with (env eCtor) {
         require sumAllBalance() == to_mathint(_ghoToken.totalSupply());
     }
   }

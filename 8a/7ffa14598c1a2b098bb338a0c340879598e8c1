@@ -1,0 +1,21 @@
+certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf
+  s_a4e31e3916f4c8::t_748107982a7458 9,13,15-17,21,27
+certora/gsm/conf/gsm4626/gho-fixedPriceStrategy4626.conf
+  s_a4e31e3916f4c8::t_de556f78322888 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "8a7ffa14598c1a2b098bb338a0c340879598e8c1",
+  "prompts": {},
+  "sessions": {
+    "s_a4e31e3916f4c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1bd7e31-cdd3-4873-a3bd-867243057bfc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

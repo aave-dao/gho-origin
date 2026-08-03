@@ -1,0 +1,23 @@
+certora/gsm/specs/gsm/methods_base.spec
+  s_a4e31e3916f4c8::t_8d2627a78242af 105
+certora/gsm/specs/gsm4626/methods4626_base.spec
+  s_a4e31e3916f4c8::t_8d2627a78242af 66
+certora/gsm/specs/gsm4626/optimality4626.spec
+  s_a4e31e3916f4c8::t_6dc1c16bacfe5e 4-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6b54b98bdf5a596cbcbe703a797683d32c2fe94a",
+  "prompts": {},
+  "sessions": {
+    "s_a4e31e3916f4c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1bd7e31-cdd3-4873-a3bd-867243057bfc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

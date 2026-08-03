@@ -8,5 +8,8 @@ import "mulDiv_summaries.spec";
 methods {
   function Math.mulDiv(uint256 x, uint256 y, uint256 denominator) internal returns (uint256) => mulDivSummary(x, y, denominator);
   function _.mulDiv(uint256 x, uint256 y, uint256 denominator, FixedFeeStrategyHarness.Rounding rounding) internal =>
-    mulDivRoundingClosed(x, y, denominator, rounding == FixedFeeStrategyHarness.Rounding.Ceil) expect (uint256);
+    mulDivRoundingClosed(x, y, denominator,
+        rounding == FixedFeeStrategyHarness.Rounding.Ceil ||
+        rounding == FixedFeeStrategyHarness.Rounding.Expand
+    ) expect (uint256);
 }

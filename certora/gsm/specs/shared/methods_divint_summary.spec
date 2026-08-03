@@ -9,5 +9,8 @@ methods {
   // (via disambiguation by originating contract). Matching is type-exact: the vendored OZ v4
   // `Math.mulDiv(...,{Down,Up,Zero})` is a different type and never matches this summary.
   function _.mulDiv(uint256 x, uint256 y, uint256 denominator, FixedFeeStrategyHarness.Rounding rounding) internal =>
-    mulDivRounding(x, y, denominator, rounding == FixedFeeStrategyHarness.Rounding.Ceil) expect (uint256);
+    mulDivRounding(x, y, denominator,
+        rounding == FixedFeeStrategyHarness.Rounding.Ceil ||
+        rounding == FixedFeeStrategyHarness.Rounding.Expand
+    ) expect (uint256);
 }

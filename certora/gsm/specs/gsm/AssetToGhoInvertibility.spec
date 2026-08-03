@@ -6,7 +6,10 @@ methods {
     // 4-arg rounding overload: `Math.Rounding` is ambiguous (two `Math` libraries with different
     // members), so we qualify by the originating contract importing OZ v5 Math (Floor/Ceil/Trunc/Expand).
     function _.mulDiv(uint256 x, uint256 y, uint256 denominator, FixedPriceStrategyHarness.Rounding rounding) internal =>
-        mulDivRounding(x, y, denominator, rounding == FixedPriceStrategyHarness.Rounding.Ceil) expect (uint256);
+        mulDivRounding(x, y, denominator,
+            rounding == FixedPriceStrategyHarness.Rounding.Ceil ||
+            rounding == FixedPriceStrategyHarness.Rounding.Expand
+        ) expect (uint256);
 }
 
 // FULL REPORT AT: https://prover.certora.com/output/17512/c87a46588a694009988c74cd330e3451?anonymousKey=81afc1084fb6e444019f84f769cbce4cd06cdc11

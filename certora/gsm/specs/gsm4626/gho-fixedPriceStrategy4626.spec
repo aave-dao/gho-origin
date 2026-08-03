@@ -7,7 +7,10 @@ methods {
     function _.mulDiv(uint256 x, uint256 y, uint256 denominator) internal => mulDivSummary(x, y, denominator) expect (uint256);
     // Single `Math` in scene here, so the rounding enum is referenced unqualified as `Math.Rounding`.
     function _.mulDiv(uint256 x, uint256 y, uint256 denominator, Math.Rounding rounding) internal =>
-        mulDivRounding(x, y, denominator, rounding == Math.Rounding.Ceil) expect (uint256);
+        mulDivRounding(x, y, denominator,
+            rounding == Math.Rounding.Ceil ||
+            rounding == Math.Rounding.Expand
+        ) expect (uint256);
 }
 
 // https://prover.certora.com/output/17512/4273175adeae4a289be8401c82ab9e14?anonymousKey=3dd87914a5a95f469b25a2666ffa484f4b734c34

@@ -1,6 +1,9 @@
 // Shared (unverified) summaries for OpenZeppelin's `Math.mulDiv`. Use with care!
-// Callers pass `roundUp` (true for Math.Rounding.Ceil) so the arithmetic can be reused
-// across the different `Math.Rounding` enum qualifiers each conf must use.
+// Callers pass `roundUp` so the arithmetic can be reused across the different
+// `Math.Rounding` enum qualifiers each conf must use. `roundUp` must mirror OZ v5's
+// `Math.unsignedRoundsUp`, i.e. `uint8(rounding) % 2 == 1`: Ceil and Expand round up,
+// Floor and Trunc round down. Testing only for Ceil would send Expand to the floor branch.
+// Equivalence of the encodings below is proven in mulDiv_equivalence.spec.
 
 function mulDivSummary(uint256 x, uint256 y, uint256 denominator) returns uint256 {
     require denominator > 0;

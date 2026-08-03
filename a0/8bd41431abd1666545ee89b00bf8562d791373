@@ -1,0 +1,21 @@
+certora/gsm/specs/shared/mulDiv_equivalence.spec
+  s_a4e31e3916f4c8::t_1d1e122fe8bf24 1-23
+certora/gsm/conf/gsm/mulDiv_equivalence.conf
+  s_a4e31e3916f4c8::t_0f64ddb25ea473 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a08bd41431abd1666545ee89b00bf8562d791373",
+  "prompts": {},
+  "sessions": {
+    "s_a4e31e3916f4c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1bd7e31-cdd3-4873-a3bd-867243057bfc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

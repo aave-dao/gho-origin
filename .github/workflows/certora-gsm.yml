@@ -32,7 +32,10 @@ jobs:
           cli-release: stable
           cli-version: "8.17.1"
           auto-rerun-timeouts: "true"
+          # NB: a `--prover_args` here REPLACES the conf's `prover_args` array, it does not
+          # append to it. Restate every flag the run needs, not just the one being added.
           configurations: |-
+            certora/gsm/conf/gsm/mulDiv_equivalence.conf
             certora/gsm/conf/gsm/gho-gsm-1.conf
             certora/gsm/conf/gsm/gho-gsm-2.conf --exclude_rule systemBalanceStabilityBuy
             certora/gsm/conf/gsm/gho-gsm-2.conf --rule systemBalanceStabilityBuy
@@ -45,7 +48,7 @@ jobs:
             certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty_getAssetAmountForBuyAsset sellAssetInverse_all buyAssetInverse_all basicProperty_getGhoAmountForSellAsset basicProperty_getAssetAmountForSellAsset basicProperty_getGhoAmountForBuyAsset
             certora/gsm/conf/gsm/gho-assetToGhoInvertibility.conf --rule basicProperty2_getAssetAmountForBuyAsset
             certora/gsm/conf/gsm/optimality.conf --rule R3_optimalityOfSellAsset_v1 R1_optimalityOfBuyAsset_v1 R6a_externalOptimalityOfBuyAsset R5a_externalOptimalityOfSellAsset
-            certora/gsm/conf/gsm/optimality.conf --rule R2_optimalityOfBuyAsset_v2 --prover_args "-destructiveOptimizations twostage"
+            certora/gsm/conf/gsm/optimality.conf --rule R2_optimalityOfBuyAsset_v2 --prover_args "-destructiveOptimizations twostage-checked"
             certora/gsm/conf/gsm/getAmount_properties.conf --rule getAssetAmountForBuyAsset_funcProperty_LR getAssetAmountForBuyAsset_funcProperty_RL
             certora/gsm/conf/gsm/finishedRules.conf --rule whoCanChangeExposure whoCanChangeAccruedFees sellingDoesntExceedExposureCap cantBuyOrSellWhenSeized giftingGhoDoesntAffectStorageSIMPLE giftingUnderlyingDoesntAffectStorageSIMPLE collectedBuyFeePlus1IsAtLeastAsRequired sellAssetSameAsGetGhoAmountForSellAsset collectedSellFeeIsAtLeastAsRequired collectedBuyFeeIsAtLeastAsRequired correctnessOfBuyAsset collectedBuyFeePlus2IsAtLeastAsRequired getAssetAmountForSellAsset_correctness cantBuyOrSellWhenFrozen whoCanChangeExposureCap cantSellIfExposureTooHigh sellAssetIncreasesExposure buyAssetDecreasesExposure rescuingGhoKeepsAccruedFees rescuingAssetKeepsAccruedFees
             certora/gsm/conf/gsm/gho-fixedPriceStrategy.conf

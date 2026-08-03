@@ -32,6 +32,8 @@ jobs:
           cli-release: stable
           cli-version: "8.17.1"
           auto-rerun-timeouts: "true"
+          # NB: a `--prover_args` here REPLACES the conf's `prover_args` array, it does not
+          # append to it. Restate every flag the run needs, not just the one being added.
           configurations: |-
             certora/gsm/conf/gsm4626/gho-gsm4626-1.conf
             certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule accruedFeesLEGhoBalanceOfThis
@@ -39,7 +41,9 @@ jobs:
             #certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule systemBalanceStabilitySell waiting for ticket CERT-9408
             certora/gsm/conf/gsm4626/gho-gsm4626-inverse.conf --rule buySellInverse27 buySellInverse26 buySellInverse25 buySellInverse24 buySellInverse23 buySellInverse22 buySellInverse21 buySellInverse20 buySellInverse19
             certora/gsm/conf/gsm4626/balances-buy-4626.conf
-            certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R1_getAssetAmountForSellAsset_arg_vs_return R1a_buyGhoUpdatesGhoBalanceCorrectly1 R2_getAssetAmountForSellAsset_sellAsset_eq
+            # R1/R1a/R2 time out under the conf's nonlinear solver tuning (that tuning is there for R4),
+            # so this line drops back to the plain encoding rather than relying on a timeout rerun.
+            certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R1_getAssetAmountForSellAsset_arg_vs_return R1a_buyGhoUpdatesGhoBalanceCorrectly1 R2_getAssetAmountForSellAsset_sellAsset_eq --prover_args "-copyLoopUnroll 6 -destructiveOptimizations twostage-checked"
             certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R3a_sellAssetUpdatesAssetBalanceCorrectly
             certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R4_buyGhoUpdatesGhoBalanceCorrectly
             certora/gsm/conf/gsm4626/balances-sell-4626.conf --rule R4a_buyGhoAmountGtGhoBalanceChange
@@ -51,9 +55,11 @@ jobs:
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForBuyAsset_correctness_bound1 getAssetAmountForBuyAsset_correctness_bound2 getGhoAmountForBuyAsset_correctness_bound1 getAssetAmountForSellAsset_correctness getAssetAmountForBuyAsset_optimality getAssetAmountForBuyAsset_correctness
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getGhoAmountForBuyAsset_optimality
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getGhoAmountForBuyAsset_correctness
-            certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForSellAsset_optimality getAssetAmountForBuyAsset_funcProperty --prover_args "-destructiveOptimizations twostage"
+            certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForSellAsset_optimality getAssetAmountForBuyAsset_funcProperty --prover_args "-destructiveOptimizations twostage-checked"
             certora/gsm/conf/gsm4626/finishedRules-4626.conf --rule cantBuyOrSellWhenSeized cantBuyOrSellWhenFrozen sellAssetIncreasesExposure buyAssetDecreasesExposure rescuingAssetKeepsAccruedFees rescuingGhoKeepsAccruedFees giftingGhoDoesntAffectStorageSIMPLE correctnessOfBuyAsset giftingUnderlyingDoesntAffectStorageSIMPLE sellAssetSameAsGetGhoAmountForSellAsset correctnessOfSellAsset giftingGhoDoesntCreateExcessOrDearth backWithGhoDoesntCreateExcess getAssetAmountForSellAsset_correctness collectedSellFeeIsAtLeastAsRequired collectedBuyFeePlus2IsAtLeastAsRequired collectedBuyFeePlus1IsAtLeastAsRequired collectedBuyFeeIsAtLeastAsRequired sellingDoesntExceedExposureCap whoCanChangeAccruedFees whoCanChangeExposure
             certora/gsm/conf/gsm4626/finishedRules-4626.conf --rule giftingUnderlyingDoesntCreateExcessOrDearth
+            certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf
+            certora/gsm/conf/gsm4626/gho-fixedPriceStrategy4626.conf
           solc-versions: 0.8.20
           comment-fail-only: false
           solc-remove-version-prefix: "0."

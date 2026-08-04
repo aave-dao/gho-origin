@@ -58,10 +58,7 @@ jobs:
             certora/gsm/conf/gsm4626/getAmount-properties-4626.conf --rule getAssetAmountForSellAsset_optimality getAssetAmountForBuyAsset_funcProperty --prover_args "-destructiveOptimizations twostage-checked"
             certora/gsm/conf/gsm4626/finishedRules-4626.conf --rule cantBuyOrSellWhenSeized cantBuyOrSellWhenFrozen sellAssetIncreasesExposure buyAssetDecreasesExposure rescuingAssetKeepsAccruedFees rescuingGhoKeepsAccruedFees giftingGhoDoesntAffectStorageSIMPLE correctnessOfBuyAsset giftingUnderlyingDoesntAffectStorageSIMPLE sellAssetSameAsGetGhoAmountForSellAsset correctnessOfSellAsset giftingGhoDoesntCreateExcessOrDearth backWithGhoDoesntCreateExcess getAssetAmountForSellAsset_correctness collectedSellFeeIsAtLeastAsRequired collectedBuyFeePlus2IsAtLeastAsRequired collectedBuyFeePlus1IsAtLeastAsRequired collectedBuyFeeIsAtLeastAsRequired sellingDoesntExceedExposureCap whoCanChangeAccruedFees whoCanChangeExposure
             certora/gsm/conf/gsm4626/finishedRules-4626.conf --rule giftingUnderlyingDoesntCreateExcessOrDearth
-            # sellAssetInverse_all times out on its asset_amount assert (~2h, one split short) and
-            # only reports green via the timeout rerun ladder, so it is excluded rather than masked.
-            certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf --exclude_rule sellAssetInverse_all
-            #certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf --rule sellAssetInverse_all waiting for a ticket
+            certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf
             certora/gsm/conf/gsm4626/gho-fixedPriceStrategy4626.conf
           solc-versions: 0.8.20
           comment-fail-only: false

@@ -1,0 +1,21 @@
+.github/workflows/certora-gsm-4626.yml
+  s_a4e31e3916f4c8::t_d3042dbba0f418 61
+certora/gsm/conf/gsm4626/gho-assetToGhoInvertibility-4626.conf
+  s_a4e31e3916f4c8::t_48c198ed3fa8b0 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ef88a55dd963a15975181d0b51155d603748c5df",
+  "prompts": {},
+  "sessions": {
+    "s_a4e31e3916f4c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1bd7e31-cdd3-4873-a3bd-867243057bfc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

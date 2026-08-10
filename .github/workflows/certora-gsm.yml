@@ -27,13 +27,11 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: Certora/certora-run-action@v2.10.0
+      - uses: Certora/certora-run-action@b37dc99cef13413f8996b2a137b95e8a25749285 # v2.10.0
         with:
           cli-release: stable
           cli-version: "8.17.1"
           auto-rerun-timeouts: "true"
-          # NB: a `--prover_args` here REPLACES the conf's `prover_args` array, it does not
-          # append to it. Restate every flag the run needs, not just the one being added.
           configurations: |-
             certora/gsm/conf/gsm/mulDiv_equivalence.conf
             certora/gsm/conf/gsm/gho-gsm-1.conf

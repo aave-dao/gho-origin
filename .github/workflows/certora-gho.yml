@@ -33,7 +33,7 @@ jobs:
           touch applyHarness.patch
           make munged
 
-      - uses: Certora/certora-run-action@v2.10.0
+      - uses: Certora/certora-run-action@b37dc99cef13413f8996b2a137b95e8a25749285 # v2.10.0
         with:
           cli-release: stable
           cli-version: "8.17.1"

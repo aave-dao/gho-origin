@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoInitialization is TestSGhoBase {
+  using SafeCast for uint256;
+
   function test_constructor() external view {
     assertEq(sgho.GHO(), address(gho), 'GHO address mismatch');
     assertEq(sgho.DOMAIN_SEPARATOR(), DOMAIN_SEPARATOR_sGho, 'Domain separator mismatch');
@@ -55,43 +57,127 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_initialization() external {
     // Deploy a new sGho instance
-    address impl = address(new sGhoInstance());
-    sGho newSgho = sGho(
-      address(
-        new TransparentUpgradeableProxy(
-          impl,
-          address(this),
-          abi.encodeWithSelector(
-            sGhoInstance.initialize.selector,
-            address(gho),
-            SUPPLY_CAP_UNITS,
-            address(this) // executor
-          )
-        )
-      )
-    );
+    sGho newSgho = _deploySGho();
 
     // Should work after initialization
     assertEq(newSgho.totalAssets(), 0, 'Should be initialized');
   }
 
   function test_revert_initialize_twice() external {
-    // Deploy a new sGho instance
+    sGho newSgho = _deploySGho();
+
+    // Should revert on second initialization via proxy
+    vm.expectRevert();
+    sGhoInstance(address(newSgho)).initialize({
+      gho: address(gho),
+      initialSupplyCap: SUPPLY_CAP_UNITS,
+      owner: address(this),
+      initialYieldIndex: RAY.toUint120(),
+      initialLastUpdate: block.timestamp.toUint40(),
+      initialTargetRate: 0
+    });
+  }
+
+  function test_initialize_emitsYieldIndexSynced() external {
     address impl = address(new sGhoInstance());
-    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+    vm.expectEmit(true, true, true, true);
+    emit IsGho.YieldIndexSynced(RAY, block.timestamp, 1000);
+    new TransparentUpgradeableProxy(
       impl,
-      address(this),
+      Admin,
       abi.encodeWithSelector(
         sGhoInstance.initialize.selector,
         address(gho),
         SUPPLY_CAP_UNITS,
-        address(this) // executor
+        address(this),
+        RAY.toUint120(),
+        block.timestamp.toUint40(),
+        uint16(1000)
       )
     );
+  }
 
-    // Should revert on second initialization via proxy
-    vm.expectRevert();
-    sGhoInstance(address(proxy)).initialize(address(gho), SUPPLY_CAP_UNITS, address(this));
+  /// @dev Cold start: initializing with a live deployment's checkpoint puts the new vault in
+  /// sync from the very first block.
+  function test_initialize_coldStartMatchesSourceChain() external {
+    // `sgho` from setUp is the live source: 10% APR running for 100 days
+    vm.warp(block.timestamp + 100 days);
+
+    sGho newSgho = _deploySGho(
+      sgho.yieldIndex().toUint120(),
+      sgho.lastUpdate().toUint40(),
+      sgho.targetRate()
+    );
+
+    assertEq(newSgho.yieldIndex(), sgho.yieldIndex(), 'Checkpoint index diverged');
+    assertEq(newSgho.lastUpdate(), sgho.lastUpdate(), 'Checkpoint timestamp diverged');
+    assertEq(newSgho.targetRate(), sgho.targetRate(), 'Rate diverged');
+    assertEq(newSgho.convertToAssets(RAY), sgho.convertToAssets(RAY), 'Live index diverged');
+
+    vm.warp(block.timestamp + 365 days);
+    assertEq(
+      newSgho.convertToAssets(RAY),
+      sgho.convertToAssets(RAY),
+      'Live index diverged over time'
+    );
+  }
+
+  function test_revert_initialize_timestampInFuture() external {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.SyncTimestampInFuture.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeWithSelector(
+        sGhoInstance.initialize.selector,
+        address(gho),
+        SUPPLY_CAP_UNITS,
+        address(this),
+        RAY.toUint120(),
+        (block.timestamp + 1).toUint40(),
+        uint16(0)
+      )
+    );
+  }
+
+  function test_revert_initialize_indexBelowRay() external {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.YieldIndexTooLow.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeWithSelector(
+        sGhoInstance.initialize.selector,
+        address(gho),
+        SUPPLY_CAP_UNITS,
+        address(this),
+        (RAY - 1).toUint120(),
+        block.timestamp.toUint40(),
+        uint16(0)
+      )
+    );
+  }
+
+  function test_revert_initialize_maxRateExceeded() external {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.MaxRateExceeded.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeWithSelector(
+        sGhoInstance.initialize.selector,
+        address(gho),
+        SUPPLY_CAP_UNITS,
+        address(this),
+        RAY.toUint120(),
+        block.timestamp.toUint40(),
+        uint16(MAX_SAFE_RATE + 1)
+      )
+    );
+  }
+
+  function test_revision() external view {
+    assertEq(sGhoInstance(address(sgho)).SGHO_REVISION(), 3, 'Revision mismatch');
   }
 
   // ========================================
@@ -136,6 +222,12 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_getter_lastUpdate() external view {
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
+  }
+
+  function test_getter_pendingTargetRate() external view {
+    (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
+    assertEq(pendingRate, 0, 'Initial pending rate should be 0');
+    assertEq(pendingEffectiveAt, 0, 'Initial pending effective timestamp should be 0');
   }
 
   function test_getter_PAUSE_GUARDIAN_ROLE() external view {

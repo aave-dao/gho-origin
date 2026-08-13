@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Test} from 'forge-std/Test.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {ProxyAdmin} from 'openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol';
 import {ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -10,8 +11,15 @@ import {sGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {sGhoInstanceStoragePatch} from 'src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol';
 
+/// @dev Rate setter of the pre-upgrade implementation, removed from the current interface
+interface IsGhoLegacy {
+  function setTargetRate(uint16 newRate) external;
+}
+
 /// @dev Forks Ethereum mainnet and verifies the storage-layout migration of the live sGHO instance.
 contract sGhoInstanceStoragePatchForkTest is Test {
+  using SafeCast for uint256;
+
   address internal constant PROXY = 0xE1753F2e00940cC31213dd92013cF019DFE4ca1d;
   address internal constant PROXY_ADMIN = 0xc15700631020Eba02317964550365B95a9a28aDb;
   address internal constant OWNER = 0x5300A1a15135EA4dc7aD5a167152C01EFc9b192A; // owns PROXY_ADMIN, is DEFAULT_ADMIN
@@ -42,7 +50,7 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     vm.startPrank(OWNER);
     // OWNER is DEFAULT_ADMIN; grant itself YIELD_MANAGER so it can checkpoint the index
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), OWNER);
-    sgho.setTargetRate(sgho.targetRate());
+    IsGhoLegacy(PROXY).setTargetRate(sgho.targetRate());
     vm.stopPrank();
   }
 
@@ -57,11 +65,23 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     );
   }
 
-  /// @dev Swaps the patch for the canonical implementation, without any initializer call.
+  /// @dev Swaps the patch for the canonical implementation, atomically re-initializing at the
+  /// final revision with the just-migrated values.
   function _finalize() internal {
     address newImpl = address(new sGhoInstance());
+    bytes memory data = abi.encodeCall(
+      sGhoInstance.initialize,
+      (
+        sgho.GHO(),
+        sgho.supplyCap().toUint40(),
+        OWNER,
+        sgho.yieldIndex().toUint120(),
+        sgho.lastUpdate().toUint40(),
+        sgho.targetRate()
+      )
+    );
     vm.prank(OWNER);
-    ProxyAdmin(PROXY_ADMIN).upgradeAndCall(ITransparentUpgradeableProxy(PROXY), newImpl, '');
+    ProxyAdmin(PROXY_ADMIN).upgradeAndCall(ITransparentUpgradeableProxy(PROXY), newImpl, data);
   }
 
   /// @dev Mirrors the governance upgrade: checkpoint the index, apply the storage patch, then
@@ -145,9 +165,16 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     _upgrade();
 
-    // The patch consumed SGHO_REVISION, so the canonical initializer is not callable
+    // The final swap consumed SGHO_REVISION, so the initializer is not callable again
     vm.expectRevert(Initializable.InvalidInitialization.selector);
-    sGhoInstance(PROXY).initialize(gho, 0, address(this));
+    sGhoInstance(PROXY).initialize({
+      gho: gho,
+      initialSupplyCap: 0,
+      owner: address(this),
+      initialYieldIndex: uint120(1e27),
+      initialLastUpdate: block.timestamp.toUint40(),
+      initialTargetRate: 0
+    });
   }
 
   function test_fork_postUpgrade_existingUserAccruesLinearly() external onlyForked {

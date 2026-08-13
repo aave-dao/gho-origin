@@ -41,11 +41,13 @@ abstract contract sGho is
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGhoStorage {
-    // Storage variables - Optimally packed into a single slot
+    // Storage variables - Optimally packed so the hot path only touches the first slot
     uint120 yieldIndex; // 15 bytes - current yield index for share/asset conversion
     uint40 lastUpdate; // 5 bytes - timestamp of the last yield index checkpoint
     uint16 targetRate; // 2 bytes - target annual yield rate in basis points (e.g., 1000 = 10%)
     uint40 supplyCap; // 5 bytes - maximum total assets allowed in the vault, in whole GHO units
+    uint40 pendingRateEffectiveAt; // 5 bytes - timestamp of the scheduled rate change (0 = none)
+    uint16 pendingTargetRate; // 2 bytes (second slot) - scheduled target rate in basis points
   }
 
   // keccak256(abi.encode(uint256(keccak256("gho.storage.sGho")) - 1)) & ~bytes32(uint256(0xff))
@@ -72,14 +74,23 @@ abstract contract sGho is
 
   /**
    * @dev Initializes the vault state. Must be called within an initializer or reinitializer.
+   * @dev The yield index checkpoint is an input so a deployment on a new chain can cold start in
+   * sync, from a checkpoint read from a live deployment; a genesis deployment starts at
+   * (RAY, current timestamp, 0).
    * @param gho Address of the underlying GHO token.
    * @param initialSupplyCap The supply cap for the vault, in whole GHO units.
    * @param owner The address that will be granted the DEFAULT_ADMIN_ROLE.
+   * @param initialYieldIndex The initial yield index (RAY scale, at least RAY).
+   * @param initialLastUpdate The initial checkpoint timestamp (must not be in the future).
+   * @param initialTargetRate The initial target rate in basis points.
    */
   function __sGho_init(
     address gho,
     uint40 initialSupplyCap,
-    address owner
+    address owner,
+    uint120 initialYieldIndex,
+    uint40 initialLastUpdate,
+    uint16 initialTargetRate
   ) internal onlyInitializing {
     if (gho == address(0) || owner == address(0)) revert ZeroAddressNotAllowed();
 
@@ -91,11 +102,8 @@ abstract contract sGho is
     _grantRole(DEFAULT_ADMIN_ROLE, owner);
     _grantRole(PAUSE_GUARDIAN_ROLE, owner);
 
-    sGhoStorage storage $ = _getSGhoStorage();
-    $.supplyCap = initialSupplyCap;
-    $.yieldIndex = uint120(WadRayMath.RAY);
-    $.lastUpdate = uint40(block.timestamp);
-    $.targetRate = 0;
+    _getSGhoStorage().supplyCap = initialSupplyCap;
+    _syncYieldIndex(initialYieldIndex, initialLastUpdate, initialTargetRate);
   }
 
   /// @inheritdoc IsGho
@@ -130,14 +138,39 @@ abstract contract sGho is
   }
 
   /// @inheritdoc IsGho
-  function setTargetRate(uint16 newRate) public onlyRole(YIELD_MANAGER_ROLE) {
+  function setTargetRate(uint16 newRate, uint40 effectiveAt) public onlyRole(YIELD_MANAGER_ROLE) {
     if (newRate > MAX_SAFE_RATE) {
       revert MaxRateExceeded();
     }
-    // Checkpoint the index with the old rate before changing it
-    _updateYieldIndex();
-    _getSGhoStorage().targetRate = newRate;
-    emit TargetRateUpdated(newRate);
+    if (effectiveAt < block.timestamp) {
+      revert EffectiveTimestampInPast();
+    }
+
+    _applyPendingTargetRate();
+
+    sGhoStorage storage $ = _getSGhoStorage();
+    if (effectiveAt == block.timestamp) {
+      // Checkpoint the index with the old rate before changing it
+      uint120 newYieldIndex = _getCurrentYieldIndex();
+      bool alreadyCheckpointed = $.lastUpdate == block.timestamp;
+      _setCheckpoint(newYieldIndex, block.timestamp.toUint40(), newRate);
+      if (!alreadyCheckpointed) {
+        emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
+      }
+    } else {
+      $.pendingRateEffectiveAt = effectiveAt;
+      $.pendingTargetRate = newRate;
+    }
+    emit TargetRateUpdated(newRate, effectiveAt);
+  }
+
+  /// @inheritdoc IsGho
+  function syncYieldIndex(
+    uint120 newYieldIndex,
+    uint40 newLastUpdate,
+    uint16 newTargetRate
+  ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    _syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate);
   }
 
   /// @inheritdoc IsGho
@@ -163,12 +196,24 @@ abstract contract sGho is
 
   /// @inheritdoc IsGho
   function lastUpdate() public view returns (uint256) {
-    return _getSGhoStorage().lastUpdate;
+    (, uint40 timestamp, , ) = _getCheckpoint();
+    return timestamp;
   }
 
   /// @inheritdoc IsGho
   function targetRate() public view returns (uint16) {
-    return _getSGhoStorage().targetRate;
+    (, , uint16 rate, ) = _getCheckpoint();
+    return rate;
+  }
+
+  /// @inheritdoc IsGho
+  function pendingTargetRate() public view returns (uint16, uint40) {
+    sGhoStorage storage $ = _getSGhoStorage();
+    uint40 effectiveAt = $.pendingRateEffectiveAt;
+    if (effectiveAt == 0 || block.timestamp >= effectiveAt) {
+      return (0, 0);
+    }
+    return ($.pendingTargetRate, effectiveAt);
   }
 
   /// @inheritdoc IsGho
@@ -229,7 +274,8 @@ abstract contract sGho is
 
   /// @inheritdoc IsGho
   function yieldIndex() public view returns (uint256) {
-    return _getSGhoStorage().yieldIndex;
+    (uint120 index, , , ) = _getCheckpoint();
+    return index;
   }
 
   /**
@@ -241,6 +287,43 @@ abstract contract sGho is
    */
   function _update(address from, address to, uint256 value) internal override whenNotPaused {
     super._update(from, to, value);
+  }
+
+  /**
+   * @dev Override `ERC4626._deposit`
+   * @dev Persists a due scheduled rate change, so the two-segment accrual is paid at most once
+   * instead of on every conversion until the next rate update. Plain transfers are exempt, as
+   * they would pay a storage read they otherwise never need.
+   */
+  function _deposit(
+    address caller,
+    address receiver,
+    uint256 assets,
+    uint256 shares
+  ) internal override {
+    _applyPendingTargetRate();
+    super._deposit({caller: caller, receiver: receiver, assets: assets, shares: shares});
+  }
+
+  /**
+   * @dev Override `ERC4626._withdraw`
+   * @dev Persists a due scheduled rate change, see `_deposit`.
+   */
+  function _withdraw(
+    address caller,
+    address receiver,
+    address owner,
+    uint256 assets,
+    uint256 shares
+  ) internal override {
+    _applyPendingTargetRate();
+    super._withdraw({
+      caller: caller,
+      receiver: receiver,
+      owner: owner,
+      assets: assets,
+      shares: shares
+    });
   }
 
   /**
@@ -284,6 +367,27 @@ abstract contract sGho is
   }
 
   /**
+   * @notice Resolves the current checkpoint, folding in a scheduled rate change once it is due.
+   * @dev When a scheduled change is due, the index is checkpointed exactly at its effective
+   * timestamp, so the resolved state is identical across chains no matter when each chain
+   * executes the update or first touches storage afterwards.
+   * @return index The yield index at the checkpoint.
+   * @return timestamp The checkpoint timestamp.
+   * @return rate The target rate in force since the checkpoint.
+   * @return pendingDue Whether a due scheduled rate change was folded in (not yet persisted).
+   */
+  function _getCheckpoint() internal view returns (uint120, uint40, uint16, bool) {
+    sGhoStorage storage $ = _getSGhoStorage();
+    uint40 effectiveAt = $.pendingRateEffectiveAt;
+    if (effectiveAt != 0 && block.timestamp >= effectiveAt) {
+      uint120 index = ($.yieldIndex +
+        _accruedYield({rate: $.targetRate, timeDelta: effectiveAt - $.lastUpdate})).toUint120();
+      return (index, effectiveAt, $.pendingTargetRate, true);
+    }
+    return ($.yieldIndex, $.lastUpdate, $.targetRate, false);
+  }
+
+  /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
    * @dev Yield accrues linearly at a fixed APR: newIndex = lastIndex + targetRate * timeElapsed / year.
    * Dividing by the year last keeps a full APR period exact and never compounds, since the index is
@@ -291,30 +395,77 @@ abstract contract sGho is
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {
-    sGhoStorage storage $ = _getSGhoStorage();
-    if ($.targetRate == 0) return $.yieldIndex;
+    (uint120 index, uint40 timestamp, uint16 rate, ) = _getCheckpoint();
+    if (rate == 0 || block.timestamp == timestamp) return index;
 
-    uint256 timeSinceLastUpdate = block.timestamp - $.lastUpdate;
-    if (timeSinceLastUpdate == 0) return $.yieldIndex;
-
-    uint256 accruedRate = (uint256($.targetRate) * WadRayMath.RAY * timeSinceLastUpdate) /
-      (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
-    return ($.yieldIndex + accruedRate).toUint120();
+    return
+      (index + _accruedYield({rate: rate, timeDelta: block.timestamp - timestamp})).toUint120();
   }
 
   /**
-   * @notice Checkpoints the yield index, accruing yield up to the current timestamp.
-   * @dev Only invoked when the rate changes. Leaving the index untouched on regular operations
-   * prevents accrual from being lost to rounding when actions happen in quick succession.
-   * Uses SafeCast to revert on overflow instead of silently wrapping.
+   * @notice Calculates the yield accrued at a fixed APR over a time period, in RAY.
+   * @param rate The annual yield rate in basis points.
+   * @param timeDelta The elapsed time in seconds.
+   * @return The accrued yield in RAY.
    */
-  function _updateYieldIndex() internal {
-    sGhoStorage storage $ = _getSGhoStorage();
-    if ($.lastUpdate != block.timestamp) {
-      uint120 newYieldIndex = _getCurrentYieldIndex();
-      $.yieldIndex = newYieldIndex;
-      $.lastUpdate = uint40(block.timestamp);
-      emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
+  function _accruedYield(uint256 rate, uint256 timeDelta) internal pure returns (uint256) {
+    return
+      (rate * WadRayMath.RAY * timeDelta) /
+      (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
+  }
+
+  /**
+   * @notice Persists a scheduled rate change once it is due, checkpointing the yield index at its
+   * effective timestamp.
+   */
+  function _applyPendingTargetRate() internal {
+    (uint120 index, uint40 timestamp, uint16 rate, bool pendingDue) = _getCheckpoint();
+    if (!pendingDue) return;
+
+    _setCheckpoint(index, timestamp, rate);
+    emit ExchangeRateUpdated(timestamp, index);
+  }
+
+  /**
+   * @notice Validates and overwrites the yield index checkpoint, discarding any scheduled rate change.
+   * @dev Backs both `syncYieldIndex` and the checkpoint initialization in `__sGho_init`.
+   * @param newYieldIndex The new yield index (RAY scale, at least RAY).
+   * @param newLastUpdate The new checkpoint timestamp (must not be in the future).
+   * @param newTargetRate The new target rate in basis points.
+   */
+  function _syncYieldIndex(
+    uint120 newYieldIndex,
+    uint40 newLastUpdate,
+    uint16 newTargetRate
+  ) internal {
+    if (newTargetRate > MAX_SAFE_RATE) {
+      revert MaxRateExceeded();
     }
+    if (newLastUpdate > block.timestamp) {
+      revert SyncTimestampInFuture();
+    }
+    if (newYieldIndex < WadRayMath.RAY) {
+      revert YieldIndexTooLow();
+    }
+
+    _setCheckpoint(newYieldIndex, newLastUpdate, newTargetRate);
+    emit YieldIndexSynced(newYieldIndex, newLastUpdate, newTargetRate);
+  }
+
+  /**
+   * @notice Persists the yield index checkpoint, discarding any scheduled rate change.
+   * @dev Only invoked when the rate changes or is synced. Leaving the index untouched on regular
+   * operations prevents accrual from being lost to rounding when actions happen in quick succession.
+   * @param index The yield index at the checkpoint.
+   * @param timestamp The checkpoint timestamp.
+   * @param rate The target rate in force from the checkpoint.
+   */
+  function _setCheckpoint(uint120 index, uint40 timestamp, uint16 rate) internal {
+    sGhoStorage storage $ = _getSGhoStorage();
+    $.yieldIndex = index;
+    $.lastUpdate = timestamp;
+    $.targetRate = rate;
+    $.pendingRateEffectiveAt = 0;
+    $.pendingTargetRate = 0;
   }
 }

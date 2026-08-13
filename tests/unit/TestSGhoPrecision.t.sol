@@ -7,6 +7,7 @@ import {sGho} from '../../src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
 /**
  * @title sGhoPrecisionTest
@@ -21,6 +22,8 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
  * 5. Actual Measurement Tests - Output real precision loss values for analysis
  */
 contract TestSGhoPrecision is TestnetProcedures {
+  using SafeCast for uint256;
+
   using Math for uint256;
 
   // Constants for precision calculations
@@ -68,7 +71,14 @@ contract TestSGhoPrecision is TestnetProcedures {
     sgho = sGho(address(proxy));
 
     // Initialize sGho
-    sGhoInstance(address(sgho)).initialize(address(gho), SUPPLY_CAP_UNITS, admin);
+    sGhoInstance(address(sgho)).initialize(
+      address(gho),
+      SUPPLY_CAP_UNITS,
+      admin,
+      RAY.toUint120(),
+      block.timestamp.toUint40(),
+      0
+    );
 
     vm.startPrank(admin);
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yieldManager);
@@ -82,7 +92,7 @@ contract TestSGhoPrecision is TestnetProcedures {
 
     // Set initial rate
     vm.prank(yieldManager);
-    sgho.setTargetRate(TEST_RATE_10_PERCENT);
+    sgho.setTargetRate(TEST_RATE_10_PERCENT, block.timestamp.toUint40());
   }
 
   // ========================================
@@ -105,7 +115,7 @@ contract TestSGhoPrecision is TestnetProcedures {
       uint16 rate = rates[r];
 
       vm.prank(yieldManager);
-      sgho.setTargetRate(rate);
+      sgho.setTargetRate(rate, block.timestamp.toUint40());
 
       for (uint256 t = 0; t < timePeriods.length; t++) {
         uint256 timePeriod = timePeriods[t];
@@ -116,7 +126,7 @@ contract TestSGhoPrecision is TestnetProcedures {
 
         // Re-setting the rate checkpoints the accrued index
         vm.prank(yieldManager);
-        sgho.setTargetRate(rate);
+        sgho.setTargetRate(rate, block.timestamp.toUint40());
 
         // Linear accrual is exact: newIndex = initialIndex + targetRate * time / year
         assertEq(
@@ -134,7 +144,7 @@ contract TestSGhoPrecision is TestnetProcedures {
     uint256 updateInterval = 3600; // 1 hour
 
     vm.prank(yieldManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     uint256 initialIndex = sgho.yieldIndex();
     uint256 intervals = totalTime / updateInterval;
@@ -143,7 +153,7 @@ contract TestSGhoPrecision is TestnetProcedures {
     for (uint256 i = 0; i < intervals; i++) {
       vm.warp(block.timestamp + updateInterval);
       vm.prank(yieldManager);
-      sgho.setTargetRate(rate);
+      sgho.setTargetRate(rate, block.timestamp.toUint40());
     }
 
     // Each checkpoint accrues one interval; the sum is the contract's exact total
@@ -162,7 +172,7 @@ contract TestSGhoPrecision is TestnetProcedures {
     uint16 rate = 1000; // 10% APR
 
     vm.prank(yieldManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     // Deposit some GHO
     uint256 depositAmount = 1000e18;
@@ -192,7 +202,7 @@ contract TestSGhoPrecision is TestnetProcedures {
     uint16 rate = 1000; // 10% APR
 
     vm.prank(yieldManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     // Deposit GHO
     uint256 depositAmount = 10000e18;
@@ -220,20 +230,20 @@ contract TestSGhoPrecision is TestnetProcedures {
   function test_precision_edge_cases() public {
     // Test very short time periods
     vm.prank(yieldManager);
-    sgho.setTargetRate(5000); // 50% APR
+    sgho.setTargetRate(5000, block.timestamp.toUint40()); // 50% APR
 
     uint256 initialIndex = sgho.yieldIndex();
 
     // Test 1 second
     vm.warp(block.timestamp + 1);
     vm.prank(yieldManager);
-    sgho.setTargetRate(5000);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
     uint256 oneSecondIndex = sgho.yieldIndex();
 
     // Test 1 minute
     vm.warp(block.timestamp + 59); // Total 60 seconds
     vm.prank(yieldManager);
-    sgho.setTargetRate(5000);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
     uint256 oneMinuteIndex = sgho.yieldIndex();
 
     // Edge case analysis: 1 second index=oneSecondIndex, 1 minute index=oneMinuteIndex
@@ -280,14 +290,14 @@ contract TestSGhoPrecision is TestnetProcedures {
       for (uint256 p = 0; p < periods.length; p++) {
         // Reset state
         vm.prank(yieldManager);
-        sgho.setTargetRate(rates[r]);
+        sgho.setTargetRate(rates[r], block.timestamp.toUint40());
 
         uint256 initialIndex = sgho.yieldIndex();
 
         // Fast forward and checkpoint
         vm.warp(block.timestamp + periods[p]);
         vm.prank(yieldManager);
-        sgho.setTargetRate(rates[r]);
+        sgho.setTargetRate(rates[r], block.timestamp.toUint40());
 
         uint256 finalIndex = sgho.yieldIndex();
         uint256 expectedIndex = initialIndex + calculateAccruedRate(rates[r], periods[p]);

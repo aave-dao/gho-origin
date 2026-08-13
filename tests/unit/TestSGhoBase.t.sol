@@ -18,6 +18,7 @@ import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/
 
 import {IsGho} from '../../src/contracts/sgho/interfaces/IsGho.sol';
 import {sGho} from '../../src/contracts/sgho/sGho.sol';
+import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol';
 
 contract TestSGhoBase is TestnetProcedures {
   using stdStorage for StdStorage;
@@ -39,7 +40,8 @@ contract TestSGhoBase is TestnetProcedures {
   address internal fundsAdmin; // Funds admin user
 
   uint16 internal constant MAX_SAFE_RATE = 50_00; // 50%
-  uint160 internal constant SUPPLY_CAP = 1_000_000 ether; // 1M GHO
+  uint40 internal constant SUPPLY_CAP_UNITS = 1_000_000; // 1M GHO (whole units, no decimals)
+  uint256 internal constant SUPPLY_CAP = uint256(SUPPLY_CAP_UNITS) * 1e18; // asset terms
 
   // Permit constants
   string internal constant VERSION = '1'; // Matches sGho constructor
@@ -59,16 +61,16 @@ contract TestSGhoBase is TestnetProcedures {
     gho = new TestnetERC20('Mock GHO', 'GHO', 18, poolAdmin);
 
     // Deploy sGho implementation and proxy
-    address sghoImpl = address(new sGho());
+    address sghoImpl = address(new sGhoInstance());
     sgho = sGho(
       address(
         new TransparentUpgradeableProxy(
           sghoImpl,
           Admin,
           abi.encodeWithSelector(
-            sGho.initialize.selector,
+            sGhoInstance.initialize.selector,
             address(gho),
-            SUPPLY_CAP,
+            SUPPLY_CAP_UNITS,
             address(this) // executor
           )
         )
@@ -106,7 +108,7 @@ contract TestSGhoBase is TestnetProcedures {
   // INTERNAL UTILITY FUNCTIONS
   // ========================================
 
-  /// @dev Emulates the yieldIndex calculation as in sGho._getCurrentYieldIndex(), using OpenZeppelin Math for all operations
+  /// @dev Emulates sGho._getCurrentYieldIndex(): linear accrual at a fixed APR
   function _emulateYieldIndex(
     uint256 prevYieldIndex,
     uint16 targetRate,
@@ -114,15 +116,7 @@ contract TestSGhoBase is TestnetProcedures {
   ) internal pure returns (uint256) {
     if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
 
-    // Convert targetRate from basis points to ray
-    uint256 annualRateRay = (uint256(targetRate) * RAY) / 10000;
-    // Calculate the rate per second (new contract logic)
-    uint256 ratePerSecondRay = (annualRateRay * RAY) / 365 days;
-    uint256 ratePerSecondNormalized = ratePerSecondRay / RAY;
-    // Calculate accumulated rate and growth factor
-    uint256 accumulatedRate = ratePerSecondNormalized * timeSinceLastUpdate;
-    uint256 growthFactor = RAY + accumulatedRate;
-    return (prevYieldIndex * growthFactor) / RAY;
+    return prevYieldIndex + (uint256(targetRate) * RAY * timeSinceLastUpdate) / (10000 * 365 days);
   }
 
   function _createPermitSignature(

@@ -1,6 +1,6 @@
 // verifies properties of FixedFeestrategy
 
-import "../shared/methods_divint_summary.spec";
+import "../shared/methods_divint_summary_single_math.spec";
 
 methods {
   function getBuyFeeBP() external returns uint256 envfree;

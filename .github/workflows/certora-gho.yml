@@ -33,9 +33,11 @@ jobs:
           touch applyHarness.patch
           make munged
 
-      - uses: Certora/certora-run-action@v2
+      - uses: Certora/certora-run-action@b37dc99cef13413f8996b2a137b95e8a25749285 # v2.10.0
         with:
-          cli-version: 7.31.2
+          cli-release: stable
+          cli-version: "8.17.1"
+          auto-rerun-timeouts: "true"
           configurations: |-
             certora/gho/conf/verifyUpgradeableGhoToken.conf
             certora/gho/conf/verifyGhoToken.conf

@@ -102,7 +102,7 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     // The holder's position is consistent across the upgrade
     assertEq(sgho.balanceOf(HOLDER), sharesBefore, 'shares changed');
-    assertApproxEqAbs(sgho.convertToAssets(sharesBefore), assetsBefore, 1, 'asset value changed');
+    assertEq(sgho.convertToAssets(sharesBefore), assetsBefore, 'asset value changed');
     assertEq(sgho.totalSupply(), totalSupplyBefore, 'totalSupply changed');
 
     // Migrated fields are correct in the new layout
@@ -162,17 +162,17 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     vm.warp(block.timestamp + 365 days);
 
-    // The index grows linearly by exactly `rate` over a year (no compounding)
+    // The index grows by exactly `rate` of its checkpointed value over a year
     assertEq(
       sgho.convertToAssets(ray),
-      indexBefore + (uint256(rate) * ray) / 10000,
+      indexBefore + (indexBefore * rate) / 10000,
       'index not linear'
     );
 
-    // The existing holder accrues that linear yield on their shares
+    // The existing holder earns `rate` on the GHO value of their position, up to share rounding
     assertApproxEqAbs(
       sgho.convertToAssets(shares) - assetsBefore,
-      (shares * rate) / 10000,
+      (assetsBefore * rate) / 10000,
       2,
       'existing user accrual not linear'
     );
@@ -195,10 +195,10 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     vm.warp(block.timestamp + 365 days);
 
-    // A position opened after the upgrade accrues the same linear yield
+    // A position opened after the upgrade earns `rate` on its deposited GHO value
     assertApproxEqAbs(
       sgho.convertToAssets(shares) - assetsBefore,
-      (shares * rate) / 10000,
+      (assetsBefore * rate) / 10000,
       2,
       'new user accrual not linear'
     );

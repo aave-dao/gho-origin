@@ -94,7 +94,7 @@ abstract contract sGho is
     sGhoStorage storage $ = _getSGhoStorage();
     $.supplyCap = initialSupplyCap;
     $.yieldIndex = uint120(WadRayMath.RAY);
-    $.lastUpdate = uint40(block.timestamp);
+    $.lastUpdate = block.timestamp.toUint40();
     $.targetRate = 0;
   }
 
@@ -285,9 +285,8 @@ abstract contract sGho is
 
   /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
-   * @dev Yield accrues linearly at a fixed APR: newIndex = lastIndex + targetRate * timeElapsed / year.
-   * Dividing by the year last keeps a full APR period exact and never compounds, since the index is
-   * only checkpointed when the rate changes. Uses SafeCast to revert on overflow.
+   * @dev Linear accrual on the checkpointed index: `index * (1 + targetRate * elapsed / year)`.
+   * There is no compounding until the next checkpoint, which starts a new base.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {
@@ -297,23 +296,21 @@ abstract contract sGho is
     uint256 timeSinceLastUpdate = block.timestamp - $.lastUpdate;
     if (timeSinceLastUpdate == 0) return $.yieldIndex;
 
-    uint256 accruedRate = (uint256($.targetRate) * WadRayMath.RAY * timeSinceLastUpdate) /
+    uint256 accrued = (uint256($.yieldIndex) * $.targetRate * timeSinceLastUpdate) /
       (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
-    return ($.yieldIndex + accruedRate).toUint120();
+    return ($.yieldIndex + accrued).toUint120();
   }
 
   /**
-   * @notice Checkpoints the yield index, accruing yield up to the current timestamp.
-   * @dev Only invoked when the rate changes. Leaving the index untouched on regular operations
-   * prevents accrual from being lost to rounding when actions happen in quick succession.
-   * Uses SafeCast to revert on overflow instead of silently wrapping.
+   * @notice Checkpoints the yield index at the current timestamp.
+   * @dev Only called on rate changes; regular operations never write the index.
    */
   function _updateYieldIndex() internal {
     sGhoStorage storage $ = _getSGhoStorage();
     if ($.lastUpdate != block.timestamp) {
       uint120 newYieldIndex = _getCurrentYieldIndex();
       $.yieldIndex = newYieldIndex;
-      $.lastUpdate = uint40(block.timestamp);
+      $.lastUpdate = block.timestamp.toUint40();
       emit ExchangeRateUpdated(block.timestamp, newYieldIndex);
     }
   }

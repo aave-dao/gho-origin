@@ -51,7 +51,6 @@ interface IsGho {
    * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
    * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
    * The permit is used to approve the vault to spend the user's GHO tokens.
-   * The yield index is updated before the deposit to ensure correct share calculation.
    * @param assets The amount of GHO to deposit.
    * @param receiver The address that will receive the sGHO shares.
    * @param deadline Maximum timestamp at which intent can be executed/signature is valid (must be in the future)
@@ -80,7 +79,7 @@ interface IsGho {
   /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
-   * The new rate must be less than 50% (5000 basis points).
+   * The new rate must not exceed `MAX_SAFE_RATE` (5000 basis points).
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
    */
   function setTargetRate(uint16 newRate) external;

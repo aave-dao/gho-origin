@@ -108,7 +108,7 @@ contract TestSGhoBase is TestnetProcedures {
   // INTERNAL UTILITY FUNCTIONS
   // ========================================
 
-  /// @dev Emulates sGho._getCurrentYieldIndex(): linear accrual at a fixed APR
+  /// @dev Spec: the APR applies to the value at the last checkpoint, linearly in time
   function _emulateYieldIndex(
     uint256 prevYieldIndex,
     uint16 targetRate,
@@ -116,7 +116,8 @@ contract TestSGhoBase is TestnetProcedures {
   ) internal pure returns (uint256) {
     if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
 
-    return prevYieldIndex + (uint256(targetRate) * RAY * timeSinceLastUpdate) / (10000 * 365 days);
+    return
+      prevYieldIndex + (prevYieldIndex * targetRate * timeSinceLastUpdate) / (10000 * 365 days);
   }
 
   function _createPermitSignature(

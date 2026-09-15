@@ -118,10 +118,10 @@ contract TestSGhoPrecision is TestnetProcedures {
         vm.prank(yieldManager);
         sgho.setTargetRate(rate);
 
-        // Linear accrual is exact: newIndex = initialIndex + targetRate * time / year
+        // Linear accrual on the checkpointed index: newIndex = initialIndex * (1 + rate * time / year)
         assertEq(
           sgho.yieldIndex(),
-          initialIndex + calculateAccruedRate(rate, timePeriod),
+          initialIndex + calculateAccruedRate(initialIndex, rate, timePeriod),
           'Yield index accrual mismatch'
         );
       }
@@ -136,20 +136,20 @@ contract TestSGhoPrecision is TestnetProcedures {
     vm.prank(yieldManager);
     sgho.setTargetRate(rate);
 
-    uint256 initialIndex = sgho.yieldIndex();
+    uint256 expectedIndex = sgho.yieldIndex();
     uint256 intervals = totalTime / updateInterval;
 
-    // Checkpoint the index on every interval
+    // Checkpoint the index on every interval; each checkpoint starts a new base
     for (uint256 i = 0; i < intervals; i++) {
       vm.warp(block.timestamp + updateInterval);
       vm.prank(yieldManager);
       sgho.setTargetRate(rate);
+      expectedIndex += calculateAccruedRate(expectedIndex, rate, updateInterval);
     }
 
-    // Each checkpoint accrues one interval; the sum is the contract's exact total
     assertEq(
       sgho.yieldIndex(),
-      initialIndex + intervals * calculateAccruedRate(rate, updateInterval),
+      expectedIndex,
       'Multiple updates should match the per-interval accrual'
     );
   }
@@ -205,7 +205,7 @@ contract TestSGhoPrecision is TestnetProcedures {
     vm.warp(block.timestamp + 604800); // 1 week
 
     // Linear growth of the deposited assets over one week, exact to the wei
-    uint256 expectedIndex = RAY + calculateAccruedRate(rate, 604800);
+    uint256 expectedIndex = RAY + calculateAccruedRate(RAY, rate, 604800);
     assertEq(
       sgho.previewRedeem(shares),
       (depositAmount * expectedIndex) / RAY,
@@ -290,7 +290,8 @@ contract TestSGhoPrecision is TestnetProcedures {
         sgho.setTargetRate(rates[r]);
 
         uint256 finalIndex = sgho.yieldIndex();
-        uint256 expectedIndex = initialIndex + calculateAccruedRate(rates[r], periods[p]);
+        uint256 expectedIndex = initialIndex +
+          calculateAccruedRate(initialIndex, rates[r], periods[p]);
         uint256 precisionLoss = calculatePrecisionLoss(finalIndex, expectedIndex);
 
         emit log_named_uint('Rate (bps)', rates[r]);
@@ -374,12 +375,13 @@ contract TestSGhoPrecision is TestnetProcedures {
     return RAY + accumulatedRate;
   }
 
-  /// @dev Mirrors sGho._getCurrentYieldIndex(): the index accrued over a period at a fixed APR
+  /// @dev Spec: yield accrued on `index` over a period, linear at a fixed APR
   function calculateAccruedRate(
+    uint256 index,
     uint16 rateBps,
     uint256 timeSeconds
   ) internal pure returns (uint256) {
-    return (uint256(rateBps) * RAY * timeSeconds) / (10000 * SECONDS_IN_YEAR);
+    return (index * rateBps * timeSeconds) / (10000 * SECONDS_IN_YEAR);
   }
 
   function calculatePrecisionLoss(

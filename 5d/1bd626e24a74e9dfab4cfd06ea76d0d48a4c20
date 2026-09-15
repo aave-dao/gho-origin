@@ -1,0 +1,48 @@
+src/contracts/sgho/interfaces/IsGho.sol
+  s_2e775bacce1390::t_54802372c80309 107-115,124-126
+snapshots/sGho.Operations.json
+  s_2e775bacce1390::t_191f5ef73436ad 2-6,8,11
+src/contracts/sgho/sGho.sol
+  s_2e775bacce1390::t_bd4c0663103710 392-393
+  s_2e775bacce1390::t_54802372c80309 77-78,293,367-369,380-384,401-402,406-407,412-416,418
+docs/sgho.md
+  s_2e775bacce1390::t_bd4c0663103710 10,33
+  s_2e775bacce1390::t_8d0133c99cb112 85-94,101
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_2e775bacce1390::t_bd4c0663103710 12-13
+tests/unit/TestSGhoYield.t.sol
+  s_2e775bacce1390::t_bd4c0663103710 90,103-104,113,115-116,119-123,125-127,130-131,208,221-231,233-234,236-254,257-260,262-277,547-550,633-635
+  s_2e775bacce1390::t_54802372c80309 109,232,235,255-256,261
+tests/unit/TestSGhoBase.t.sol
+  s_2e775bacce1390::t_bd4c0663103710 117,125-126
+tests/unit/TestSGhoPrecision.t.sol
+  s_2e775bacce1390::t_54802372c80309 157
+  s_2e775bacce1390::t_bd4c0663103710 131,134,149,152,162,218,303-304,388,390,394
+tests/unit/TestSGhoInitialization.t.sol
+  s_2e775bacce1390::t_54802372c80309 180
+docs/sGhoSteward.md
+  s_2e775bacce1390::t_bd4c0663103710 115
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_2e775bacce1390::t_bd4c0663103710 113,180,183,187,190,213,216
+  s_2e775bacce1390::t_54802372c80309 68,72,156
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_2e775bacce1390::t_bd4c0663103710 10-13,18,29-32
+src/contracts/misc/interfaces/IsGhoSteward.sol
+  s_2e775bacce1390::t_bd4c0663103710 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5d1bd626e24a74e9dfab4cfd06ea76d0d48a4c20",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

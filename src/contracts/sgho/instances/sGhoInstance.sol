@@ -9,10 +9,8 @@ import {sGho} from 'src/contracts/sgho/sGho.sol';
  * @notice Deployable implementation of the sGHO vault.
  */
 contract sGhoInstance is sGho {
-  /// @dev One above the mainnet storage-patch revision: the patch is followed by a swap to this
-  /// implementation, re-initialized with the migrated values, so all chains end locked at the
-  /// same revision through the same initializer
-  uint64 public constant SGHO_REVISION = 3;
+  /// @dev Same revision as `sGhoInstanceStoragePatch`, so mainnet ends locked at the revision new chains initialize at
+  uint64 public constant SGHO_REVISION = 2;
 
   constructor() {
     _disableInitializers();

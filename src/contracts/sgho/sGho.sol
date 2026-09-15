@@ -74,9 +74,8 @@ abstract contract sGho is
 
   /**
    * @dev Initializes the vault state. Must be called within an initializer or reinitializer.
-   * @dev The yield index checkpoint is an input so a deployment on a new chain can cold start in
-   * sync, from a checkpoint read from a live deployment; a genesis deployment starts at
-   * (RAY, current timestamp, 0).
+   * @dev The checkpoint is an input so a new chain can start in sync from a live deployment's
+   * checkpoint. A genesis deployment passes (RAY, block.timestamp, 0).
    * @param gho Address of the underlying GHO token.
    * @param initialSupplyCap The supply cap for the vault, in whole GHO units.
    * @param owner The address that will be granted the DEFAULT_ADMIN_ROLE.
@@ -291,9 +290,7 @@ abstract contract sGho is
 
   /**
    * @dev Override `ERC4626._deposit`
-   * @dev Persists a due scheduled rate change, so the two-segment accrual is paid at most once
-   * instead of on every conversion until the next rate update. Plain transfers are exempt, as
-   * they would pay a storage read they otherwise never need.
+   * @dev Persists a due scheduled rate change. Transfers do not, to avoid an extra storage read.
    */
   function _deposit(
     address caller,
@@ -367,10 +364,9 @@ abstract contract sGho is
   }
 
   /**
-   * @notice Resolves the current checkpoint, folding in a scheduled rate change once it is due.
-   * @dev When a scheduled change is due, the index is checkpointed exactly at its effective
-   * timestamp, so the resolved state is identical across chains no matter when each chain
-   * executes the update or first touches storage afterwards.
+   * @notice Resolves the checkpoint, folding in a scheduled rate change once it is due.
+   * @dev A due change is checkpointed at its `effectiveAt`, so the result does not depend on when
+   * it is persisted.
    * @return index The yield index at the checkpoint.
    * @return timestamp The checkpoint timestamp.
    * @return rate The target rate in force since the checkpoint.
@@ -381,7 +377,11 @@ abstract contract sGho is
     uint40 effectiveAt = $.pendingRateEffectiveAt;
     if (effectiveAt != 0 && block.timestamp >= effectiveAt) {
       uint120 index = ($.yieldIndex +
-        _accruedYield({rate: $.targetRate, timeDelta: effectiveAt - $.lastUpdate})).toUint120();
+        _accruedYield({
+          index: $.yieldIndex,
+          rate: $.targetRate,
+          timeDelta: effectiveAt - $.lastUpdate
+        })).toUint120();
       return (index, effectiveAt, $.pendingTargetRate, true);
     }
     return ($.yieldIndex, $.lastUpdate, $.targetRate, false);
@@ -389,9 +389,8 @@ abstract contract sGho is
 
   /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
-   * @dev Yield accrues linearly at a fixed APR: newIndex = lastIndex + targetRate * timeElapsed / year.
-   * Dividing by the year last keeps a full APR period exact and never compounds, since the index is
-   * only checkpointed when the rate changes. Uses SafeCast to revert on overflow.
+   * @dev Linear accrual on the checkpointed index: `index * (1 + targetRate * elapsed / year)`.
+   * There is no compounding until the next checkpoint, which starts a new base.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {
@@ -399,19 +398,24 @@ abstract contract sGho is
     if (rate == 0 || block.timestamp == timestamp) return index;
 
     return
-      (index + _accruedYield({rate: rate, timeDelta: block.timestamp - timestamp})).toUint120();
+      (index + _accruedYield({index: index, rate: rate, timeDelta: block.timestamp - timestamp}))
+        .toUint120();
   }
 
   /**
-   * @notice Calculates the yield accrued at a fixed APR over a time period, in RAY.
+   * @notice Calculates the yield accrued on an index at a fixed APR over a time period, in RAY.
+   * @param index The yield index at the start of the period.
    * @param rate The annual yield rate in basis points.
    * @param timeDelta The elapsed time in seconds.
    * @return The accrued yield in RAY.
    */
-  function _accruedYield(uint256 rate, uint256 timeDelta) internal pure returns (uint256) {
+  function _accruedYield(
+    uint256 index,
+    uint256 rate,
+    uint256 timeDelta
+  ) internal pure returns (uint256) {
     return
-      (rate * WadRayMath.RAY * timeDelta) /
-      (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
+      (index * rate * timeDelta) / (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
   }
 
   /**
@@ -428,7 +432,6 @@ abstract contract sGho is
 
   /**
    * @notice Validates and overwrites the yield index checkpoint, discarding any scheduled rate change.
-   * @dev Backs both `syncYieldIndex` and the checkpoint initialization in `__sGho_init`.
    * @param newYieldIndex The new yield index (RAY scale, at least RAY).
    * @param newLastUpdate The new checkpoint timestamp (must not be in the future).
    * @param newTargetRate The new target rate in basis points.
@@ -454,8 +457,6 @@ abstract contract sGho is
 
   /**
    * @notice Persists the yield index checkpoint, discarding any scheduled rate change.
-   * @dev Only invoked when the rate changes or is synced. Leaving the index untouched on regular
-   * operations prevents accrual from being lost to rounding when actions happen in quick succession.
    * @param index The yield index at the checkpoint.
    * @param timestamp The checkpoint timestamp.
    * @param rate The target rate in force from the checkpoint.

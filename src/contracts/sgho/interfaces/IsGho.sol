@@ -76,7 +76,6 @@ interface IsGho {
    * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
    * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
    * The permit is used to approve the vault to spend the user's GHO tokens.
-   * The yield index is updated before the deposit to ensure correct share calculation.
    * @param assets The amount of GHO to deposit.
    * @param receiver The address that will receive the sGHO shares.
    * @param deadline Maximum timestamp at which intent can be executed/signature is valid (must be in the future)
@@ -105,14 +104,15 @@ interface IsGho {
   /**
    * @notice Schedules a target rate update that takes effect at `effectiveAt`.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
-   * The new rate must be less than 50% (5000 basis points).
-   * @dev Scheduling the same rate with the same `effectiveAt` on every chain keeps yield indexes
-   * identical across chains at all times: the index is checkpointed exactly at `effectiveAt`
-   * regardless of when the update is executed or first touched afterwards. Views resolve a due
-   * update instantly; the next rate update, deposit/mint or withdrawal/redemption persists it.
-   * A previously scheduled update that is not yet effective is overwritten.
-   * @dev Passing the current timestamp applies the update immediately, checkpointing the index at
-   * the (chain-specific) execution time — only suitable for single-chain deployments.
+   * The new rate must not exceed `MAX_SAFE_RATE` (5000 basis points).
+   * @dev The index is checkpointed at `effectiveAt`, not at execution time, so scheduling the same
+   * rate with the same `effectiveAt` on every chain keeps the yield indexes identical. Views
+   * resolve a due update immediately; the next rate update, deposit or withdrawal persists it.
+   * @dev A pending update that is not yet effective is overwritten. Across chains, the overwrite
+   * must execute either before the pending `effectiveAt` on every chain or after it on every
+   * chain. A straddle desyncs the indexes and needs `syncYieldIndex` to reconcile.
+   * @dev `effectiveAt == block.timestamp` applies the update now, at the chain-local time. Only
+   * suitable for single-chain deployments.
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
    * @param effectiveAt The timestamp at which the new rate takes effect (must not be in the past).
    */
@@ -121,11 +121,9 @@ interface IsGho {
   /**
    * @notice Overwrites the yield index checkpoint and target rate, discarding any scheduled rate change.
    * @dev This function can only be called by an address with the DEFAULT_ADMIN role.
-   * @dev Used to bring a deployment in sync with the other chains: on a cold start (right after
-   * initialization on a new chain) or to reconcile after a multi-chain rate update failed on this
-   * chain. Passing the `yieldIndex`/`lastUpdate`/`targetRate` values read from an in-sync
-   * deployment makes both accrue identically from `newLastUpdate` onwards. If the in-sync
-   * deployment also has a scheduled rate change, it must be re-scheduled after syncing.
+   * @dev Brings a deployment in sync with the other chains, after a cold start or a rate update
+   * that missed this chain. Pass `yieldIndex()`, `lastUpdate()` and `targetRate()` read from an
+   * in-sync deployment, then re-schedule any pending update.
    * @dev Can decrease the yield index and thereby the asset value of existing shares.
    * @param newYieldIndex The new yield index (RAY scale, at least RAY).
    * @param newLastUpdate The new checkpoint timestamp (must not be in the future).

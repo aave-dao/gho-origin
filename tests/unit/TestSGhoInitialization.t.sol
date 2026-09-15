@@ -177,7 +177,7 @@ contract TestSGhoInitialization is TestSGhoBase {
   }
 
   function test_revision() external view {
-    assertEq(sGhoInstance(address(sgho)).SGHO_REVISION(), 3, 'Revision mismatch');
+    assertEq(sGhoInstance(address(sgho)).SGHO_REVISION(), 2, 'Revision mismatch');
   }
 
   // ========================================

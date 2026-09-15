@@ -87,7 +87,7 @@ contract TestSGhoYield is TestSGhoBase {
     );
   }
 
-  function test_yield_isLinear_withIntermediateRateUpdates(uint16 rate) external {
+  function test_yield_checkpointsCompound_withIntermediateRateUpdates(uint16 rate) external {
     rate = (bound(rate, 100, 5000)).toUint16();
     vm.startPrank(yManager);
     sgho.setTargetRate(rate, block.timestamp.toUint40());
@@ -100,35 +100,35 @@ contract TestSGhoYield is TestSGhoBase {
     uint256 user1Shares = sgho.balanceOf(user1);
     vm.stopPrank();
 
-    // Re-setting the rate daily checkpoints the index, but accrual must stay linear
+    // Re-setting the rate daily checkpoints the index; each checkpoint starts a new base
+    uint256 expectedIndex = sgho.yieldIndex();
     for (uint256 i = 0; i < 365; i++) {
       vm.warp(block.timestamp + 1 days);
       vm.prank(yManager);
       sgho.setTargetRate(rate, block.timestamp.toUint40());
+      expectedIndex = _emulateYieldIndex(expectedIndex, rate, 1 days);
     }
 
     uint256 user1FinalAssets = sgho.previewRedeem(user1Shares);
-
-    // Linear (APR) interest: 365 daily checkpoints accrue the same as a single year,
-    // up to the dust lost when each checkpoint floors the accrued amount
-    uint256 simpleInterestAssets = depositAmount + (depositAmount * rate) / 10000;
-    assertApproxEqAbs(
+    assertEq(
       user1FinalAssets,
-      simpleInterestAssets,
-      1,
-      'Intermediate rate updates should not compound yield'
+      (user1Shares * expectedIndex) / RAY,
+      'Value must follow the per-checkpoint accrual'
     );
 
-    // Daily compounding would have grown faster, confirming accrual is not compounding
+    // Daily checkpoints compound daily: strictly more than simple interest, and equal to the
+    // daily compounding formula up to the WAD truncation of `_wadPow` (about 365 wei relative)
+    uint256 simpleInterestAssets = depositAmount + (depositAmount * rate) / 10000;
+    assertGt(user1FinalAssets, simpleInterestAssets, 'Daily checkpoints must compound');
+
     uint256 WAD = 1e18;
-    uint256 aprWad = (rate * WAD) / 10000;
-    uint256 dailyCompoundingTerm = WAD + (aprWad / 365);
-    uint256 compoundedMultiplier = _wadPow(dailyCompoundingTerm, 365);
-    uint256 compoundedAssets = (depositAmount * compoundedMultiplier) / WAD;
-    assertLt(
+    uint256 dailyCompoundingTerm = WAD + ((rate * WAD) / 10000) / 365;
+    uint256 compoundedAssets = (depositAmount * _wadPow(dailyCompoundingTerm, 365)) / WAD;
+    assertApproxEqRel(
       user1FinalAssets,
       compoundedAssets,
-      'Linear accrual must stay below daily compounding'
+      1e6, // 1e-12 relative
+      'Daily checkpoints must match daily compounding'
     );
   }
 
@@ -205,7 +205,7 @@ contract TestSGhoYield is TestSGhoBase {
     assertEq(sgho.previewRedeem(shares), 120 ether, 'Two years should yield exactly 20% linearly');
   }
 
-  function test_yield_additiveAcrossRateChanges() external {
+  function test_yield_compoundsAtRateChange() external {
     vm.prank(user1);
     sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
@@ -218,8 +218,63 @@ contract TestSGhoYield is TestSGhoBase {
     sgho.setTargetRate(2000, block.timestamp.toUint40());
     vm.warp(block.timestamp + 365 days);
 
-    // Yield adds across rate periods: 10% + 20% = exactly 30%, not the 32% of compounding
-    assertEq(sgho.previewRedeem(shares), 130 ether, 'Yield should add across rate periods');
+    // The new rate applies to the value at the rate change: 110 * 1.2 = 132, not 100 + 10 + 20
+    assertEq(
+      sgho.previewRedeem(shares),
+      132 ether,
+      'New rate must apply to the checkpointed value'
+    );
+  }
+
+  function test_yield_rateAppliesToValueAtCheckpoint() external {
+    // Bring the index to exactly 2.0: two years at 50% from RAY
+    vm.prank(yManager);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
+    vm.warp(block.timestamp + 730 days);
+    vm.prank(yManager);
+    sgho.setTargetRate(1000, block.timestamp.toUint40());
+    assertEq(sgho.yieldIndex(), 2 * RAY, 'index not at 2.0');
+
+    // 100 GHO deposited at index 2.0 buys 50 shares
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    uint256 shares = sgho.balanceOf(user1);
+    assertEq(shares, 50 ether, 'shares at index 2.0');
+
+    vm.warp(block.timestamp + 365 days);
+
+    // One year at 10% on 100 GHO is 110 GHO, regardless of the index at deposit time
+    assertEq(sgho.convertToAssets(RAY), (22 * RAY) / 10, 'index after one year at 10% from 2.0');
+    assertEq(sgho.previewRedeem(shares), 110 ether, 'APR must apply to the deposited value');
+  }
+
+  function test_yield_rateAppliesToValueAtCheckpoint_fuzz(
+    uint16 rate,
+    uint32 timeBeforeDeposit
+  ) external {
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
+    timeBeforeDeposit = (bound(timeBeforeDeposit, 0, 3650 days)).toUint32();
+
+    // Let the index drift away from RAY at the 10% rate from setUp, then checkpoint at `rate`
+    vm.warp(block.timestamp + timeBeforeDeposit);
+    vm.prank(yManager);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
+
+    uint256 depositAmount = 100 ether;
+    vm.prank(user1);
+    sgho.deposit(depositAmount, user1);
+    uint256 shares = sgho.balanceOf(user1);
+    uint256 assetsAtDeposit = sgho.previewRedeem(shares);
+
+    vm.warp(block.timestamp + 365 days);
+
+    // One year later the position earned `rate` on its value at deposit, up to share rounding
+    assertApproxEqAbs(
+      sgho.previewRedeem(shares),
+      assetsAtDeposit + (assetsAtDeposit * rate) / 10000,
+      2,
+      'APR must apply to the value at deposit'
+    );
   }
 
   function test_yield_rateChangeCheckpointsAccruedIndex() external {
@@ -489,14 +544,10 @@ contract TestSGhoYield is TestSGhoBase {
       cumulativeIndex = _emulateYieldIndex(cumulativeIndex, targetRate, 1 days);
     }
 
-    // Checkpointing more often only loses dust to flooring (one wei per checkpoint), never inflates
-    assertLe(cumulativeIndex, singleUpdate, 'More checkpoints must not inflate the index');
-    assertApproxEqAbs(
-      cumulativeIndex,
-      singleUpdate,
-      30,
-      'Flooring drift bounded by checkpoint count'
-    );
+    // Each checkpoint starts a new base, so more checkpoints compound: the excess is the
+    // second-order term (x^2 / 2 with x = 10% * 30 / 365), about 0.34 bps of the index
+    assertGt(cumulativeIndex, singleUpdate, 'More checkpoints must compound');
+    assertLt(cumulativeIndex - singleUpdate, RAY / 10000, 'Compounding excess above 1 bp');
   }
 
   function test_precision_yieldIndex_edgeCases() external pure {
@@ -579,9 +630,9 @@ contract TestSGhoYield is TestSGhoBase {
     uint256 growth2 = index2 - index1;
     uint256 growth3 = index3 - index2;
 
-    // Linear accrual: equal time periods produce equal growth
-    assertEq(growth1, growth2, 'Linear growth should be constant');
-    assertEq(growth2, growth3, 'Linear growth should be constant');
+    // Each checkpoint applies the rate to a higher base, so growth per period increases
+    assertGt(growth2, growth1, 'Growth must increase with the base');
+    assertGt(growth3, growth2, 'Growth must increase with the base');
   }
 
   // ========================================

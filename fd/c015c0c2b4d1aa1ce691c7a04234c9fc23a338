@@ -1,0 +1,21 @@
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_2e775bacce1390::t_54802372c80309 487-573
+docs/sgho.md
+  s_2e775bacce1390::t_54802372c80309 47,49-55,59,61-62,64,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fdc015c0c2b4d1aa1ce691c7a04234c9fc23a338",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

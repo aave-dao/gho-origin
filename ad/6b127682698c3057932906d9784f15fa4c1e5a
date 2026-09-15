@@ -1,0 +1,44 @@
+tests/unit/TestSGhoBase.t.sol
+  s_2e775bacce1390::t_5489749c1588ce 111,119-120
+src/contracts/sgho/sGho.sol
+  s_2e775bacce1390::t_2f50b787b32696 97,288-289,299,301,305-306,313
+src/contracts/misc/interfaces/IsGhoSteward.sol
+  s_2e775bacce1390::t_2f50b787b32696 91
+tests/unit/TestSGhoPrecision.t.sol
+  s_2e775bacce1390::t_5489749c1588ce 121,124,139,142,147,152,208,293-294,378,380,384
+docs/sgho.md
+  s_2e775bacce1390::t_29d1fbaac6de38 10,33,81
+  s_2e775bacce1390::t_196b93eb2e5aca 65-74
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_2e775bacce1390::t_29d1fbaac6de38 105,165,168,172,175,198,201
+snapshots/sGho.Operations.json
+  s_2e775bacce1390::t_8f8dc5e9e7ebb9 2-5,7
+tests/unit/TestSGhoYield.t.sol
+  s_2e775bacce1390::t_8d8c9f98184a73 118,125,128
+  s_2e775bacce1390::t_196b93eb2e5aca 220-224
+  s_2e775bacce1390::t_29d1fbaac6de38 88,101-102,107,111,113-114,117,119-121,123-124,129,206,219,225-275,545-548,631-633
+src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol
+  s_2e775bacce1390::t_2f50b787b32696 10-13,18,29-32
+src/contracts/sgho/instances/sGhoInstance.sol
+  s_2e775bacce1390::t_2f50b787b32696 12
+src/contracts/sgho/interfaces/IsGho.sol
+  s_2e775bacce1390::t_2f50b787b32696 82
+docs/sGhoSteward.md
+  s_2e775bacce1390::t_2f50b787b32696 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ad6b127682698c3057932906d9784f15fa4c1e5a",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

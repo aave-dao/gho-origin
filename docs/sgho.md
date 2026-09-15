@@ -44,18 +44,24 @@ sGHO can be deployed on multiple chains with the yield index kept identical ever
 
 ### Scheduled Rate Updates
 
-`setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute future timestamp instead of applying it immediately. A multi-chain AIP passes the same `effectiveAt` (e.g. expected execution plus a 24-hour margin) on every chain: even though the payload executes at a different moment on each chain, the rate switches at the exact same instant everywhere.
+`setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute timestamp. A multi-chain AIP passes the same `effectiveAt` on every chain, for example the expected execution time plus a 24-hour margin. The payload executes at a different moment on each chain, but the rate switches at the same instant everywhere.
 
-The scheduled update is applied lazily. Views resolve it as soon as it is due, and the next rate update, deposit/mint or withdrawal/redemption persists it (plain transfers are exempt, to keep them free of a storage read they otherwise never need) — checkpointing the index exactly at `effectiveAt`, never at the (chain-specific) execution or interaction time, so the commit timing on each chain does not affect the resulting state. Since the accrual division is floored, checkpoints at chain-specific times would drift by a wei; anchoring every checkpoint to the shared `effectiveAt` keeps the index bit-identical across chains. For the same reason, every scheduled update (even a same-rate one) must be mirrored on all chains, and passing the current timestamp as `effectiveAt` (which applies the update immediately, checkpointing at the chain-local execution time) is only suitable for single-chain deployments.
+The update is applied lazily. Views resolve it once it is due. The next rate update, deposit or withdrawal persists it, with the checkpoint taken at `effectiveAt` rather than at execution or interaction time. Transfers do not persist it, so they stay free of the extra storage read. Because the accrual division floors, a checkpoint at a chain-local time would drift the index by a wei. Anchoring every checkpoint to the shared `effectiveAt` keeps the index bit-identical across chains.
+
+Rules for operators:
+
+- Every scheduled update must be mirrored on all chains, including a same-rate one. Each checkpoint starts a new base, so an unmirrored checkpoint desyncs the index.
+- A pending update that is not yet effective is overwritten by the next `setTargetRate`. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain. If it straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`.
+- `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
 ### Cold Start & Reconciliation
 
-`syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the yield index checkpoint with values read from an in-sync deployment (`yieldIndex()`, `lastUpdate()`, `targetRate()` — the getters already fold in a due scheduled update). The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. It covers:
+`syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the checkpoint with values read from an in-sync deployment: `yieldIndex()`, `lastUpdate()` and `targetRate()`. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. Any pending update on the synced chain is discarded and has to be re-scheduled.
 
-- **Cold start**: `initialize` takes the same checkpoint values, so a deployment on a new chain starts in sync directly from a live deployment's checkpoint (a genesis deployment starts at `(RAY, now, 0)`); `syncYieldIndex` covers the same need post-initialization
-- **Reconciliation**: if a multi-chain rate update fails on one chain, sync that chain from a healthy one (any scheduled update is discarded and must be re-scheduled afterwards)
+- **Cold start**: `initialize` takes the same checkpoint values, so a new chain starts in sync from a live deployment's checkpoint. A genesis deployment starts at `(RAY, now, 0)`.
+- **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the affected chain from a healthy one.
 
-Note that syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to the DEFAULT_ADMIN role (governance).
+Syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to DEFAULT_ADMIN (governance).
 
 ## Role Management
 
@@ -90,7 +96,7 @@ The live vault migrates to this layout through `sGhoInstanceStoragePatch`, in on
 2. `upgradeAndCall` to `sGhoInstanceStoragePatch` with `initialize()`. This consumes revision 2.
 3. `upgrade` to `sGhoInstance` with no calldata. Its `initialize` is locked because revision 2 is already used.
 
-The deployed `sGhoSteward` calls `setSupplyCap(uint160)`, a selector that no longer exists, so a new steward must be deployed in the same payload, granted `YIELD_MANAGER_ROLE` in place of the old one, and configured with the current rate config.
+The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload, granted `YIELD_MANAGER_ROLE` in place of the old one, and configured with the current rate config.
 
 ## Math
 

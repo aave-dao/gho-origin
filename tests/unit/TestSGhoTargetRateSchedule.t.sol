@@ -484,6 +484,93 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     _assertInSync(chainA, chainB);
   }
 
+  /// @dev An overwrite of a pending update must execute on every chain on the same side of the
+  /// pending `effectiveAt`. Here both chains overwrite before it and stay in sync.
+  function test_schedule_overwriteBeforeEffectiveOnAllChains_staysInSync() external {
+    (sGho chainA, sGho chainB) = _deployTwoChainsAt(1000);
+
+    uint40 effectiveAt1 = (block.timestamp + 10 days).toUint40();
+    uint40 effectiveAt2 = (block.timestamp + 20 days).toUint40();
+    vm.startPrank(yManager);
+    chainA.setTargetRate(2000, effectiveAt1);
+    chainB.setTargetRate(2000, effectiveAt1);
+    vm.stopPrank();
+
+    // The correction executes 2 days and 1 day before effectiveAt1, on chains A and B
+    vm.warp(effectiveAt1 - 2 days);
+    vm.prank(yManager);
+    chainA.setTargetRate(3000, effectiveAt2);
+    vm.warp(effectiveAt1 - 1 days);
+    vm.prank(yManager);
+    chainB.setTargetRate(3000, effectiveAt2);
+
+    vm.warp(effectiveAt1 + 1 days);
+    _assertInSync(chainA, chainB);
+    assertEq(chainA.targetRate(), 1000, 'Overwritten rate must not apply');
+
+    vm.warp(effectiveAt2 + 365 days);
+    _assertInSync(chainA, chainB);
+    assertEq(chainA.targetRate(), 3000, 'Correction must apply');
+  }
+
+  /// @dev An overwrite that straddles the pending `effectiveAt` desyncs the chains: the chain
+  /// executing before it skips the pending rate, the one executing after applies it first.
+  /// `syncYieldIndex` from the intended chain reconciles.
+  function test_schedule_overwriteStraddlingEffectiveAt_desyncsAndSyncReconciles() external {
+    (sGho chainA, sGho chainB) = _deployTwoChainsAt(1000);
+
+    uint40 effectiveAt1 = (block.timestamp + 10 days).toUint40();
+    uint40 effectiveAt2 = (block.timestamp + 20 days).toUint40();
+    vm.startPrank(yManager);
+    chainA.setTargetRate(2000, effectiveAt1);
+    chainB.setTargetRate(2000, effectiveAt1);
+    vm.stopPrank();
+
+    // Chain A executes the correction before effectiveAt1, chain B after it
+    vm.warp(effectiveAt1 - 1 days);
+    vm.prank(yManager);
+    chainA.setTargetRate(3000, effectiveAt2);
+    vm.warp(effectiveAt1 + 1 days);
+    vm.prank(yManager);
+    chainB.setTargetRate(3000, effectiveAt2);
+
+    // Chain A never ran at 2000, chain B did from effectiveAt1
+    assertEq(chainA.targetRate(), 1000, 'Chain A must have skipped the pending rate');
+    assertEq(chainB.targetRate(), 2000, 'Chain B must have applied the pending rate');
+    assertTrue(
+      chainA.convertToAssets(RAY) != chainB.convertToAssets(RAY),
+      'Chains must have diverged'
+    );
+
+    // Both apply 3000 at effectiveAt2, yet the divergence persists
+    vm.warp(effectiveAt2 + 30 days);
+    assertEq(chainA.targetRate(), chainB.targetRate(), 'Both chains must run the corrected rate');
+    assertTrue(
+      chainA.convertToAssets(RAY) != chainB.convertToAssets(RAY),
+      'Divergence must persist without reconciliation'
+    );
+
+    // Reconciliation AIP: chain A is the intended state, copy its checkpoint onto chain B
+    chainB.syncYieldIndex(
+      chainA.yieldIndex().toUint120(),
+      chainA.lastUpdate().toUint40(),
+      chainA.targetRate()
+    );
+    _assertInSync(chainA, chainB);
+
+    vm.warp(block.timestamp + 365 days);
+    _assertInSync(chainA, chainB);
+  }
+
+  function _deployTwoChainsAt(uint16 rate) internal returns (sGho chainA, sGho chainB) {
+    chainA = _deploySGho();
+    chainB = _deploySGho();
+    vm.startPrank(yManager);
+    chainA.setTargetRate(rate, block.timestamp.toUint40());
+    chainB.setTargetRate(rate, block.timestamp.toUint40());
+    vm.stopPrank();
+  }
+
   function _assertInSync(sGho chainA, sGho chainB) internal view {
     assertEq(chainA.convertToAssets(RAY), chainB.convertToAssets(RAY), 'Live index diverged');
     assertEq(chainA.yieldIndex(), chainB.yieldIndex(), 'Checkpoint index diverged');

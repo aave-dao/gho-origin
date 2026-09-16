@@ -1,5 +1,5 @@
 import "methods_base.spec";
-import "../shared/methods_divint_summary.spec";
+import "../shared/methods_divint_summary_closed_ceil.spec";
 
 // @Title For values given by `getAssetAmountForBuyAsset`, the user can only get more by paying more
 // This rule proves the optimality of getAssetAmountForBuyAsset with respect to

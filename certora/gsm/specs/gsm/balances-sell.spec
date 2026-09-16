@@ -1,5 +1,5 @@
 import "methods_base.spec";
-import "../shared/methods_divint_summary.spec";
+import "../shared/methods_divint_summary_nondet.spec";
 
 using DiffHelper as diffHelper;
 //using GhoReserve as _ghoReserve;

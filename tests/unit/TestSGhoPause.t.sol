@@ -82,7 +82,7 @@ contract TestSGhoPause is TestSGhoBase {
 
     // Test 2: Set supply cap while paused (should work)
     vm.startPrank(yManager);
-    uint160 newSupplyCap = 2_000_000 ether;
+    uint40 newSupplyCap = 2_000_000;
     sgho.setSupplyCap(newSupplyCap);
     assertEq(sgho.supplyCap(), newSupplyCap, 'Supply cap should be updated while paused');
     vm.stopPrank();

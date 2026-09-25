@@ -111,7 +111,7 @@ Because the computed value exceeds the maximum allowed rate of 50%, the transact
 The `setSupplyCap()` function allows authorized users to update the `sGHO` `supplyCap`.
 
 - Access is restricted to addresses with the `SUPPLY_CAP_MANAGER_ROLE`.
-- The maximum cap allowed within sGHO is `uint160` (less than the `uint256` input type of this function). Any attempt to set a value above this threshold results in a revert.
+- The cap is in whole GHO units (no decimals). sGHO stores it as `uint40`, so any larger value reverts.
 - Similarly, attempting to set the same value as the current `supplyCap` will also cause the transaction to revert.
 
 ## Contract Summary

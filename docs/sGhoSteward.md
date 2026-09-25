@@ -42,11 +42,12 @@ The formula for calculating the `targetRate` applied in `sGHO` is as follows:
 
 `targetRate = AmplificationFactor * FloatRate + FixedRate`
 
-All updates occur via the `setRateConfig(newConfig)` function, which takes a `RateConfig` struct as input.
+All updates occur via the `setRateConfig(newConfig, effectiveAt)` function, which takes a `RateConfig` struct and the timestamp at which the new rate takes effect on `sGHO` as input.
 
 - If a parameter in the new configuration matches the current one, it will be skipped.
 - If a parameter differs, the contract verifies that the caller holds the appropriate manager role before applying the update.
 - The function reverts if the computed target rate exceeds 50%.
+- The rate takes effect on `sGHO` at `effectiveAt`: submitting the same config with the same `effectiveAt` on the stewards of every chain keeps the yield indexes in sync. Passing the current timestamp applies immediately (single-chain deployments only).
 
 **NOTE:** Setting a parameter to `0` or to any other value different from the current one is considered **an update** and requires the corresponding role.
 
@@ -116,11 +117,11 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 
 ## Contract Summary
 
-| Function                               | Description                                        | Required Role               |
-| :------------------------------------- | :------------------------------------------------- | :-------------------------- |
-| `setRateConfig(RateConfig newConfig)`  | Updates amplification, float, and fixed rates      | Corresponding Manager Roles |
-| `setSupplyCap(uint256 newSupplyCap)`   | Updates the maximum allowed sGHO supply            | `SUPPLY_CAP_MANAGER_ROLE`   |
-| `getRateConfig()`                      | Returns the current rate configuration             | Public                      |
-| `previewTargetRate(RateConfig config)` | Computes the target rate for a given configuration | Public                      |
-| `sGHO()`                               | Returns current `sGHO` address                     | Public                      |
-| `MAX_RATE()`                           | Returns max available `targetRate` that can be set | Public                      |
+| Function                                                  | Description                                                               | Required Role               |
+| :-------------------------------------------------------- | :------------------------------------------------------------------------ | :-------------------------- |
+| `setRateConfig(RateConfig newConfig, uint40 effectiveAt)` | Updates amplification, float, and fixed rates, effective at `effectiveAt` | Corresponding Manager Roles |
+| `setSupplyCap(uint256 newSupplyCap)`                      | Updates the maximum allowed sGHO supply                                   | `SUPPLY_CAP_MANAGER_ROLE`   |
+| `getRateConfig()`                                         | Returns the current rate configuration                                    | Public                      |
+| `previewTargetRate(RateConfig config)`                    | Computes the target rate for a given configuration                        | Public                      |
+| `sGHO()`                                                  | Returns current `sGHO` address                                            | Public                      |
+| `MAX_RATE()`                                              | Returns max available `targetRate` that can be set                        | Public                      |

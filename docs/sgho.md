@@ -38,11 +38,37 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 - **Target Rate**: Fixed annual percentage rate (APR) in basis points (max 50% = 5000)
 - **Yield Index**: Index used for share/asset conversions
 
+## Multi-Chain Synchronization
+
+sGHO can be deployed on multiple chains with the yield index kept identical everywhere, at all times.
+
+### Scheduled Rate Updates
+
+`setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute timestamp. A multi-chain AIP passes the same `effectiveAt` on every chain, for example the expected execution time plus a 24-hour margin. The payload executes at a different moment on each chain, but the rate switches at the same instant everywhere.
+
+The update is applied lazily. Views resolve it once it is due. The next rate update, deposit or withdrawal persists it, with the checkpoint taken at `effectiveAt` rather than at execution or interaction time. Transfers do not persist it, so they stay free of the extra storage read. Because the accrual division floors, a checkpoint at a chain-local time would drift the index by a wei. Anchoring every checkpoint to the shared `effectiveAt` keeps the index bit-identical across chains.
+
+Rules for operators:
+
+- Every scheduled update must be mirrored on all chains, including a same-rate one. Each checkpoint starts a new base, so an unmirrored checkpoint desyncs the index.
+- A pending update that is not yet effective is overwritten by the next `setTargetRate`. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain. If it straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`.
+- `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
+
+### Cold Start & Reconciliation
+
+`syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the checkpoint with values read from an in-sync deployment: `yieldIndex()`, `lastUpdate()` and `targetRate()`. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. Any pending update on the synced chain is discarded and has to be re-scheduled.
+
+- **Cold start**: `initialize` takes the same checkpoint values, so a new chain starts in sync from a live deployment's checkpoint. A genesis deployment starts at `(RAY, now, 0)`.
+- **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the affected chain from a healthy one.
+
+Syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to DEFAULT_ADMIN (governance).
+
 ## Role Management
 
 - `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
-- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
+- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate (immediately or scheduled) and the supply cap.
+- `DEFAULT_ADMIN_ROLE` : Besides managing roles, this role has permissions to overwrite the yield index checkpoint via `syncYieldIndex`.
 
 ## Security Considerations
 
@@ -70,7 +96,7 @@ The live vault migrates to this layout through `sGhoInstanceStoragePatch`, in on
 2. `upgradeAndCall` to `sGhoInstanceStoragePatch` with `initialize()`. This consumes revision 2.
 3. `upgrade` to `sGhoInstance` with no calldata. Its `initialize` is locked because revision 2 is already used.
 
-The deployed `sGhoSteward` calls `setSupplyCap(uint160)`, a selector that no longer exists, so a new steward must be deployed in the same payload, granted `YIELD_MANAGER_ROLE` in place of the old one, and configured with the current rate config.
+The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload, granted `YIELD_MANAGER_ROLE` in place of the old one, and configured with the current rate config.
 
 ## Math
 

@@ -7,7 +7,10 @@ import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
 import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 import {Pausable} from 'openzeppelin-contracts/contracts/utils/Pausable.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
+import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 import {StkGhoMigratorBaseTest} from './StkGhoMigratorBase.t.sol';
+import {IStakeTokenCooldowns} from './StkGhoMigratorHelpers.t.sol';
 
 contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
   function setUp() public {
@@ -348,6 +351,119 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     );
   }
 
+  function test_Migrate_WithActiveCooldownBelowBalance() public {
+    _stake(user, 50e18);
+    vm.prank(user);
+    STKGHO.cooldown();
+    _stake(user, 40e18);
+
+    (, uint216 cooldownAmount) = IStakeTokenCooldowns(address(STKGHO)).stakersCooldowns(user);
+    assertEq(cooldownAmount, 50e18);
+    assertEq(STKGHO.balanceOf(user), 90e18);
+
+    _migrateAndValidate(user, 90e18);
+  }
+
+  function test_Migrate_WithExpiredCooldown() public {
+    _stake(user, 90e18);
+    vm.prank(user);
+    STKGHO.cooldown();
+    vm.warp(block.timestamp + IStakeTokenCooldowns(address(STKGHO)).UNSTAKE_WINDOW() + 1);
+
+    vm.prank(user);
+    vm.expectRevert(bytes('UNSTAKE_WINDOW_FINISHED'));
+    STKGHO.redeem(user, 90e18);
+
+    _migrateAndValidate(user, 90e18);
+  }
+
+  function test_Migrate_StkGhoReceivedByTransfer() public {
+    address staker = makeAddr('STAKER');
+    _stake(staker, 90e18);
+    vm.prank(staker);
+    assertTrue(IERC20(address(STKGHO)).transfer(user, 90e18));
+
+    assertEq(STKGHO.balanceOf(user), 90e18);
+    _migrateAndValidate(user, 90e18);
+  }
+
+  function test_Revert_Migrate_WithoutClaimHelperRole() public {
+    _stake(user, 90e18);
+    _moveClaimHelperRole(makeAddr('NEW_CLAIM_HELPER'));
+
+    _expectMigrateRevert(user, 90e18, bytes('CALLER_NOT_CLAIM_HELPER'));
+  }
+
+  function test_Revert_SetClaimHelperPendingAdmin_WithoutClaimHelperRole() public {
+    _moveClaimHelperRole(makeAddr('NEW_CLAIM_HELPER'));
+
+    vm.prank(ownerMigrator);
+    vm.expectRevert(bytes('CALLER_NOT_ROLE_ADMIN'));
+    migrator.setClaimHelperPendingAdmin(makeAddr('NEW_PENDING_ADMIN'));
+  }
+
+  function test_Revert_Migrate_SGhoPaused() public {
+    _stake(user, 90e18);
+    vm.prank(EXECUTOR_LVL_1);
+    IsGho(address(SGHO)).pause();
+
+    assertFalse(migrator.paused());
+    _expectMigrateRevert(
+      user,
+      90e18,
+      abi.encodeWithSelector(ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector, user, 90e18, 0)
+    );
+  }
+
+  function test_Revert_Migrate_SGhoSupplyCapReached() public {
+    _stake(user, 90e18);
+    address depositor = makeAddr('DEPOSITOR');
+    uint256 remainingCap = SGHO.maxDeposit(depositor);
+    deal(address(GHO), depositor, remainingCap);
+    vm.startPrank(depositor);
+    GHO.approve(address(SGHO), remainingCap);
+    SGHO.deposit(remainingCap, depositor);
+    vm.stopPrank();
+
+    uint256 capLeft = SGHO.maxDeposit(user);
+    assertLt(capLeft, 90e18);
+    _expectMigrateRevert(
+      user,
+      90e18,
+      abi.encodeWithSelector(
+        ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector,
+        user,
+        90e18,
+        capLeft
+      )
+    );
+  }
+
+  function test_Revert_Migrate_SGhoSupplyCapBelowAmount() public {
+    _stake(user, 90e18);
+    address depositor = makeAddr('DEPOSITOR');
+    uint256 depositAmount = SGHO.maxDeposit(depositor) - 50e18;
+    deal(address(GHO), depositor, depositAmount);
+    vm.startPrank(depositor);
+    GHO.approve(address(SGHO), depositAmount);
+    SGHO.deposit(depositAmount, depositor);
+    vm.stopPrank();
+
+    uint256 remainingCap = SGHO.maxDeposit(user);
+    assertGt(remainingCap, 0);
+    assertLt(remainingCap, 90e18);
+    _expectMigrateRevert(
+      user,
+      90e18,
+      abi.encodeWithSelector(
+        ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector,
+        user,
+        90e18,
+        remainingCap
+      )
+    );
+  }
+
   // --- Tests rescue ---
   function test_Rescue_erc20() public {
     vm.deal(user, 1 ether);
@@ -443,5 +559,14 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
       abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, invalidUser)
     );
     migrator.transferOwnership(newOwner);
+  }
+
+  function _moveClaimHelperRole(address newClaimHelper) internal {
+    vm.prank(ownerMigrator);
+    migrator.setClaimHelperPendingAdmin(newClaimHelper);
+    vm.prank(newClaimHelper);
+    STKGHO.claimRoleAdmin(CLAIM_HELPER_ROLE);
+
+    assertEq(STKGHO.getAdmin(CLAIM_HELPER_ROLE), newClaimHelper);
   }
 }

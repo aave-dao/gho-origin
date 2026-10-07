@@ -9,11 +9,21 @@ import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 
+interface IStakeTokenCooldowns {
+  function stakersCooldowns(
+    address staker
+  ) external view returns (uint40 timestamp, uint216 amount);
+
+  function UNSTAKE_WINDOW() external view returns (uint256);
+}
+
 abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
   struct MigrationState {
     uint256 accountStkGho;
     uint256 accountSGho;
     uint256 accountGho;
+    uint256 accountCooldownTimestamp;
+    uint256 accountCooldownAmount;
     uint256 migratorGho;
     uint256 migratorStkGho;
     uint256 migratorSGho;
@@ -36,6 +46,7 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
   IStakeToken public constant STKGHO = IStakeToken(0x1a88Df1cFe15Af22B3c4c783D4e6F7F9e0C1885d);
   IERC4626 public constant SGHO = IERC4626(0xE1753F2e00940cC31213dd92013cF019DFE4ca1d);
   IERC20 public constant GHO = IERC20(0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f);
+  address public constant EXECUTOR_LVL_1 = 0x5300A1a15135EA4dc7aD5a167152C01EFc9b192A;
 
   /// @dev Migrates `account` and asserts every balance and supply affected by the migration.
   function _migrateAndValidate(address account, uint256 minGhoRedeemed) internal {
@@ -52,6 +63,8 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
     assertEq(stateAfter.accountStkGho, 0, 'account stkGHO');
     assertEq(stateAfter.accountSGho, stateBefore.accountSGho + expectedSGhoShares, 'account sGHO');
     assertEq(stateAfter.accountGho, stateBefore.accountGho, 'account GHO');
+    assertEq(stateAfter.accountCooldownTimestamp, 0, 'account cooldown timestamp');
+    assertEq(stateAfter.accountCooldownAmount, 0, 'account cooldown amount');
     assertEq(stateAfter.migratorGho, stateBefore.migratorGho, 'migrator GHO');
     assertEq(stateAfter.migratorStkGho, stateBefore.migratorStkGho, 'migrator stkGHO');
     assertEq(stateAfter.migratorSGho, stateBefore.migratorSGho, 'migrator sGHO');
@@ -90,11 +103,15 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
   }
 
   function _migrationState(address account) internal view returns (MigrationState memory) {
+    (uint40 cooldownTimestamp, uint216 cooldownAmount) = IStakeTokenCooldowns(address(STKGHO))
+      .stakersCooldowns(account);
     return
       MigrationState({
         accountStkGho: STKGHO.balanceOf(account),
         accountSGho: SGHO.balanceOf(account),
         accountGho: GHO.balanceOf(account),
+        accountCooldownTimestamp: cooldownTimestamp,
+        accountCooldownAmount: cooldownAmount,
         migratorGho: GHO.balanceOf(address(migrator)),
         migratorStkGho: STKGHO.balanceOf(address(migrator)),
         migratorSGho: SGHO.balanceOf(address(migrator)),

@@ -27,6 +27,11 @@ abstract contract StkGhoMigratorBaseTest is StkGhoMigratorHelpers {
     assertEq(migrator.CLAIM_HELPER_ROLE(), CLAIM_HELPER_ROLE);
   }
 
+  function test_Revert_Constructor_InvalidOwner() public {
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
+    _deployStkGhoMigrator({initialOwner: address(0), initialPauseGuardian: pauseGuardian});
+  }
+
   function test_Revert_Constructor_InvalidPauseGuardian() public {
     vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
     _deployStkGhoMigrator({initialOwner: ownerMigrator, initialPauseGuardian: address(0)});
@@ -63,6 +68,19 @@ abstract contract StkGhoMigratorBaseTest is StkGhoMigratorHelpers {
     vm.prank(user);
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
     migrator.unpause();
+  }
+
+  function test_Revert_Unpause_ByGuardian() public {
+    vm.prank(pauseGuardian);
+    migrator.pause();
+
+    vm.prank(pauseGuardian);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, pauseGuardian)
+    );
+    migrator.unpause();
+
+    assertTrue(migrator.paused());
   }
 
   function test_Revert_Migrate_WhenPaused() public {

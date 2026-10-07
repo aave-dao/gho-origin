@@ -1,0 +1,57 @@
+tests/misc/StkGhoMigratorForkTest.t.sol
+  s_94aa91a40ba583::t_91d1e6eb2b4ce1 104-105,144-145,176,198-200,208-213,215,217-220,222-223,226-228,230-231,235-236,238,242-244,249-251,259-261,264,270-272,274-275,285-286,296-297,311-312,340-343
+  s_94aa91a40ba583::t_32c71fd891e6e0 175,201,203,206,233-234,237,240,247,253,255,273,276-277,280,283-284,287-288,294-295,298-303,309-310,313-314,318,320-321
+  s_94aa91a40ba583::t_c1f1e0d1e6c597 177-180,182-190,196-197
+  s_94aa91a40ba583::t_73981bb28a0846 153
+  s_94aa91a40ba583::t_7eb3d99468134f 106,112-116,122,147-152,154-174,181,191-195,202,204-205,207,214,216,221,224-225,229,232,241,246,254,256,262-263,266-267,269,278-279,281-282,289-293,304-308,315-317,319,323-329,333-337,344-348
+  s_94aa91a40ba583::t_ff742417632714 146,322
+tests/misc/StkGhoMigratorUnitTest.t.sol
+  s_94aa91a40ba583::t_8440c5522b69a9 101
+  s_94aa91a40ba583::t_d63d2b87b69ac1 51,54,59,64-65,68,70,78-79,82,92-93,96,105,107,110,118-119,129-130,145,151,160,175,260-297
+  s_94aa91a40ba583::t_5d294d1593ab58 47-50,52,55-57,60-63,66-67,69,71,73-77,80-81,83-85,87-91,94-95,97-100,102-104,106,108-109,112,122,133,138-143,146-149,152-158,161-164,166-173,178,183-188,192,239-259,298
+  s_94aa91a40ba583::t_2564fc557b8d77 53,144,159,174
+tests/misc/StkGhoMigratorBase.t.sol
+  s_94aa91a40ba583::t_f4b14a341024f2 12,16
+  s_94aa91a40ba583::t_5b0b7767b67444 74
+tests/misc/StkGhoMigratorHelpers.t.sol
+  s_94aa91a40ba583::t_af86b389feb7ba 1-139
+src/contracts/misc/StkGhoMigrator.sol
+  s_94aa91a40ba583::t_ac337690095946 72
+  s_94aa91a40ba583::t_e0e0fe01683e2d 83
+docs/stkgho-migrator.md
+  s_94aa91a40ba583::t_0296ce010f6a48 19
+  s_94aa91a40ba583::t_56b1f2f3e2f289 35,47
+  s_94aa91a40ba583::t_cc8d243aa1ed52 18
+  s_94aa91a40ba583::t_b0ecef1c35a67c 7,11,15
+  s_94aa91a40ba583::t_8ad7cb9e417ffe 27
+src/contracts/misc/interfaces/IStkGhoMigrator.sol
+  s_94aa91a40ba583::t_dbf300da03a641 72-74,76
+  s_94aa91a40ba583::t_0e0cd530d3b979 22
+tests/misc/StkGhoMigratorStatelessFuzz.t.sol
+  s_94aa91a40ba583::t_0e510b500fe6b7 113
+  s_94aa91a40ba583::t_21f8c22827ab6c 7,9,37-41,52,55-56,58,72-74,76,90-94,96,112,115-119,121
+  s_94aa91a40ba583::t_835fdb92ba28f2 44,46,50-51,53-54,57,59-65,101-104
+  s_94aa91a40ba583::t_363d625c612b7e 5,42,45,47-49,66-68,71,77-89,95,97-100,105-111,114
+  s_94aa91a40ba583::t_322f7b2e492924 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7fd25e3fe4f520b28d695488e7ae9b50fa22e481",
+  "prompts": {},
+  "humans": {
+    "h_0f977de3f043fc": {
+      "author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_94aa91a40ba583": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7626f193-bcd8-4dce-806f-66fa2f3610bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

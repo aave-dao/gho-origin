@@ -10,25 +10,6 @@ import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {StkGhoMigratorBaseTest} from './StkGhoMigratorBase.t.sol';
 
 contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
-  modifier depositStkGhoReadyToRedeem() {
-    vm.deal(user, 1 ether);
-    deal(address(GHO), user, 1_000e18);
-    vm.startPrank(user);
-    IERC20(GHO).approve(address(STKGHO), 90e18);
-    STKGHO.stake(user, 90e18);
-    vm.stopPrank();
-    _;
-  }
-
-  modifier changeCooldownToNotZero() {
-    address adminCooldown = STKGHO.getAdmin(COOLDOWN_ADMIN_ROLE);
-    vm.prank(adminCooldown);
-    STKGHO.setPendingAdmin(COOLDOWN_ADMIN_ROLE, address(this));
-    STKGHO.claimRoleAdmin(COOLDOWN_ADMIN_ROLE);
-    STKGHO.setCooldownSeconds(86400); // Set cooldown to 1 day
-    _;
-  }
-
   function setUp() public {
     // Skip if RPC_MAINNET env variable is not set.
     string memory rpc = vm.envOr('RPC_MAINNET', string(''));
@@ -120,29 +101,25 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     migrator.updateGuardian(invalidUser);
   }
 
-  function test_PauseUnpause_ByPauseGuardian() public depositStkGhoReadyToRedeem {
-    uint256 sGhoSharesBefore = SGHO.balanceOf(user);
+  function test_PauseUnpause_ByPauseGuardian() public {
+    _stake(user, 90e18);
+    uint256 minGhoRedeemed = STKGHO.previewRedeem(STKGHO.balanceOf(user));
 
     vm.prank(pauseGuardian);
     migrator.pause();
 
     assertTrue(migrator.paused());
-
-    vm.prank(user);
-    vm.expectRevert(Pausable.EnforcedPause.selector);
-    migrator.migrate();
+    _expectMigrateRevert(
+      user,
+      minGhoRedeemed,
+      abi.encodeWithSelector(Pausable.EnforcedPause.selector)
+    );
 
     vm.prank(ownerMigrator);
     migrator.unpause();
 
     assertFalse(migrator.paused());
-
-    vm.prank(user);
-    migrator.migrate();
-
-    assertEq(STKGHO.balanceOf(user), 0);
-    assertEq(GHO.balanceOf(address(migrator)), 0);
-    assertGt(SGHO.balanceOf(user), sGhoSharesBefore);
+    _migrateAndValidate(user, minGhoRedeemed);
   }
 
   function test_PauseUnpause_ByOwner() public {
@@ -164,50 +141,211 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
   }
 
   // --- Tests migrate ---
-  function test_Migrate() public depositStkGhoReadyToRedeem {
+  function test_Migrate() public {
+    _stake(user, 90e18);
+
+    assertEq(STKGHO.getExchangeRate(), 1e18);
+    assertEq(STKGHO.balanceOf(user), 90e18);
+    assertEq(STKGHO.previewRedeem(90e18), 90e18);
+
+    _migrateAndValidate(user, 90e18);
+  }
+
+  function test_Migrate_WithExistingSGhoBalance() public {
+    deal(address(GHO), user, 50e18);
+    vm.startPrank(user);
+    GHO.approve(address(SGHO), 50e18);
+    SGHO.deposit(50e18, user);
+    vm.stopPrank();
+    _stake(user, 90e18);
+
+    assertGt(SGHO.balanceOf(user), 0);
+    _migrateAndValidate(user, 90e18);
+  }
+
+  function test_Revert_Migrate_Twice() public {
+    _stake(user, 90e18);
+    _migrateAndValidate(user, 90e18);
+
+    _expectMigrateRevert(
+      user,
+      0,
+      abi.encodeWithSelector(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector)
+    );
+  }
+
+  function test_Migrate_PreexistingGhoBalanceStaysInMigrator() public {
+    deal(address(GHO), address(migrator), 7e18);
+    _stake(user, 90e18);
+
+    _migrateAndValidate(user, STKGHO.previewRedeem(STKGHO.balanceOf(user)));
+
+    assertEq(GHO.balanceOf(address(migrator)), 7e18);
+  }
+
+  function test_Revert_Migrate_PreexistingGhoBalanceNotCounted() public {
+    deal(address(GHO), address(migrator), 7e18);
+    _stake(user, 90e18);
+    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
+
+    _expectMigrateRevert(
+      user,
+      expectedGho + 7e18,
+      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
+    );
+  }
+
+  function test_Migrate_StakeThenReturnFunds() public {
+    _stake(user, 90e18);
+    _returnFunds(1e18);
+
+    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
+    assertLt(STKGHO.getExchangeRate(), 1e18);
+    assertEq(STKGHO.balanceOf(user), 90e18);
+    assertGt(expectedGho, 90e18);
+
+    _migrateAndValidate(user, expectedGho);
+  }
+
+  function test_Migrate_StakeThenReturnFunds_MinEqualToShares() public {
+    _stake(user, 90e18);
+    _returnFunds(1e18);
+
+    assertGt(STKGHO.previewRedeem(STKGHO.balanceOf(user)), 90e18);
+
+    _migrateAndValidate(user, 90e18);
+  }
+
+  function test_Migrate_StakeThenRepeatedReturnFunds() public {
+    _stake(user, 90e18);
+    uint256 previousExchangeRate = STKGHO.getExchangeRate();
+    for (uint256 i = 0; i < 5; i++) {
+      _returnFunds(1_000e18);
+      assertLt(STKGHO.getExchangeRate(), previousExchangeRate);
+      previousExchangeRate = STKGHO.getExchangeRate();
+    }
+
+    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
+    assertEq(STKGHO.balanceOf(user), 90e18);
+    assertGt(expectedGho, 90e18);
+
+    _migrateAndValidate(user, expectedGho);
+  }
+
+  function test_Migrate_ReturnFundsThenStake() public {
+    _returnFunds(1e18);
+    _stake(user, 1_000e18);
+
     uint256 stkGhoShares = STKGHO.balanceOf(user);
-    uint256 sGhoSharesBefore = SGHO.balanceOf(user);
-    uint256 expectedSGhoShares = SGHO.previewDeposit(stkGhoShares);
+    uint256 expectedGho = STKGHO.previewRedeem(stkGhoShares);
+    assertLt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(stkGhoShares, 1_000e18);
+    assertGt(expectedGho, stkGhoShares);
+    assertLe(expectedGho, 1_000e18);
 
-    assertGt(stkGhoShares, 0);
+    _migrateAndValidate(user, expectedGho);
+  }
 
-    vm.prank(user);
-    migrator.migrate();
+  function test_Migrate_ReturnFundsThenStake_MinEqualToShares() public {
+    _returnFunds(1e18);
+    _stake(user, 1_000e18);
 
-    assertEq(STKGHO.balanceOf(user), 0);
-    assertEq(SGHO.balanceOf(user) - sGhoSharesBefore, expectedSGhoShares);
-    assertEq(GHO.balanceOf(address(migrator)), 0);
+    uint256 stkGhoShares = STKGHO.balanceOf(user);
+    assertGt(STKGHO.previewRedeem(stkGhoShares), stkGhoShares);
+
+    _migrateAndValidate(user, stkGhoShares);
+  }
+
+  function test_Migrate_ReturnFundsThenStakeThenReturnFunds() public {
+    _returnFunds(1e18);
+    _stake(user, 1_000e18);
+    uint256 stkGhoShares = STKGHO.balanceOf(user);
+    uint256 ghoBeforeSecondReturn = STKGHO.previewRedeem(stkGhoShares);
+    _returnFunds(1e18);
+
+    uint256 expectedGho = STKGHO.previewRedeem(stkGhoShares);
+    assertGt(expectedGho, ghoBeforeSecondReturn);
+
+    _migrateAndValidate(user, expectedGho);
+  }
+
+  function test_Migrate_StakersBeforeAndAfterReturnFunds() public {
+    address otherUser = makeAddr('OTHER_USER');
+    _stake(user, 90e18);
+    _returnFunds(1_000e18);
+    _stake(otherUser, 500e18);
+
+    assertEq(STKGHO.balanceOf(user), 90e18);
+    assertLt(STKGHO.balanceOf(otherUser), 500e18);
+
+    _migrateAndValidate(user, STKGHO.previewRedeem(STKGHO.balanceOf(user)));
+    _migrateAndValidate(otherUser, STKGHO.previewRedeem(STKGHO.balanceOf(otherUser)));
+  }
+
+  function test_Revert_Migrate_MinAboveRedeemable() public {
+    _stake(user, 90e18);
+    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
+
+    _expectMigrateRevert(
+      user,
+      expectedGho + 1,
+      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
+    );
+  }
+
+  function test_Revert_Migrate_SlashBeforeMigration() public {
+    _stake(user, 90e18);
+    uint256 minGhoRedeemed = STKGHO.previewRedeem(STKGHO.balanceOf(user));
+
+    _slash(1_000e18);
+    assertGt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(STKGHO.previewRedeem(STKGHO.balanceOf(user)), minGhoRedeemed);
+
+    _expectMigrateRevert(
+      user,
+      minGhoRedeemed,
+      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
+    );
+  }
+
+  function test_Migrate_AfterSlash_WithUpdatedMin() public {
+    _stake(user, 90e18);
+    _slash(1_000e18);
+
+    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
+    assertGt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(expectedGho, 90e18);
+
+    _migrateAndValidate(user, expectedGho);
   }
 
   function test_Revert_Migrate_NoSGhoSharesReceived() public {
-    uint256 amount = 1;
+    _stake(user, 1);
 
-    vm.deal(user, 1 ether);
-    deal(address(GHO), user, amount);
-    vm.startPrank(user);
-    IERC20(GHO).approve(address(STKGHO), amount);
-    STKGHO.stake(user, amount);
-    vm.stopPrank();
-
-    vm.expectRevert(IStkGhoMigrator.NoSGhoSharesReceived.selector);
-    vm.prank(user);
-    migrator.migrate();
+    _expectMigrateRevert(
+      user,
+      1,
+      abi.encodeWithSelector(IStkGhoMigrator.NoSGhoSharesReceived.selector)
+    );
   }
 
   function test_Revert_NoStkGhoSharesToRedeem() public {
-    vm.prank(invalidUser);
-    vm.expectRevert(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector);
-    migrator.migrate();
+    _expectMigrateRevert(
+      invalidUser,
+      0,
+      abi.encodeWithSelector(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector)
+    );
   }
 
-  function test_Revert_Not_Zero_Cooldown_Migrate()
-    public
-    depositStkGhoReadyToRedeem
-    changeCooldownToNotZero
-  {
-    vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.CooldownPeriodNotZero.selector);
-    migrator.migrate();
+  function test_Revert_Not_Zero_Cooldown_Migrate() public {
+    _stake(user, 90e18);
+    _setCooldownSeconds(1 days);
+
+    _expectMigrateRevert(
+      user,
+      STKGHO.previewRedeem(STKGHO.balanceOf(user)),
+      abi.encodeWithSelector(IStkGhoMigrator.CooldownPeriodNotZero.selector)
+    );
   }
 
   // --- Tests rescue ---

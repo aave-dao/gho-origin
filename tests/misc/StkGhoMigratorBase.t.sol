@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {Test} from 'forge-std/Test.sol';
 import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
-import {StkGhoMigratorProcedure} from 'src/deployments/contracts/procedures/StkGhoMigratorProcedure.sol';
 import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
@@ -11,22 +9,12 @@ import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/
 import {Pausable} from 'openzeppelin-contracts/contracts/utils/Pausable.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {StkGhoMigratorHelpers} from './StkGhoMigratorHelpers.t.sol';
 
 contract StkGhoMigratorMockTarget {}
 
-abstract contract StkGhoMigratorBaseTest is Test, StkGhoMigratorProcedure {
-  StkGhoMigrator public migrator;
+abstract contract StkGhoMigratorBaseTest is StkGhoMigratorHelpers {
   address public invalidUser = makeAddr('INVALID_USER');
-  address public user = makeAddr('USER');
-  address public ownerMigrator = makeAddr('OWNER_MIGRATOR');
-  address public pauseGuardian = makeAddr('PAUSE_GUARDIAN');
-
-  uint256 public constant CLAIM_HELPER_ROLE = 2;
-  uint256 public constant COOLDOWN_ADMIN_ROLE = 1;
-
-  IStakeToken public constant STKGHO = IStakeToken(0x1a88Df1cFe15Af22B3c4c783D4e6F7F9e0C1885d);
-  IERC4626 public constant SGHO = IERC4626(0xE1753F2e00940cC31213dd92013cF019DFE4ca1d);
-  IERC20 public constant GHO = IERC20(0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f);
 
   // --- Test Constructor ---
 
@@ -83,7 +71,7 @@ abstract contract StkGhoMigratorBaseTest is Test, StkGhoMigratorProcedure {
 
     vm.prank(user);
     vm.expectRevert(Pausable.EnforcedPause.selector);
-    migrator.migrate();
+    migrator.migrate(0);
   }
 
   function test_Revert_ClaimHelperRole_WhenPaused() public {

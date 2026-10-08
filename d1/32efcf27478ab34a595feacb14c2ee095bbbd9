@@ -1,0 +1,25 @@
+tests/misc/StkGhoMigratorUnitTest.t.sol
+  s_94aa91a40ba583::t_31eb6b3fc941a8 56-59,73-76,90-93,107-110
+src/contracts/misc/interfaces/IStkGhoMigrator.sol
+  s_94aa91a40ba583::t_05f61c2974306c 67-71,74-77,79
+tests/misc/StkGhoMigratorHelpers.t.sol
+  s_94aa91a40ba583::t_31eb6b3fc941a8 60,62-63
+src/contracts/misc/StkGhoMigrator.sol
+  s_94aa91a40ba583::t_05f61c2974306c 72,88-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d132efcf27478ab34a595feacb14c2ee095bbbd9",
+  "prompts": {},
+  "sessions": {
+    "s_94aa91a40ba583": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7626f193-bcd8-4dce-806f-66fa2f3610bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

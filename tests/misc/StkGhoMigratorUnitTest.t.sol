@@ -44,49 +44,77 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
   function test_Migrate() public {
     uint256 stkGhoShares = 90e18;
-    uint256 sGhoShares = 89e18;
-    bytes[] memory ghoBalances = new bytes[](2);
-    ghoBalances[0] = abi.encode(0);
-    ghoBalances[1] = abi.encode(stkGhoShares);
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: stkGhoShares,
+      sGhoShares: 89e18
+    });
 
-    _mockCooldownSeconds(0);
-    _mockStkGhoBalance(user, stkGhoShares);
-    vm.mockCalls(
-      address(GHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, address(migrator)),
-      ghoBalances
-    );
-    _mockCooldownOnBehalfOf(user);
-    _mockRedeemOnBehalf(user, address(migrator), stkGhoShares);
-    _mockSGhoDeposit(stkGhoShares, user, sGhoShares);
-
-    vm.expectCall(
-      address(STKGHO),
-      abi.encodeWithSelector(IStakeToken.cooldownOnBehalfOf.selector, user)
-    );
-    vm.expectCall(
-      address(STKGHO),
-      abi.encodeWithSelector(
-        IStakeToken.redeemOnBehalf.selector,
-        user,
-        address(migrator),
-        stkGhoShares
-      )
-    );
-    vm.expectCall(
-      address(SGHO),
-      abi.encodeWithSelector(IERC4626.deposit.selector, stkGhoShares, user)
-    );
-    vm.expectEmit(address(migrator));
-    emit IStkGhoMigrator.StkGhoMigrated(user, stkGhoShares);
-
+    _expectMigrateCalls(stkGhoShares, stkGhoShares);
     vm.prank(user);
-    migrator.migrate();
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, stkGhoShares);
+    assertEq(sGhoShares, 89e18);
+  }
+
+  function test_Migrate_GhoRedeemedAboveShares() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: 90.5e18,
+      sGhoShares: 89e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, 90.5e18);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, 90.5e18);
+    assertEq(sGhoShares, 89e18);
+  }
+
+  function test_Migrate_GhoRedeemedBelowShares() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: 80e18,
+      sGhoShares: 79e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, 80e18);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, 80e18);
+    assertEq(sGhoShares, 79e18);
+  }
+
+  function test_Migrate_DepositsOnlyRedeemedGho_WithPreexistingGhoBalance() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 7e18,
+      ghoRedeemed: stkGhoShares,
+      sGhoShares: 89e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, stkGhoShares);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, stkGhoShares);
+    assertEq(sGhoShares, 89e18);
   }
 
   function test_Revert_Migrate_CooldownPeriodNotZero() public {
     _mockCooldownSeconds(1 days);
 
+    _expectNoStkGhoRedeem();
+    _expectNoDeposit();
     vm.prank(user);
     vm.expectRevert(IStkGhoMigrator.CooldownPeriodNotZero.selector);
     migrator.migrate();
@@ -96,48 +124,21 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
     _mockCooldownSeconds(0);
     _mockStkGhoBalance(user, 0);
 
+    _expectNoStkGhoRedeem();
+    _expectNoDeposit();
     vm.prank(user);
     vm.expectRevert(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector);
     migrator.migrate();
   }
 
-  function test_Revert_UnexpectedGhoRedeemed() public {
-    uint256 stkGhoShares = 90e18;
-    bytes[] memory ghoBalances = new bytes[](2);
-    ghoBalances[0] = abi.encode(0);
-    ghoBalances[1] = abi.encode(stkGhoShares - 1);
-
-    _mockCooldownSeconds(0);
-    _mockStkGhoBalance(user, stkGhoShares);
-    vm.mockCalls(
-      address(GHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, address(migrator)),
-      ghoBalances
-    );
-    _mockCooldownOnBehalfOf(user);
-    _mockRedeemOnBehalf(user, address(migrator), stkGhoShares);
-
-    vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.UnexpectedGhoRedeemed.selector);
-    migrator.migrate();
-  }
-
   function test_Revert_Migrate_NoSGhoSharesReceived() public {
     uint256 stkGhoShares = 90e18;
-    bytes[] memory ghoBalances = new bytes[](2);
-    ghoBalances[0] = abi.encode(0);
-    ghoBalances[1] = abi.encode(stkGhoShares);
-
-    _mockCooldownSeconds(0);
-    _mockStkGhoBalance(user, stkGhoShares);
-    vm.mockCalls(
-      address(GHO),
-      abi.encodeWithSelector(IERC20.balanceOf.selector, address(migrator)),
-      ghoBalances
-    );
-    _mockCooldownOnBehalfOf(user);
-    _mockRedeemOnBehalf(user, address(migrator), stkGhoShares);
-    _mockSGhoDeposit(stkGhoShares, user, 0);
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: stkGhoShares,
+      sGhoShares: 0
+    });
 
     vm.prank(user);
     vm.expectRevert(IStkGhoMigrator.NoSGhoSharesReceived.selector);
@@ -187,5 +188,65 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     vm.prank(ownerMigrator);
     migrator.setClaimHelperPendingAdmin(newPendingAdmin);
+  }
+
+  function _mockMigrate(
+    uint256 stkGhoShares,
+    uint256 ghoBalanceBefore,
+    uint256 ghoRedeemed,
+    uint256 sGhoShares
+  ) internal {
+    bytes[] memory ghoBalances = new bytes[](2);
+    ghoBalances[0] = abi.encode(ghoBalanceBefore);
+    ghoBalances[1] = abi.encode(ghoBalanceBefore + ghoRedeemed);
+
+    _mockCooldownSeconds(0);
+    _mockStkGhoBalance(user, stkGhoShares);
+    vm.mockCalls(
+      address(GHO),
+      abi.encodeWithSelector(IERC20.balanceOf.selector, address(migrator)),
+      ghoBalances
+    );
+    _mockCooldownOnBehalfOf(user);
+    _mockRedeemOnBehalf(user, address(migrator), stkGhoShares);
+    _mockSGhoDeposit(ghoRedeemed, user, sGhoShares);
+  }
+
+  function _expectMigrateCalls(uint256 stkGhoShares, uint256 ghoRedeemed) internal {
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(IStakeToken.cooldownOnBehalfOf.selector, user),
+      1
+    );
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(
+        IStakeToken.redeemOnBehalf.selector,
+        user,
+        address(migrator),
+        stkGhoShares
+      ),
+      1
+    );
+    vm.expectCall(
+      address(SGHO),
+      abi.encodeWithSelector(IERC4626.deposit.selector, ghoRedeemed, user),
+      1
+    );
+    vm.expectEmit(address(migrator));
+    emit IStkGhoMigrator.StkGhoMigrated(user, ghoRedeemed);
+  }
+
+  function _expectNoStkGhoRedeem() internal {
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(IStakeToken.cooldownOnBehalfOf.selector),
+      0
+    );
+    vm.expectCall(address(STKGHO), abi.encodeWithSelector(IStakeToken.redeemOnBehalf.selector), 0);
+  }
+
+  function _expectNoDeposit() internal {
+    vm.expectCall(address(SGHO), abi.encodeWithSelector(IERC4626.deposit.selector), 0);
   }
 }

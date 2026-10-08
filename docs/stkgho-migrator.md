@@ -12,8 +12,7 @@ The user calls [`migrate()`](/src/contracts/misc/StkGhoMigrator.sol):
 
 1. The migrator reads the caller's `stkGHO` share balance.
 2. It calls `cooldownOnBehalfOf(msg.sender)` and then `redeemOnBehalf(msg.sender, address(this), shares)` on `stkGHO`, receiving the redeemed GHO in the migrator contract.
-3. It sanity-checks that the GHO received equals the share amount redeemed (the current exchange rate is 1:1; the migrator reverts with `UnexpectedGhoRedeemed` if this invariant breaks).
-4. It calls `SGHO.deposit(redeemedGho, msg.sender)`, using the user address as the receiver so the user directly receives the minted `sGHO` shares.
+3. It calls `SGHO.deposit(redeemedGho, msg.sender)`, using the user address as the receiver so the user directly receives the minted `sGHO` shares.
 
 The migrator approves `sGHO` for `type(uint256).max` of GHO once, in the constructor, so no per-call approval is required.
 

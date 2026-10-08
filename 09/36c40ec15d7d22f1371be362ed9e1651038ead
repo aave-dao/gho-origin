@@ -1,0 +1,19 @@
+src/contracts/misc/interfaces/IStkGhoMigrator.sol
+  s_94aa91a40ba583::t_a2603eb74e57bf 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0936c40ec15d7d22f1371be362ed9e1651038ead",
+  "prompts": {},
+  "sessions": {
+    "s_94aa91a40ba583": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7626f193-bcd8-4dce-806f-66fa2f3610bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

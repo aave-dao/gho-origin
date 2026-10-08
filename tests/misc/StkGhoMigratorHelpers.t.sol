@@ -8,8 +8,12 @@ import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
+import {WadRayMath} from 'aave-v3-origin/contracts/protocol/libraries/math/WadRayMath.sol';
 
-interface IStakeTokenCooldowns {
+interface IStakeTokenGetters {
+  function EXCHANGE_RATE_UNIT() external view returns (uint256);
+
   function stakersCooldowns(
     address staker
   ) external view returns (uint40 timestamp, uint216 amount);
@@ -51,14 +55,19 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
   /// @dev Migrates `account` and asserts every balance and supply affected by the migration.
   function _migrateAndValidate(address account) internal {
     MigrationState memory stateBefore = _migrationState(account);
-    uint256 expectedGho = STKGHO.previewRedeem(stateBefore.accountStkGho);
-    uint256 expectedSGhoShares = SGHO.previewDeposit(expectedGho);
+    uint256 expectedGho = _expectedGhoRedeemed(stateBefore.accountStkGho);
+    uint256 expectedSGhoShares = _expectedSGhoShares(expectedGho);
+    assertEq(STKGHO.previewRedeem(stateBefore.accountStkGho), expectedGho, 'stkGHO previewRedeem');
+    assertEq(SGHO.previewDeposit(expectedGho), expectedSGhoShares, 'sGHO previewDeposit');
 
     vm.expectEmit(address(migrator));
     emit IStkGhoMigrator.StkGhoMigrated(account, expectedGho);
     vm.prank(account);
-    migrator.migrate();
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
 
+    assertEq(ghoRedeemed, expectedGho, 'returned GHO redeemed');
+    assertEq(sGhoShares, expectedSGhoShares, 'returned sGHO shares');
+    assertLe(SGHO.previewRedeem(sGhoShares), ghoRedeemed, 'sGHO value above GHO redeemed');
     MigrationState memory stateAfter = _migrationState(account);
     assertEq(stateAfter.accountStkGho, 0, 'account stkGHO');
     assertEq(stateAfter.accountSGho, stateBefore.accountSGho + expectedSGhoShares, 'account sGHO');
@@ -98,8 +107,31 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
     assertEq(keccak256(abi.encode(_migrationState(account))), keccak256(abi.encode(stateBefore)));
   }
 
+  /// @dev stkGHO redeems `shares * EXCHANGE_RATE_UNIT / exchangeRate` GHO, rounded down.
+  function _expectedGhoRedeemed(uint256 stkGhoShares) internal view returns (uint256) {
+    return (stkGhoShares * _exchangeRateUnit()) / STKGHO.getExchangeRate();
+  }
+
+  function _exchangeRateUnit() internal view returns (uint256) {
+    return IStakeTokenGetters(address(STKGHO)).EXCHANGE_RATE_UNIT();
+  }
+
+  /// @dev sGHO mints `assets * RAY / yieldIndex` shares, rounded down, where the yield index grows
+  /// linearly at `ratePerSecond` since `lastUpdate`.
+  function _expectedSGhoShares(uint256 assets) internal view returns (uint256) {
+    IsGho sGho = IsGho(address(SGHO));
+    uint256 yieldIndex = sGho.yieldIndex();
+    uint256 elapsed = block.timestamp - sGho.lastUpdate();
+    if (sGho.ratePerSecond() != 0 && elapsed != 0) {
+      yieldIndex =
+        (yieldIndex * (WadRayMath.RAY + uint256(sGho.ratePerSecond()) * elapsed)) /
+        WadRayMath.RAY;
+    }
+    return (assets * WadRayMath.RAY) / yieldIndex;
+  }
+
   function _migrationState(address account) internal view returns (MigrationState memory) {
-    (uint40 cooldownTimestamp, uint216 cooldownAmount) = IStakeTokenCooldowns(address(STKGHO))
+    (uint40 cooldownTimestamp, uint216 cooldownAmount) = IStakeTokenGetters(address(STKGHO))
       .stakersCooldowns(account);
     return
       MigrationState({

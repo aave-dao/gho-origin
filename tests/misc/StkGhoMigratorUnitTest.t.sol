@@ -53,7 +53,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, stkGhoShares);
     vm.prank(user);
-    migrator.migrate();
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, stkGhoShares);
+    assertEq(sGhoShares, 89e18);
   }
 
   function test_Migrate_GhoRedeemedAboveShares() public {
@@ -67,7 +70,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, 90.5e18);
     vm.prank(user);
-    migrator.migrate();
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, 90.5e18);
+    assertEq(sGhoShares, 89e18);
   }
 
   function test_Migrate_GhoRedeemedBelowShares() public {
@@ -81,7 +87,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, 80e18);
     vm.prank(user);
-    migrator.migrate();
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, 80e18);
+    assertEq(sGhoShares, 79e18);
   }
 
   function test_Migrate_DepositsOnlyRedeemedGho_WithPreexistingGhoBalance() public {
@@ -95,7 +104,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, stkGhoShares);
     vm.prank(user);
-    migrator.migrate();
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, stkGhoShares);
+    assertEq(sGhoShares, 89e18);
   }
 
   function test_Revert_Migrate_CooldownPeriodNotZero() public {

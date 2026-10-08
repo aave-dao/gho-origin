@@ -10,7 +10,7 @@ import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
 import {StkGhoMigratorBaseTest} from './StkGhoMigratorBase.t.sol';
-import {IStakeTokenCooldowns} from './StkGhoMigratorHelpers.t.sol';
+import {IStakeTokenGetters} from './StkGhoMigratorHelpers.t.sol';
 
 contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
   function setUp() public {
@@ -142,7 +142,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
   function test_Migrate() public {
     _stake(user, 90e18);
 
-    assertEq(STKGHO.getExchangeRate(), 1e18);
+    assertEq(STKGHO.getExchangeRate(), _exchangeRateUnit());
     assertEq(STKGHO.balanceOf(user), 90e18);
     assertEq(STKGHO.previewRedeem(90e18), 90e18);
 
@@ -185,7 +185,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     _returnFunds(1e18);
 
     uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
-    assertLt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(STKGHO.getExchangeRate(), _exchangeRateUnit());
     assertEq(STKGHO.balanceOf(user), 90e18);
     assertGt(expectedGho, 90e18);
 
@@ -214,7 +214,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
 
     uint256 stkGhoShares = STKGHO.balanceOf(user);
     uint256 expectedGho = STKGHO.previewRedeem(stkGhoShares);
-    assertLt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(STKGHO.getExchangeRate(), _exchangeRateUnit());
     assertLt(stkGhoShares, 1_000e18);
     assertGt(expectedGho, stkGhoShares);
     assertLe(expectedGho, 1_000e18);
@@ -253,7 +253,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     _slash(1_000e18);
 
     uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
-    assertGt(STKGHO.getExchangeRate(), 1e18);
+    assertGt(STKGHO.getExchangeRate(), _exchangeRateUnit());
     assertLt(expectedGho, 90e18);
 
     _migrateAndValidate(user);
@@ -291,7 +291,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     STKGHO.cooldown();
     _stake(user, 40e18);
 
-    (, uint216 cooldownAmount) = IStakeTokenCooldowns(address(STKGHO)).stakersCooldowns(user);
+    (, uint216 cooldownAmount) = IStakeTokenGetters(address(STKGHO)).stakersCooldowns(user);
     assertEq(cooldownAmount, 50e18);
     assertEq(STKGHO.balanceOf(user), 90e18);
 
@@ -302,7 +302,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     _stake(user, 90e18);
     vm.prank(user);
     STKGHO.cooldown();
-    vm.warp(block.timestamp + IStakeTokenCooldowns(address(STKGHO)).UNSTAKE_WINDOW() + 1);
+    vm.warp(block.timestamp + IStakeTokenGetters(address(STKGHO)).UNSTAKE_WINDOW() + 1);
 
     vm.prank(user);
     vm.expectRevert(bytes('UNSTAKE_WINDOW_FINISHED'));

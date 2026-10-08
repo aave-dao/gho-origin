@@ -49,7 +49,7 @@ contract StkGhoMigratorStatelessFuzz is StkGhoMigratorHelpers {
     _stake(user, amount);
     _returnFunds(donation);
 
-    assertLt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(STKGHO.getExchangeRate(), _exchangeRateUnit());
     assertEq(STKGHO.balanceOf(user), amount);
     uint256 expectedGho = STKGHO.previewRedeem(amount);
     assertGt(expectedGho, amount);
@@ -63,7 +63,7 @@ contract StkGhoMigratorStatelessFuzz is StkGhoMigratorHelpers {
     donation = bound(donation, 1e18, 10_000_000e18);
 
     _returnFunds(donation);
-    assertLt(STKGHO.getExchangeRate(), 1e18);
+    assertLt(STKGHO.getExchangeRate(), _exchangeRateUnit());
     _stake(user, amount);
 
     uint256 stkGhoShares = STKGHO.balanceOf(user);
@@ -85,7 +85,7 @@ contract StkGhoMigratorStatelessFuzz is StkGhoMigratorHelpers {
     slashAmount = bound(slashAmount, totalAssets / 1e6, totalAssets / 10);
     _slash(slashAmount);
 
-    assertGt(STKGHO.getExchangeRate(), 1e18);
+    assertGt(STKGHO.getExchangeRate(), _exchangeRateUnit());
     assertEq(STKGHO.balanceOf(user), amount);
     assertLt(STKGHO.previewRedeem(amount), amount);
 

@@ -12,7 +12,7 @@ import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
 interface IStkGhoMigrator {
   /// @notice Emitted when a migration is executed.
   /// @param user The address of the user executing the migration.
-  /// @param amount The amount of stkGHO migrated.
+  /// @param amount The amount of GHO redeemed from stkGHO and deposited into sGHO.
   event StkGhoMigrated(address indexed user, uint256 amount);
 
   /// @notice Thrown when the stkGHO cooldown period is not zero.
@@ -64,12 +64,19 @@ interface IStkGhoMigrator {
   /**
    * @notice Migrates the caller's full stkGHO position into the sGHO ERC4626 vault.
    * @dev The migrator cools down and redeems the caller's full stkGHO balance on their behalf,
-   *      then deposits the redeemed GHO into sGHO with the caller as receiver.
+   *      then deposits all GHO received from the redemption into sGHO with the caller as receiver.
+   * @dev The GHO redeemed is determined by the stkGHO exchange rate at execution, and the sGHO
+   *      shares minted by the sGHO exchange rate at execution. No minimum is enforced on either,
+   *      so both can differ from values previewed before submission, for example if the
+   *      transaction is front-run.
    * @dev Reverts when the contract is paused, when the stkGHO cooldown period is not zero,
    *      when the caller has no stkGHO shares, when this contract does not hold the stkGHO
-   *      claim helper role, or when the sGHO deposit returns zero shares.
+   *      claim helper role, when sGHO does not accept the deposit, or when the deposit mints
+   *      zero sGHO shares.
+   * @return The amount of GHO redeemed from stkGHO.
+   * @return The amount of sGHO shares minted to the caller.
    */
-  function migrate() external;
+  function migrate() external returns (uint256, uint256);
 
   /**
    * @notice Returns the stkGHO token contract.

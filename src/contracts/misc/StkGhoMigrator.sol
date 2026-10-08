@@ -69,7 +69,7 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2StepWithGuardian {
   }
 
   /// @inheritdoc IStkGhoMigrator
-  function migrate() external whenNotPaused {
+  function migrate() external whenNotPaused returns (uint256, uint256) {
     require(STKGHO.getCooldownSeconds() == 0, CooldownPeriodNotZero());
 
     uint256 amountToRedeem = STKGHO.balanceOf(msg.sender);
@@ -85,5 +85,7 @@ contract StkGhoMigrator is IStkGhoMigrator, Pausable, Ownable2StepWithGuardian {
     require(sghoSharesReceived != 0, NoSGhoSharesReceived());
 
     emit StkGhoMigrated(msg.sender, ghoRedeemed);
+
+    return (ghoRedeemed, sghoSharesReceived);
   }
 }

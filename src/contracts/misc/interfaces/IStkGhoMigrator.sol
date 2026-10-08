@@ -19,8 +19,6 @@ interface IStkGhoMigrator {
   error CooldownPeriodNotZero();
   /// @notice Thrown when the user has no stkGHO shares to redeem.
   error NoStkGhoSharesToRedeem();
-  /// @notice Thrown when the redeemed shares returned less GHO than the caller's minimum.
-  error UnexpectedGhoRedeemed();
   /// @notice Thrown when an input address is invalid.
   error InvalidAddress();
   /// @notice Thrown when the rescue amount is zero.
@@ -69,11 +67,9 @@ interface IStkGhoMigrator {
    *      then deposits the redeemed GHO into sGHO with the caller as receiver.
    * @dev Reverts when the contract is paused, when the stkGHO cooldown period is not zero,
    *      when the caller has no stkGHO shares, when this contract does not hold the stkGHO
-   *      claim helper role, when the redeemed GHO amount is below `minGhoRedeemed`,
-   *      or when the sGHO deposit returns zero shares.
-   * @param minGhoRedeemed The minimum amount of GHO the redeemed stkGHO shares must return.
+   *      claim helper role, or when the sGHO deposit returns zero shares.
    */
-  function migrate(uint256 minGhoRedeemed) external;
+  function migrate() external;
 
   /**
    * @notice Returns the stkGHO token contract.

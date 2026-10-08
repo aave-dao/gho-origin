@@ -49,7 +49,7 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
   address public constant EXECUTOR_LVL_1 = 0x5300A1a15135EA4dc7aD5a167152C01EFc9b192A;
 
   /// @dev Migrates `account` and asserts every balance and supply affected by the migration.
-  function _migrateAndValidate(address account, uint256 minGhoRedeemed) internal {
+  function _migrateAndValidate(address account) internal {
     MigrationState memory stateBefore = _migrationState(account);
     uint256 expectedGho = STKGHO.previewRedeem(stateBefore.accountStkGho);
     uint256 expectedSGhoShares = SGHO.previewDeposit(expectedGho);
@@ -57,7 +57,7 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
     vm.expectEmit(address(migrator));
     emit IStkGhoMigrator.StkGhoMigrated(account, expectedGho);
     vm.prank(account);
-    migrator.migrate(minGhoRedeemed);
+    migrator.migrate();
 
     MigrationState memory stateAfter = _migrationState(account);
     assertEq(stateAfter.accountStkGho, 0, 'account stkGHO');
@@ -88,16 +88,12 @@ abstract contract StkGhoMigratorHelpers is Test, StkGhoMigratorProcedure {
   }
 
   /// @dev Expects `migrate` to revert with `revertData` and asserts no balance or supply moved.
-  function _expectMigrateRevert(
-    address account,
-    uint256 minGhoRedeemed,
-    bytes memory revertData
-  ) internal {
+  function _expectMigrateRevert(address account, bytes memory revertData) internal {
     MigrationState memory stateBefore = _migrationState(account);
 
     vm.prank(account);
     vm.expectRevert(revertData);
-    migrator.migrate(minGhoRedeemed);
+    migrator.migrate();
 
     assertEq(keccak256(abi.encode(_migrationState(account))), keccak256(abi.encode(stateBefore)));
   }

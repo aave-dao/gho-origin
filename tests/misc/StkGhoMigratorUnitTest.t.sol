@@ -53,10 +53,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, stkGhoShares);
     vm.prank(user);
-    migrator.migrate(stkGhoShares);
+    migrator.migrate();
   }
 
-  function test_Migrate_GhoRedeemedAboveShares_MinEqualToRedeemed() public {
+  function test_Migrate_GhoRedeemedAboveShares() public {
     uint256 stkGhoShares = 90e18;
     _mockMigrate({
       stkGhoShares: stkGhoShares,
@@ -67,24 +67,10 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, 90.5e18);
     vm.prank(user);
-    migrator.migrate(90.5e18);
+    migrator.migrate();
   }
 
-  function test_Migrate_GhoRedeemedAboveMin() public {
-    uint256 stkGhoShares = 90e18;
-    _mockMigrate({
-      stkGhoShares: stkGhoShares,
-      ghoBalanceBefore: 0,
-      ghoRedeemed: 90.5e18,
-      sGhoShares: 89e18
-    });
-
-    _expectMigrateCalls(stkGhoShares, 90.5e18);
-    vm.prank(user);
-    migrator.migrate(stkGhoShares);
-  }
-
-  function test_Migrate_ZeroMin() public {
+  function test_Migrate_GhoRedeemedBelowShares() public {
     uint256 stkGhoShares = 90e18;
     _mockMigrate({
       stkGhoShares: stkGhoShares,
@@ -95,7 +81,7 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, 80e18);
     vm.prank(user);
-    migrator.migrate(0);
+    migrator.migrate();
   }
 
   function test_Migrate_DepositsOnlyRedeemedGho_WithPreexistingGhoBalance() public {
@@ -109,7 +95,7 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     _expectMigrateCalls(stkGhoShares, stkGhoShares);
     vm.prank(user);
-    migrator.migrate(stkGhoShares);
+    migrator.migrate();
   }
 
   function test_Revert_Migrate_CooldownPeriodNotZero() public {
@@ -119,7 +105,7 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
     _expectNoDeposit();
     vm.prank(user);
     vm.expectRevert(IStkGhoMigrator.CooldownPeriodNotZero.selector);
-    migrator.migrate(0);
+    migrator.migrate();
   }
 
   function test_Revert_Migrate_NoStkGhoSharesToRedeem() public {
@@ -130,52 +116,7 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
     _expectNoDeposit();
     vm.prank(user);
     vm.expectRevert(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector);
-    migrator.migrate(0);
-  }
-
-  function test_Revert_UnexpectedGhoRedeemed() public {
-    uint256 stkGhoShares = 90e18;
-    _mockMigrate({
-      stkGhoShares: stkGhoShares,
-      ghoBalanceBefore: 0,
-      ghoRedeemed: stkGhoShares - 1,
-      sGhoShares: 89e18
-    });
-
-    _expectNoDeposit();
-    vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.UnexpectedGhoRedeemed.selector);
-    migrator.migrate(stkGhoShares);
-  }
-
-  function test_Revert_UnexpectedGhoRedeemed_MinAboveRedeemed() public {
-    uint256 stkGhoShares = 90e18;
-    _mockMigrate({
-      stkGhoShares: stkGhoShares,
-      ghoBalanceBefore: 0,
-      ghoRedeemed: stkGhoShares,
-      sGhoShares: 89e18
-    });
-
-    _expectNoDeposit();
-    vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.UnexpectedGhoRedeemed.selector);
-    migrator.migrate(stkGhoShares + 1);
-  }
-
-  function test_Revert_UnexpectedGhoRedeemed_PreexistingGhoBalanceNotCounted() public {
-    uint256 stkGhoShares = 90e18;
-    _mockMigrate({
-      stkGhoShares: stkGhoShares,
-      ghoBalanceBefore: 7e18,
-      ghoRedeemed: stkGhoShares,
-      sGhoShares: 89e18
-    });
-
-    _expectNoDeposit();
-    vm.prank(user);
-    vm.expectRevert(IStkGhoMigrator.UnexpectedGhoRedeemed.selector);
-    migrator.migrate(stkGhoShares + 7e18);
+    migrator.migrate();
   }
 
   function test_Revert_Migrate_NoSGhoSharesReceived() public {
@@ -189,7 +130,7 @@ contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
 
     vm.prank(user);
     vm.expectRevert(IStkGhoMigrator.NoSGhoSharesReceived.selector);
-    migrator.migrate(stkGhoShares);
+    migrator.migrate();
   }
 
   // --- Tests rescue ---

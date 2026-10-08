@@ -2,7 +2,6 @@
 pragma solidity ^0.8.27;
 
 import {StkGhoMigrator} from 'src/contracts/misc/StkGhoMigrator.sol';
-import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {StkGhoMigratorHelpers} from './StkGhoMigratorHelpers.t.sol';
 
@@ -38,7 +37,7 @@ contract StkGhoMigratorStatelessFuzz is StkGhoMigratorHelpers {
     assertEq(STKGHO.balanceOf(user), amount);
     assertEq(STKGHO.previewRedeem(amount), amount);
 
-    _migrateAndValidate(user, amount);
+    _migrateAndValidate(user);
   }
 
   // Fuzzes a stake followed by a permissionless `returnFunds` donation, which moves the stkGHO
@@ -55,7 +54,7 @@ contract StkGhoMigratorStatelessFuzz is StkGhoMigratorHelpers {
     uint256 expectedGho = STKGHO.previewRedeem(amount);
     assertGt(expectedGho, amount);
 
-    _migrateAndValidate(user, expectedGho);
+    _migrateAndValidate(user);
   }
 
   // Fuzzes a permissionless `returnFunds` donation followed by a stake at the moved exchange rate.
@@ -73,52 +72,24 @@ contract StkGhoMigratorStatelessFuzz is StkGhoMigratorHelpers {
     assertGt(expectedGho, stkGhoShares);
     assertLe(expectedGho, amount);
 
-    _migrateAndValidate(user, expectedGho);
+    _migrateAndValidate(user);
   }
 
-  // Fuzzes the caller's minimum around the redeemable GHO after a donation: every minimum up to
-  // `previewRedeem` succeeds and every minimum above it reverts.
-  function testFuzz_Migrate_MinGhoRedeemedBound(uint256 donation, uint256 minGhoRedeemed) public {
-    donation = bound(donation, 1e18, 10_000_000e18);
-    _returnFunds(donation);
-    _stake(user, 90e18);
-
-    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
-    minGhoRedeemed = bound(minGhoRedeemed, 0, expectedGho * 2);
-
-    if (minGhoRedeemed > expectedGho) {
-      _expectMigrateRevert(
-        user,
-        minGhoRedeemed,
-        abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
-      );
-    } else {
-      _migrateAndValidate(user, minGhoRedeemed);
-    }
-  }
-
-  // Fuzzes a governance slash landing between the caller reading `previewRedeem` and the migration.
-  function testFuzz_Revert_Migrate_SlashBeforeMigration(
-    uint256 amount,
-    uint256 slashAmount
-  ) public {
+  // Fuzzes a governance slash after the stake, which moves the stkGHO exchange rate above 1e18 so
+  // each share redeems for less than 1 GHO.
+  function testFuzz_Migrate_StakeThenSlash(uint256 amount, uint256 slashAmount) public {
     amount = bound(amount, 1e18, 1_000_000e18);
     _stake(user, amount);
 
-    uint256 minGhoRedeemed = STKGHO.previewRedeem(STKGHO.balanceOf(user));
     uint256 totalAssets = STKGHO.previewRedeem(STKGHO.totalSupply());
     slashAmount = bound(slashAmount, totalAssets / 1e6, totalAssets / 10);
     _slash(slashAmount);
+
     assertGt(STKGHO.getExchangeRate(), 1e18);
-    assertLt(STKGHO.previewRedeem(STKGHO.balanceOf(user)), minGhoRedeemed);
+    assertEq(STKGHO.balanceOf(user), amount);
+    assertLt(STKGHO.previewRedeem(amount), amount);
 
-    _expectMigrateRevert(
-      user,
-      minGhoRedeemed,
-      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
-    );
-
-    _migrateAndValidate(user, STKGHO.previewRedeem(STKGHO.balanceOf(user)));
+    _migrateAndValidate(user);
   }
 
   // --- Fuzzing Tests rescue ---

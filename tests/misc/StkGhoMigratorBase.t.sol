@@ -89,7 +89,7 @@ abstract contract StkGhoMigratorBaseTest is StkGhoMigratorHelpers {
 
     vm.prank(user);
     vm.expectRevert(Pausable.EnforcedPause.selector);
-    migrator.migrate(0);
+    migrator.migrate();
   }
 
   function test_Revert_ClaimHelperRole_WhenPaused() public {

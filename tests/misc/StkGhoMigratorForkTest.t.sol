@@ -106,23 +106,18 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
 
   function test_PauseUnpause_ByPauseGuardian() public {
     _stake(user, 90e18);
-    uint256 minGhoRedeemed = STKGHO.previewRedeem(STKGHO.balanceOf(user));
 
     vm.prank(pauseGuardian);
     migrator.pause();
 
     assertTrue(migrator.paused());
-    _expectMigrateRevert(
-      user,
-      minGhoRedeemed,
-      abi.encodeWithSelector(Pausable.EnforcedPause.selector)
-    );
+    _expectMigrateRevert(user, abi.encodeWithSelector(Pausable.EnforcedPause.selector));
 
     vm.prank(ownerMigrator);
     migrator.unpause();
 
     assertFalse(migrator.paused());
-    _migrateAndValidate(user, minGhoRedeemed);
+    _migrateAndValidate(user);
   }
 
   function test_PauseUnpause_ByOwner() public {
@@ -151,7 +146,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertEq(STKGHO.balanceOf(user), 90e18);
     assertEq(STKGHO.previewRedeem(90e18), 90e18);
 
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_WithExistingSGhoBalance() public {
@@ -163,16 +158,15 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     _stake(user, 90e18);
 
     assertGt(SGHO.balanceOf(user), 0);
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
   }
 
   function test_Revert_Migrate_Twice() public {
     _stake(user, 90e18);
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
 
     _expectMigrateRevert(
       user,
-      0,
       abi.encodeWithSelector(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector)
     );
   }
@@ -181,21 +175,9 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     deal(address(GHO), address(migrator), 7e18);
     _stake(user, 90e18);
 
-    _migrateAndValidate(user, STKGHO.previewRedeem(STKGHO.balanceOf(user)));
+    _migrateAndValidate(user);
 
     assertEq(GHO.balanceOf(address(migrator)), 7e18);
-  }
-
-  function test_Revert_Migrate_PreexistingGhoBalanceNotCounted() public {
-    deal(address(GHO), address(migrator), 7e18);
-    _stake(user, 90e18);
-    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
-
-    _expectMigrateRevert(
-      user,
-      expectedGho + 7e18,
-      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
-    );
   }
 
   function test_Migrate_StakeThenReturnFunds() public {
@@ -207,16 +189,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertEq(STKGHO.balanceOf(user), 90e18);
     assertGt(expectedGho, 90e18);
 
-    _migrateAndValidate(user, expectedGho);
-  }
-
-  function test_Migrate_StakeThenReturnFunds_MinEqualToShares() public {
-    _stake(user, 90e18);
-    _returnFunds(1e18);
-
-    assertGt(STKGHO.previewRedeem(STKGHO.balanceOf(user)), 90e18);
-
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_StakeThenRepeatedReturnFunds() public {
@@ -232,7 +205,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertEq(STKGHO.balanceOf(user), 90e18);
     assertGt(expectedGho, 90e18);
 
-    _migrateAndValidate(user, expectedGho);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_ReturnFundsThenStake() public {
@@ -246,17 +219,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertGt(expectedGho, stkGhoShares);
     assertLe(expectedGho, 1_000e18);
 
-    _migrateAndValidate(user, expectedGho);
-  }
-
-  function test_Migrate_ReturnFundsThenStake_MinEqualToShares() public {
-    _returnFunds(1e18);
-    _stake(user, 1_000e18);
-
-    uint256 stkGhoShares = STKGHO.balanceOf(user);
-    assertGt(STKGHO.previewRedeem(stkGhoShares), stkGhoShares);
-
-    _migrateAndValidate(user, stkGhoShares);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_ReturnFundsThenStakeThenReturnFunds() public {
@@ -269,7 +232,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     uint256 expectedGho = STKGHO.previewRedeem(stkGhoShares);
     assertGt(expectedGho, ghoBeforeSecondReturn);
 
-    _migrateAndValidate(user, expectedGho);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_StakersBeforeAndAfterReturnFunds() public {
@@ -281,37 +244,11 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertEq(STKGHO.balanceOf(user), 90e18);
     assertLt(STKGHO.balanceOf(otherUser), 500e18);
 
-    _migrateAndValidate(user, STKGHO.previewRedeem(STKGHO.balanceOf(user)));
-    _migrateAndValidate(otherUser, STKGHO.previewRedeem(STKGHO.balanceOf(otherUser)));
+    _migrateAndValidate(user);
+    _migrateAndValidate(otherUser);
   }
 
-  function test_Revert_Migrate_MinAboveRedeemable() public {
-    _stake(user, 90e18);
-    uint256 expectedGho = STKGHO.previewRedeem(STKGHO.balanceOf(user));
-
-    _expectMigrateRevert(
-      user,
-      expectedGho + 1,
-      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
-    );
-  }
-
-  function test_Revert_Migrate_SlashBeforeMigration() public {
-    _stake(user, 90e18);
-    uint256 minGhoRedeemed = STKGHO.previewRedeem(STKGHO.balanceOf(user));
-
-    _slash(1_000e18);
-    assertGt(STKGHO.getExchangeRate(), 1e18);
-    assertLt(STKGHO.previewRedeem(STKGHO.balanceOf(user)), minGhoRedeemed);
-
-    _expectMigrateRevert(
-      user,
-      minGhoRedeemed,
-      abi.encodeWithSelector(IStkGhoMigrator.UnexpectedGhoRedeemed.selector)
-    );
-  }
-
-  function test_Migrate_AfterSlash_WithUpdatedMin() public {
+  function test_Migrate_AfterSlash() public {
     _stake(user, 90e18);
     _slash(1_000e18);
 
@@ -319,7 +256,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertGt(STKGHO.getExchangeRate(), 1e18);
     assertLt(expectedGho, 90e18);
 
-    _migrateAndValidate(user, expectedGho);
+    _migrateAndValidate(user);
   }
 
   function test_Revert_Migrate_NoSGhoSharesReceived() public {
@@ -327,7 +264,6 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
 
     _expectMigrateRevert(
       user,
-      1,
       abi.encodeWithSelector(IStkGhoMigrator.NoSGhoSharesReceived.selector)
     );
   }
@@ -335,7 +271,6 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
   function test_Revert_NoStkGhoSharesToRedeem() public {
     _expectMigrateRevert(
       invalidUser,
-      0,
       abi.encodeWithSelector(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector)
     );
   }
@@ -346,7 +281,6 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
 
     _expectMigrateRevert(
       user,
-      STKGHO.previewRedeem(STKGHO.balanceOf(user)),
       abi.encodeWithSelector(IStkGhoMigrator.CooldownPeriodNotZero.selector)
     );
   }
@@ -361,7 +295,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertEq(cooldownAmount, 50e18);
     assertEq(STKGHO.balanceOf(user), 90e18);
 
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_WithExpiredCooldown() public {
@@ -374,7 +308,7 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     vm.expectRevert(bytes('UNSTAKE_WINDOW_FINISHED'));
     STKGHO.redeem(user, 90e18);
 
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
   }
 
   function test_Migrate_StkGhoReceivedByTransfer() public {
@@ -384,14 +318,14 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertTrue(IERC20(address(STKGHO)).transfer(user, 90e18));
 
     assertEq(STKGHO.balanceOf(user), 90e18);
-    _migrateAndValidate(user, 90e18);
+    _migrateAndValidate(user);
   }
 
   function test_Revert_Migrate_WithoutClaimHelperRole() public {
     _stake(user, 90e18);
     _moveClaimHelperRole(makeAddr('NEW_CLAIM_HELPER'));
 
-    _expectMigrateRevert(user, 90e18, bytes('CALLER_NOT_CLAIM_HELPER'));
+    _expectMigrateRevert(user, bytes('CALLER_NOT_CLAIM_HELPER'));
   }
 
   function test_Revert_SetClaimHelperPendingAdmin_WithoutClaimHelperRole() public {
@@ -410,7 +344,6 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertFalse(migrator.paused());
     _expectMigrateRevert(
       user,
-      90e18,
       abi.encodeWithSelector(ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector, user, 90e18, 0)
     );
   }
@@ -429,7 +362,6 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertLt(capLeft, 90e18);
     _expectMigrateRevert(
       user,
-      90e18,
       abi.encodeWithSelector(
         ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector,
         user,
@@ -454,7 +386,6 @@ contract StkGhoMigratorForkTest is StkGhoMigratorBaseTest {
     assertLt(remainingCap, 90e18);
     _expectMigrateRevert(
       user,
-      90e18,
       abi.encodeWithSelector(
         ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector,
         user,

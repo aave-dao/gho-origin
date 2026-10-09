@@ -34,7 +34,7 @@ contract TestSGhoConfig is TestSGhoBase {
 
   function test_setSupplyCap_event() external {
     vm.startPrank(yManager);
-    uint160 newSupplyCap = 1000 ether;
+    uint40 newSupplyCap = 1000;
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.SupplyCapUpdated(newSupplyCap);
     sgho.setSupplyCap(newSupplyCap);

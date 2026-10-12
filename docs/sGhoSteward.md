@@ -49,6 +49,8 @@ All updates occur via the `setRateConfig(newConfig, effectiveAt)` function, whic
 - The function reverts if the computed target rate exceeds 50%.
 - The rate takes effect on `sGHO` at `effectiveAt`: submitting the same config with the same `effectiveAt` on the stewards of every chain keeps the yield indexes in sync. Passing the current timestamp applies immediately (single-chain deployments only).
 
+**NOTE:** The steward stores the config when `setRateConfig` is called, not at `effectiveAt`. If `sGHO.syncYieldIndex` later discards that scheduled update, the steward still holds the config, so submitting it again reverts with `RateUnchanged`. Re-schedule it by submitting a different config and then the intended one, both with the same future `effectiveAt`.
+
 **NOTE:** Setting a parameter to `0` or to any other value different from the current one is considered **an update** and requires the corresponding role.
 
 ### Example 1

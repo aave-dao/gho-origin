@@ -565,6 +565,66 @@ contract sGhoStewardTest is TestSGhoBase {
     assertGt(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'L2 must accrue on a higher base');
   }
 
+  /// @dev A sync discards a steward-scheduled update but not the steward's stored config, so the
+  /// same config reverts; a different config followed by the intended one re-schedules it.
+  function test_syncDiscardsPending_rescheduleThroughStewardViaInterimConfig() public {
+    vm.warp(block.timestamp + 180 days);
+    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
+
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 0,
+      floatRate: 0,
+      fixedRate: 1500
+    });
+    uint256 checkpointIndex = sgho.yieldIndex();
+    uint256 checkpointTime = sgho.lastUpdate();
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.startPrank(riskCouncil);
+    steward.setRateConfig(newConfig, effectiveAt);
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+    vm.stopPrank();
+
+    // Reconciliation on the L2 before effectiveAt discards its pending update
+    vm.warp(block.timestamp + 1 days);
+    l2.syncYieldIndex(
+      sgho.yieldIndex().toUint120(),
+      sgho.lastUpdate().toUint40(),
+      sgho.targetRate()
+    );
+    (uint16 pendingRate, ) = l2.pendingTargetRate();
+    assertEq(pendingRate, 0, 'Sync must discard the pending update');
+    assertEq(
+      abi.encode(l2Steward.getRateConfig()),
+      abi.encode(newConfig),
+      'Steward must still hold the discarded config'
+    );
+
+    vm.prank(riskCouncil);
+    vm.expectRevert(IsGhoSteward.RateUnchanged.selector);
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+
+    vm.startPrank(riskCouncil);
+    l2Steward.setRateConfig(
+      IsGhoSteward.RateConfig({amplification: 0, floatRate: 0, fixedRate: 1499}),
+      effectiveAt
+    );
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+    vm.stopPrank();
+
+    (pendingRate, ) = l2.pendingTargetRate();
+    assertEq(pendingRate, 1500, 'Intended rate not re-scheduled');
+    assertEq(l2.lastUpdate(), checkpointTime, 'Interim config must not checkpoint');
+
+    vm.warp(effectiveAt + 365 days);
+    uint256 expectedIndex = _emulateYieldIndex(
+      _emulateYieldIndex(checkpointIndex, 1000, effectiveAt - checkpointTime),
+      1500,
+      365 days
+    );
+    assertEq(sgho.convertToAssets(RAY), expectedIndex, 'Source index off spec');
+    assertEq(l2.convertToAssets(RAY), expectedIndex, 'L2 index off spec');
+  }
+
   function _coldStartFrom(sGho source) internal returns (sGho l2, sGhoSteward l2Steward) {
     l2 = _deploySGho(
       source.yieldIndex().toUint120(),

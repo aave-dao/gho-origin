@@ -61,6 +61,8 @@ Rules for operators:
 - **Cold start**: `initialize` takes the same checkpoint values, target rate included, so a new chain starts in sync from a live deployment's checkpoint and needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not configure the new chain's steward on its own: `setRateConfig` checkpoints that chain only. Its stored config stays `(0, 0, 0)` until the first rate change scheduled on all chains, and on that first change it counts every field as changed, so the caller needs all three manager roles.
 - **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the affected chain from a healthy one.
 
+The steward is not affected by a sync. If it scheduled the discarded update, it still holds that config, and submitting the same config again reverts with `RateUnchanged`. To re-schedule it, submit a different config first and then the intended one, both with the same future `effectiveAt`. The second call overwrites the first pending update, so no checkpoint is created.
+
 Syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to DEFAULT_ADMIN (governance).
 
 ## Role Management

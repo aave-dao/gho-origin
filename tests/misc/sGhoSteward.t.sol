@@ -309,13 +309,13 @@ contract sGhoStewardTest is TestSGhoBase {
 
   function test_supplyCap() public {
     uint256 initialSupplyCap = sgho.supplyCap();
-    assertEq(initialSupplyCap, SUPPLY_CAP);
+    assertEq(initialSupplyCap, SUPPLY_CAP_UNITS);
 
     vm.prank(riskCouncil);
-    steward.setSupplyCap(type(uint160).max);
+    steward.setSupplyCap(type(uint40).max);
 
     uint256 supplyCapAfterUpdate = sgho.supplyCap();
-    assertEq(supplyCapAfterUpdate, type(uint160).max);
+    assertEq(supplyCapAfterUpdate, type(uint40).max);
 
     vm.prank(governance);
     steward.revokeRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil);
@@ -323,27 +323,27 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.startPrank(riskCouncil);
 
     vm.expectRevert(_craftError(riskCouncil, SUPPLY_CAP_MANAGER_ROLE));
-    steward.setSupplyCap(1e18);
+    steward.setSupplyCap(1e6);
   }
 
   function test_invalidSupplyCap(uint256 newSupplyCap) public {
-    newSupplyCap = bound(newSupplyCap, uint256(type(uint160).max) + 1, type(uint256).max);
+    newSupplyCap = bound(newSupplyCap, uint256(type(uint40).max) + 1, type(uint256).max);
 
     uint256 initialSupplyCap = sgho.supplyCap();
-    assertEq(initialSupplyCap, SUPPLY_CAP);
+    assertEq(initialSupplyCap, SUPPLY_CAP_UNITS);
 
     vm.startPrank(riskCouncil);
 
-    steward.setSupplyCap(type(uint160).max);
+    steward.setSupplyCap(type(uint40).max);
 
     uint256 supplyCapAfterUpdate = sgho.supplyCap();
-    assertEq(supplyCapAfterUpdate, type(uint160).max);
+    assertEq(supplyCapAfterUpdate, type(uint40).max);
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.SupplyCapUnchanged.selector));
-    steward.setSupplyCap(type(uint160).max);
+    steward.setSupplyCap(type(uint40).max);
 
     vm.expectRevert(
-      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 160, newSupplyCap)
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 40, newSupplyCap)
     );
     steward.setSupplyCap(newSupplyCap);
   }

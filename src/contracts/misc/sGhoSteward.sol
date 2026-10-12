@@ -96,7 +96,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       revert SupplyCapUnchanged();
     }
 
-    _sGho.setSupplyCap(supplyCap.toUint160());
+    _sGho.setSupplyCap(supplyCap);
     emit SupplyCapUpdated(msg.sender, supplyCap);
   }
 

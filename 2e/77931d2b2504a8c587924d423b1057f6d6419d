@@ -1,0 +1,23 @@
+docs/sgho.md
+  s_2e775bacce1390::t_04917886a1dc2e 43,49,53,61,97,99
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_2e775bacce1390::t_04917886a1dc2e 124-125
+tests/misc/sGhoSteward.t.sol
+  s_2e775bacce1390::t_04917886a1dc2e 493-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e77931d2b2504a8c587924d423b1057f6d6419d",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

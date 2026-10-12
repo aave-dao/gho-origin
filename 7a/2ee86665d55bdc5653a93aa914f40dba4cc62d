@@ -1,0 +1,19 @@
+tests/misc/StkGhoMigratorHelpers.t.sol
+  s_2e775bacce1390::t_b2041b96883c0d 118-119,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a2ee86665d55bdc5653a93aa914f40dba4cc62d",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

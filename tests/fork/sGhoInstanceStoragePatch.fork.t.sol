@@ -121,8 +121,8 @@ contract sGhoInstanceStoragePatchForkTest is Test {
       'supplyCap not converted to whole units'
     );
 
-    // The repacked layout uses only the low 216 bits of slot 0 (uint120 + uint40 + uint16 + uint40);
-    // the unused high bits must be clear of any leftover from the old layout
+    // The repacked fields use the low 216 bits of slot 0 (uint120 + uint40 + uint16 + uint40); the
+    // high bits hold `pendingRateEffectiveAt` and must start clear of any leftover from the old layout
     assertEq(
       uint256(vm.load(PROXY, STORAGE_LOCATION)) >> 216,
       0,

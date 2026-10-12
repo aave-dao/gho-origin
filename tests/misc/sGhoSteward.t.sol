@@ -490,4 +490,88 @@ contract sGhoStewardTest is TestSGhoBase {
         role
       );
   }
+
+  /// @dev A new chain cold-started from a live checkpoint, rate included, stays in sync with no
+  /// steward call of its own; the first rate change scheduled on both chains keeps them in sync.
+  function test_coldStart_emptyStewardStaysInSyncThroughMirroredUpdate() public {
+    vm.warp(block.timestamp + 180 days);
+    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
+
+    IsGhoSteward.RateConfig memory empty;
+    assertEq(abi.encode(l2Steward.getRateConfig()), abi.encode(empty), 'L2 steward not empty');
+    assertEq(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'Not in sync at deployment');
+
+    vm.warp(block.timestamp + 100 days);
+    assertEq(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'Diverged before any update');
+
+    // One rate change scheduled on both stewards at the same effectiveAt, executed 12h apart
+    uint256 checkpointIndex = sgho.yieldIndex();
+    uint256 checkpointTime = sgho.lastUpdate();
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 0,
+      floatRate: 0,
+      fixedRate: 1500
+    });
+    uint40 effectiveAt = (block.timestamp + 1 days).toUint40();
+    vm.prank(riskCouncil);
+    steward.setRateConfig(newConfig, effectiveAt);
+    vm.warp(block.timestamp + 12 hours);
+    vm.prank(riskCouncil);
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+
+    vm.warp(effectiveAt + 365 days);
+    uint256 expectedIndex = _emulateYieldIndex(
+      _emulateYieldIndex(checkpointIndex, 1000, effectiveAt - checkpointTime),
+      1500,
+      365 days
+    );
+    assertEq(sgho.convertToAssets(RAY), expectedIndex, 'Source index off spec');
+    assertEq(l2.convertToAssets(RAY), expectedIndex, 'L2 index off spec');
+    assertEq(l2.targetRate(), 1500, 'L2 rate not applied');
+    assertEq(
+      abi.encode(l2Steward.getRateConfig()),
+      abi.encode(newConfig),
+      'L2 steward config not set'
+    );
+  }
+
+  /// @dev Configuring the new chain's steward on its own checkpoints that chain only, so it
+  /// accrues on a different base than the source from then on.
+  function test_coldStart_standaloneStewardConfigDesyncs() public {
+    vm.warp(block.timestamp + 180 days);
+    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
+
+    uint256 sourceIndex = sgho.yieldIndex();
+    uint256 sourceTime = sgho.lastUpdate();
+    vm.prank(riskCouncil);
+    l2Steward.setRateConfig(
+      IsGhoSteward.RateConfig({amplification: 0, floatRate: 0, fixedRate: 1000}),
+      block.timestamp.toUint40()
+    );
+    uint256 l2Index = l2.yieldIndex();
+
+    vm.warp(block.timestamp + 365 days);
+    uint256 elapsed = block.timestamp - sourceTime;
+    assertEq(
+      sgho.convertToAssets(RAY),
+      _emulateYieldIndex(sourceIndex, 1000, elapsed),
+      'Source index off spec'
+    );
+    assertEq(
+      l2.convertToAssets(RAY),
+      _emulateYieldIndex(l2Index, 1000, 365 days),
+      'L2 index off spec'
+    );
+    assertGt(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'L2 must accrue on a higher base');
+  }
+
+  function _coldStartFrom(sGho source) internal returns (sGho l2, sGhoSteward l2Steward) {
+    l2 = _deploySGho(
+      source.yieldIndex().toUint120(),
+      source.lastUpdate().toUint40(),
+      source.targetRate()
+    );
+    l2Steward = new sGhoSteward(governance, riskCouncil, address(l2));
+    l2.grantRole(l2.YIELD_MANAGER_ROLE(), address(l2Steward));
+  }
 }

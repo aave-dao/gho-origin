@@ -40,17 +40,17 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ## Multi-Chain Synchronization
 
-sGHO can be deployed on multiple chains with the yield index kept identical everywhere, at all times.
+sGHO can be deployed on multiple chains with an identical yield index, as long as every checkpoint happens at the same timestamp on every chain.
 
 ### Scheduled Rate Updates
 
 `setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute timestamp. A multi-chain AIP passes the same `effectiveAt` on every chain, for example the expected execution time plus a 24-hour margin. The payload executes at a different moment on each chain, but the rate switches at the same instant everywhere.
 
-The update is applied lazily. Views resolve it once it is due. The next rate update, deposit or withdrawal persists it, with the checkpoint taken at `effectiveAt` rather than at execution or interaction time. Transfers do not persist it, so they stay free of the extra storage read. Because the accrual division floors, a checkpoint at a chain-local time would drift the index by a wei. Anchoring every checkpoint to the shared `effectiveAt` keeps the index bit-identical across chains.
+The update is applied lazily. Views resolve it once it is due. The next rate update, deposit or withdrawal persists it, with the checkpoint taken at `effectiveAt` rather than at execution or interaction time. Transfers do not persist it, so they stay free of the extra storage read. Because every chain checkpoints at the same `effectiveAt`, the index is identical across chains.
 
 Rules for operators:
 
-- Every scheduled update must be mirrored on all chains, including a same-rate one. Each checkpoint starts a new base, so an unmirrored checkpoint desyncs the index.
+- Every scheduled update must be mirrored on all chains, including a same-rate one.
 - A pending update that is not yet effective is overwritten by the next `setTargetRate`. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain. If it straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`.
 - `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
@@ -58,7 +58,7 @@ Rules for operators:
 
 `syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the checkpoint with values read from an in-sync deployment: `yieldIndex()`, `lastUpdate()` and `targetRate()`. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. Any pending update on the synced chain is discarded and has to be re-scheduled.
 
-- **Cold start**: `initialize` takes the same checkpoint values, so a new chain starts in sync from a live deployment's checkpoint. A genesis deployment starts at `(RAY, now, 0)`.
+- **Cold start**: `initialize` takes the same checkpoint values, target rate included, so a new chain starts in sync from a live deployment's checkpoint and needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not configure the new chain's steward on its own: `setRateConfig` checkpoints that chain only. Its stored config stays `(0, 0, 0)` until the first rate change scheduled on all chains, and on that first change it counts every field as changed, so the caller needs all three manager roles.
 - **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the affected chain from a healthy one.
 
 Syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to DEFAULT_ADMIN (governance).
@@ -94,9 +94,9 @@ The live vault migrates to this layout through `sGhoInstanceStoragePatch`, in on
 
 1. Grant the executor `YIELD_MANAGER_ROLE` and call the legacy `setTargetRate(currentRate)`. The patch reverts unless the index was checkpointed in the same block.
 2. `upgradeAndCall` to `sGhoInstanceStoragePatch` with `initialize()`. This consumes revision 2.
-3. `upgrade` to `sGhoInstance` with no calldata. Its `initialize` is locked because revision 2 is already used.
+3. `upgradeAndCall` to `sGhoInstance` with empty calldata. Its `initialize` is locked because revision 2 is already used.
 
-The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload, granted `YIELD_MANAGER_ROLE` in place of the old one, and configured with the current rate config.
+The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload and granted `YIELD_MANAGER_ROLE` in place of the old one. Configuring it with the current rate config checkpoints mainnet only, so do it while mainnet is the only live chain. Once other chains are live, the config is set by the next rate change scheduled on all chains.
 
 ## Math
 

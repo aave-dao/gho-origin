@@ -1,0 +1,23 @@
+docs/sGhoSteward.md
+  s_2e775bacce1390::t_b454124499203f 52-53
+tests/misc/sGhoSteward.t.sol
+  s_2e775bacce1390::t_b454124499203f 568-627
+docs/sgho.md
+  s_2e775bacce1390::t_b454124499203f 64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e355a3dc24c3d9f9438f907ba55cf3beae92d9f7",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

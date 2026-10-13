@@ -1,0 +1,25 @@
+name: manual-pr-ci-guard
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/scripts/check-manual-pr-ci.sh"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+      - ".github/scripts/check-manual-pr-ci.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Manual PR CI covers all PR workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: .github/scripts/check-manual-pr-ci.sh

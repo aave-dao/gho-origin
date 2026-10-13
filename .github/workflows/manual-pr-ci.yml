@@ -3,6 +3,7 @@ name: manual-pr-ci
 # Runs lint, tests and Certora on a pull request's head commit with repository secrets.
 # Fork PRs do not get secrets on `pull_request`, so Certora fails there; maintainers run this
 # instead after reviewing the PR. It executes the PR's code with CERTORAKEY.
+# manual-pr-ci-guard fails if a workflow that runs on pull requests is not covered here.
 
 on:
   workflow_dispatch:

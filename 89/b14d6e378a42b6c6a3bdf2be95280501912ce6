@@ -1,0 +1,27 @@
+.github/workflows/manual-pr-ci.yml
+  s_2e775bacce1390::t_bf0b089ff44661 1-136
+.github/workflows/certora-gho.yml
+  s_2e775bacce1390::t_5d987182e56f38 4,17-23,35
+.github/workflows/certora-gsm-4626.yml
+  s_2e775bacce1390::t_02b097d109f113 4,17-23,35
+.github/workflows/certora-gsm.yml
+  s_2e775bacce1390::t_b33289e0826d28 4,17-23,35
+.github/workflows/certora-steward.yml
+  s_2e775bacce1390::t_82dfcfb59be121 4,17-23,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89b14d6e378a42b6c6a3bdf2be95280501912ce6",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.github/workflows/manual-pr-ci.yml
+  s_2e775bacce1390::t_58189ee0723a06 49
+.github/workflows/manual-pr-ci-guard.yml
+  s_2e775bacce1390::t_58189ee0723a06 23-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "538e69bd4eca120601b84af4bbc0d8cdcb91980c",
+  "prompts": {},
+  "sessions": {
+    "s_2e775bacce1390": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea781db-6ebb-472e-92fd-28cbc8699c6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

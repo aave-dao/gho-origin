@@ -46,6 +46,7 @@ jobs:
           echo "### PR #${PR_NUMBER} at \`${sha}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "sha=${sha}" >> "$GITHUB_OUTPUT"
 
+  # The lint and test jobs mirror test.yml, whose shared workflows take no ref input.
   lint:
     name: Lint code
     needs: resolve

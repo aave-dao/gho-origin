@@ -1,0 +1,145 @@
+name: manual-pr-ci
+
+# Runs lint, tests and Certora on a pull request's head commit with repository secrets.
+# Fork PRs do not get secrets on `pull_request`, so Certora fails there; maintainers run this
+# instead after reviewing the PR. It executes the PR's code with CERTORAKEY.
+# manual-pr-ci-guard fails if a workflow that runs on pull requests is not covered here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number"
+        type: number
+        required: true
+
+concurrency:
+  group: manual-pr-ci-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  resolve:
+    name: Resolve PR head
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.pr.outputs.sha }}
+    steps:
+      - id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}")"
+          sha="$(jq -r '.head.sha' <<< "$pr")"
+          echo "PR:     #${PR_NUMBER} $(jq -r '.title' <<< "$pr")"
+          echo "Head:   $(jq -r '.head.repo.full_name' <<< "$pr"):$(jq -r '.head.ref' <<< "$pr")"
+          echo "Commit: ${sha}"
+          echo "### PR #${PR_NUMBER} at \`${sha}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
+  # The lint and test jobs mirror test.yml, whose shared workflows take no ref input.
+  lint:
+    name: Lint code
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      - uses: aave-dao/github-workflows/.github/actions/setup-node@main
+
+      - run: npm run lint
+
+  test:
+    name: Foundry build n test
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          submodules: recursive
+
+      # ubuntu-24.04 images since 20261004 ship with ~13G free on /, which the 15G
+      # swapfile below exhausts and leaves nothing for the foundry install.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Increase swapfile
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 15G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
+
+      - uses: aave-dao/action-rpc-env@main
+
+      - uses: aave-dao/github-workflows/.github/actions/setup-node@main
+
+      - uses: aave-dao/github-workflows/.github/actions/foundry-setup@main
+
+      - uses: aave-dao/github-workflows/.github/actions/foundry-test@main
+        with:
+          MODE: ALL
+
+  certora-gho:
+    needs: resolve
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/certora-gho.yml
+    with:
+      ref: ${{ needs.resolve.outputs.sha }}
+    secrets: inherit
+
+  certora-gsm:
+    needs: resolve
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/certora-gsm.yml
+    with:
+      ref: ${{ needs.resolve.outputs.sha }}
+    secrets: inherit
+
+  certora-gsm-4626:
+    needs: resolve
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/certora-gsm-4626.yml
+    with:
+      ref: ${{ needs.resolve.outputs.sha }}
+    secrets: inherit
+
+  certora-steward:
+    needs: resolve
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/certora-steward.yml
+    with:
+      ref: ${{ needs.resolve.outputs.sha }}
+    secrets: inherit

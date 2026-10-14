@@ -71,6 +71,8 @@ import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 import {IGsm4626} from 'src/contracts/facilitators/gsm/interfaces/IGsm4626.sol';
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
 import {Gsm4626} from 'src/contracts/facilitators/gsm/Gsm4626.sol';
+import {PermissionedGsm} from 'src/contracts/facilitators/gsm/PermissionedGsm.sol';
+import {PermissionedGsm4626} from 'src/contracts/facilitators/gsm/PermissionedGsm4626.sol';
 import {FixedPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy.sol';
 import {FixedPriceStrategy4626} from 'src/contracts/facilitators/gsm/priceStrategy/FixedPriceStrategy4626.sol';
 import {IGsmFeeStrategy} from 'src/contracts/facilitators/gsm/feeStrategy/interfaces/IGsmFeeStrategy.sol';
@@ -338,7 +340,9 @@ contract TestGhoBase is
     address admin,
     address reserve
   ) internal returns (Gsm) {
-    Gsm gsmImpl = new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
+    Gsm gsmImpl = _isPermissionedGsm()
+      ? Gsm(address(new PermissionedGsm(address(GHO_TOKEN), underlyingToken, priceStrategy)))
+      : new Gsm(address(GHO_TOKEN), underlyingToken, priceStrategy);
     AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
       address(gsmImpl),
       SHORT_EXECUTOR,
@@ -350,7 +354,11 @@ contract TestGhoBase is
         reserve
       )
     );
-    return Gsm(address(gsmProxy));
+    Gsm gsm = Gsm(address(gsmProxy));
+    if (_isPermissionedGsm()) {
+      _grantSwapperRole(gsm, admin);
+    }
+    return gsm;
   }
 
   function _deployGsm4626Proxy(
@@ -358,7 +366,9 @@ contract TestGhoBase is
     address priceStrategy,
     uint128 exposureCap
   ) internal returns (Gsm4626) {
-    Gsm4626 gsmImpl = new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
+    Gsm4626 gsmImpl = _isPermissionedGsm()
+      ? Gsm4626(address(new PermissionedGsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy)))
+      : new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
     AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
       address(gsmImpl),
       SHORT_EXECUTOR,
@@ -370,7 +380,39 @@ contract TestGhoBase is
         address(GHO_RESERVE)
       )
     );
-    return Gsm4626(address(gsmProxy));
+    Gsm4626 gsm = Gsm4626(address(gsmProxy));
+    if (_isPermissionedGsm()) {
+      _grantSwapperRole(Gsm(address(gsm)), address(this));
+    }
+    return gsm;
+  }
+
+  /**
+   * @dev Whether the GSM deployment helpers deploy the permissioned flavours of the GSMs.
+   * @dev Overridden by the test suites under `tests/unit/permissioned-gsm`
+   */
+  function _isPermissionedGsm() internal view virtual returns (bool) {
+    return false;
+  }
+
+  /**
+   * @dev Grants the Swapper Role to the addresses the GSM test suites originate swaps from
+   * @param gsm The permissioned GSM to grant the role on
+   * @param admin The address holding the default admin role on `gsm`
+   */
+  function _grantSwapperRole(Gsm gsm, address admin) internal {
+    address[6] memory swappers = [
+      address(this),
+      ALICE,
+      BOB,
+      CHARLES,
+      FAUCET,
+      makeAddr('gsmSigner') // originator of the signature-based swaps
+    ];
+    for (uint256 i = 0; i < swappers.length; i++) {
+      vm.prank(admin);
+      gsm.grantRole(GSM_SWAPPER_ROLE, swappers[i]);
+    }
   }
 
   function _deployReserve() public returns (GhoReserve) {

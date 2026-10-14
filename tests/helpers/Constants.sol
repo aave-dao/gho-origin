@@ -25,6 +25,7 @@ contract Constants {
   bytes32 public constant GSM_TOKEN_RESCUER_ROLE = keccak256('TOKEN_RESCUER_ROLE');
   bytes32 public constant GSM_SWAP_FREEZER_ROLE = keccak256('SWAP_FREEZER_ROLE');
   bytes32 public constant GSM_LIQUIDATOR_ROLE = keccak256('LIQUIDATOR_ROLE');
+  bytes32 public constant GSM_SWAPPER_ROLE = keccak256('SWAPPER_ROLE');
 
   // admin role for GhoDirectFacilitator
   bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');

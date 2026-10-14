@@ -70,6 +70,13 @@ jobs:
           ref: ${{ needs.resolve.outputs.sha }}
           submodules: recursive
 
+      # ubuntu-24.04 images since 20261004 ship with ~13G free on /, which the 15G
+      # swapfile below exhausts and leaves nothing for the foundry install.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - name: Increase swapfile
         run: |
           sudo swapoff -a

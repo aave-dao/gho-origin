@@ -5,6 +5,7 @@ import '../TestGhoBase.t.sol';
 
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
 import {MockBadGsm} from '../../mocks/MockBadGsm.sol';

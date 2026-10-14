@@ -144,7 +144,7 @@ interface IGhoRouter {
 
   /**
    * @notice Pauses the router, blocking `swap` and `previewSwap`
-   * @dev Only callable by the owner. Reverts if the router is already paused
+   * @dev Only callable by the owner or the guardian. Reverts if the router is already paused
    */
   function pause() external;
 

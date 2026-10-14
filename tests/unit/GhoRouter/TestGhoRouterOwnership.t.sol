@@ -11,7 +11,7 @@ import {Ownable2Step} from '@openzeppelin/contracts/access/Ownable2Step.sol';
  * @dev Run with: forge test --match-path test/unit/GhoRouter/TestGhoRouterOwnership.t.sol -vvv
  */
 contract OwnershipTest is TestGhoRouterBase {
-  address public immutable NEW_OWNER = makeAddr('0xNEW0WNER');
+  address public immutable NEW_OWNER = makeAddr('new-owner');
 
   function testTransferOwnershipNonOwner() public {
     vm.prank(USER);

@@ -4,9 +4,10 @@ pragma solidity 0.8.27;
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {Ownable, Ownable2Step} from '@openzeppelin/contracts/access/Ownable2Step.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable2Step.sol';
 import {Pausable} from '@openzeppelin/contracts/utils/Pausable.sol';
 import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import {Ownable2StepWithGuardian} from 'solidity-utils/contracts/access-control/Ownable2StepWithGuardian.sol';
 
 import {IGsm} from 'src/contracts/facilitators/gsm/interfaces/IGsm.sol';
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
@@ -17,7 +18,7 @@ import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
  * @notice Router for token swaps through whitelisted GSMs and direct GHO/sGHO conversion paths
  * @dev This contract never stores user funds and uses exact approvals only
  */
-contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
+contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoRouter {
   using SafeERC20 for IERC20;
 
   /// @inheritdoc IGhoRouter
@@ -35,10 +36,16 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   /**
    * @dev Constructor to initialize the contract
    * @param initialOwner Address of the contract owner
+   * @param initialGuardian Address of the contract guardian
    * @param gho Address of the GHO token on the deployed network
    * @param sgho Address of sGHO on the deployed network
    */
-  constructor(address initialOwner, address gho, address sgho) Ownable(initialOwner) {
+  constructor(
+    address initialOwner,
+    address initialGuardian,
+    address gho,
+    address sgho
+  ) Ownable2StepWithGuardian(initialOwner, initialGuardian) {
     require(gho != address(0), ZeroAddress());
     require(sgho != address(0), ZeroAddress());
     require(IERC4626(sgho).asset() == gho, InvalidToken());
@@ -116,6 +123,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   /// @inheritdoc IGhoRouter
   function setTokenToStata(address token, address stata) external onlyOwner {
     require(token != address(0) && stata != address(0), ZeroAddress());
+    require(token != GHO && token != sGHO, InvalidToken());
     require(tokenToStata[token] == address(0), TokenToStataAlreadySet());
     require(IERC4626(stata).asset() == token, InvalidToken());
 
@@ -140,7 +148,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   }
 
   /// @inheritdoc IGhoRouter
-  function pause() external onlyOwner {
+  function pause() external onlyOwnerOrGuardian {
     _pause();
   }
 
@@ -186,7 +194,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
 
   /**
    * @notice Preview the amount of GHO received for a given input amount
-   * @param token Input token address (GSM underlying token or static aToken)
+   * @param token Input token address (GSM asset or its underlying)
    * @param gsm Address of the GSM used to perform the swap
    * @param amount Amount of input token to sell
    * @return ghoAmount Expected amount of GHO to receive
@@ -206,7 +214,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
 
   /**
    * @notice Preview the amount of sGHO received for a given input amount through a GSM path
-   * @param token Input token address (GSM underlying token or static aToken)
+   * @param token Input token address (GSM asset or its underlying)
    * @param gsm Address of the GSM used to perform the swap
    * @param amount Amount of input token to sell
    * @return sghoAmount Expected amount of sGHO shares to receive
@@ -223,7 +231,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
 
   /**
    * @dev Swaps a GSM-supported token into GHO and forwards output to the recipient.
-   * @param token Input token (either GSM underlying token or its static aToken).
+   * @param token Input token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Amount of input tokens pulled from the caller.
    * @param minGhoAmount Minimum acceptable GHO output for slippage protection.
@@ -244,9 +252,9 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   }
 
   /**
-   * @dev Swaps GHO into a caller-selected GSM token (underlying or static aToken) and forwards output.
+   * @dev Swaps GHO into a caller-selected GSM token (GSM asset or its underlying) and forwards output.
    * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
-   * @param token Output token (either GSM underlying token or its static aToken).
+   * @param token Output token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Maximum allowed amount of GHO to be pulled from the caller.
    * @param minOutputAmount Minimum acceptable output-token amount.
@@ -283,7 +291,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
 
   /**
    * @dev Swaps a GSM-supported token into GHO and deposits the result into sGHO.
-   * @param token Input token (either GSM underlying token or its static aToken).
+   * @param token Input token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Amount of input tokens pulled from the caller.
    * @param minSGHOAmount Minimum acceptable sGHO shares minted.
@@ -324,7 +332,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   /**
    * @dev Redeems sGHO into GHO, then swaps through GSM into a caller-selected token.
    * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
-   * @param token Output token (either GSM static aToken or aToken's underlying).
+   * @param token Output token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Amount of sGHO shares pulled from the caller.
    * @param minOutputAmount Minimum acceptable output-token amount.
@@ -442,7 +450,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   }
 
   /**
-   * @dev Sells input tokens through GSM for GHO, wrapping the underlying into the static aToken when needed.
+   * @dev Sells input tokens through GSM for GHO, wrapping the underlying into the GSM asset when needed.
    * @param gsm Whitelisted GSM used for the sell path.
    * @param token Input token address provided by the caller.
    * @param gsmAsset GSM underlying asset the sale is settled in.
@@ -474,12 +482,12 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
   }
 
   /**
-   * @dev Buys GSM underlying token with GHO, then returns either the static aToken or its underlying.
+   * @dev Buys the GSM asset with GHO, then returns either the GSM asset or its underlying.
    * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param gsm Whitelisted GSM used for the buy path.
    * @param gsmAsset GSM underlying asset acquired from the GSM.
    * @param isStata Whether the acquired `gsmAsset` must be unwrapped into its underlying before delivery.
-   * @param exactAmountIn GHO budget used to acquire static aTokens.
+   * @param exactAmountIn GHO budget used to acquire the GSM asset.
    * @param amountToBuy Amount of token to acquire from the GSM.
    * @param outputReceiver Address receiving output tokens.
    * @param minOutputAmount Minimum acceptable output amount.
@@ -518,7 +526,7 @@ contract GhoRouter is Ownable2Step, Pausable, ReentrancyGuard, IGhoRouter {
 
   /**
    * @dev Previews output amount for a GHO->GSM route without state changes.
-   * @param token Output token requested (underlying token or static aToken).
+   * @param token Output token requested (GSM asset or its underlying).
    * @param gsm Address of the GSM used to perform the swap.
    * @param ghoAmount GHO amount to simulate.
    * @return outputAmount Estimated output-token amount.

@@ -58,6 +58,7 @@ The configuration is split into two independent concerns: which GSMs are trusted
   - `gsm` must currently be allowed, otherwise reverts `GsmNotSet()`.
 - Constraints on `setTokenToStata`:
   - Both `token` and `stata` must be non-zero.
+  - `token` must not be `GHO` or `sGHO` (reverts `InvalidToken()`); such a mapping would only enable `GHO -> GHO` / `sGHO -> sGHO` round trips through a GSM.
   - `token` must not already have a mapping (reverts `TokenToStataAlreadySet()`; remove it first).
   - `IERC4626(stata).asset() == token` — the stata must actually wrap the token (reverts `InvalidToken()`).
 - Constraints on `removeTokenToStata`:
@@ -69,6 +70,24 @@ The configuration is split into two independent concerns: which GSMs are trusted
     - `tokenToStata[token] == gsmAsset` → wrap/unwrap `token` through the stata around the GSM call.
     - otherwise reverts `InvalidToken()`.
 - Observability: `GsmAdded(gsm)`, `GsmRemoved(gsm)`, `TokenToStataSet(token, stata)`, and `TokenToStataRemoved(token, stata)` are emitted on every update.
+
+## Access control and pausing
+
+`GhoRouter` inherits `Ownable2StepWithGuardian` (BGD `solidity-utils`), which combines OpenZeppelin `Ownable2Step` with a guardian role.
+
+- Owner:
+  - Set at construction (`initialOwner`, must be non-zero).
+  - Ownership transfers are two-step: `transferOwnership(newOwner)` sets `pendingOwner`, which must call `acceptOwnership()`.
+  - Controls `allowGsm`, `revokeGsm`, `setTokenToStata`, `removeTokenToStata`, `rescueToken`, `pause`, and `unpause`.
+- Guardian:
+  - Set at construction (`initialGuardian`); may be `address(0)`, meaning no guardian.
+  - Can call `pause()` and `updateGuardian(newGuardian)`. All other admin functions, including `unpause()`, are owner-only.
+  - `updateGuardian` is callable by the owner or the current guardian and may set the guardian to `address(0)`.
+  - The guardian is unaffected by ownership transfers or `renounceOwnership()`.
+- Pausing:
+  - `pause()` (`onlyOwnerOrGuardian`) and `unpause()` (`onlyOwner`).
+  - While paused, `swap` and `previewSwap` revert with `EnforcedPause()`. Admin functions remain callable.
+- Observability: `OwnershipTransferStarted`, `OwnershipTransferred`, `GuardianUpdated(oldGuardian, newGuardian)`, `Paused(account)`, `Unpaused(account)`.
 
 ## Runtime route composition
 
@@ -91,13 +110,14 @@ Important properties:
 
 The current implementation assumes:
 
-1. Owner securely manages the `allowedGsm` allowlist and the `tokenToStata` registry, curating safe GSMs and correct underlying → stata mappings.
+1. Owner (governance) securely manages the `allowedGsm` allowlist and the `tokenToStata` registry, curating safe GSMs and correct underlying → stata mappings.
 2. `IGsm`, static aToken (`IERC4626`), and `sGHO` dependencies are interface-compatible and non-malicious.
 3. `sGHO` is a valid ERC4626 vault over GHO (constructor enforces `IERC4626(sgho).asset() == gho`).
 4. External dependency return values are correct (router accounting uses returned values).
 5. Underlying tokens involved in selected routes have ERC20 semantics compatible with `SafeERC20`.
 6. Users/integrators set realistic slippage bounds.
 7. Owner key management is trusted for `rescueToken`.
+8. Guardian (if set) is a trusted emergency address; it can halt all swaps but cannot unpause, move funds, or change routing configuration.
 
 ## Security properties in the current implementation
 
@@ -108,13 +128,14 @@ The current implementation assumes:
 - GSM write flows are gated by `allowedGsm[gsm]` for the caller-supplied `gsm`.
 - GSM write flows enforce input/output token compatibility against the GSM asset and `tokenToStata` registry (`InvalidToken()`).
 - `rescueToken` is `onlyOwner`.
+- Swaps can be halted by the owner or guardian via `pause()`; only the owner can resume.
+- `swap()` is protected by `nonReentrant`.
+- GSM allowances are reset to zero after each `sellAsset`/`buyAsset` call.
 
 Limitations of current implementation:
 
-- No internal pause/circuit-breaker.
-- No explicit reentrancy guard.
 - No on-swap revalidation of GSM `GHO_TOKEN`.
-- The router does not explicitly reset allowances to zero after each operation.
+- Allowances to static aTokens and sGHO are exact-amount (`forceApprove`) and are not explicitly reset, since they are expected to be fully consumed.
 
 ## Documented failure modes
 
@@ -136,12 +157,14 @@ Current mitigation:
 
 - Fail-fast reverts.
 - External monitoring and route-level disabling by operators.
+- Owner or guardian can pause the router.
 
-### 2) GSM mapping misconfiguration or admin compromise
+### 2) GSM mapping misconfiguration or admin/guardian compromise
 
 What can happen:
 
 - Valid routes can be unintentionally removed, or unsafe GSMs / incorrect `tokenToStata` mappings can be added.
+- A compromised guardian can pause the router (DoS) or rotate the guardian, but cannot unpause, move funds or alter routes; the owner can replace it via `updateGuardian`.
 
 Why:
 
@@ -154,6 +177,7 @@ Impact:
 Current mitigation:
 
 - `onlyOwner` protection and `GsmAdded`/`GsmRemoved`/`TokenToStataSet`/`TokenToStataRemoved` event monitoring.
+- `GuardianUpdated`/`Paused` event monitoring.
 
 ### 3) Route drift after mapping
 
@@ -171,7 +195,7 @@ Impact:
 
 Current mitigation:
 
-- Monitor downstream upgrades/config and revoke affected GSMs quickly.
+- Monitor downstream upgrades/config; pause the router (owner or guardian) and revoke affected GSMs.
 
 ### 4) Quote staleness and preview divergence
 
@@ -256,7 +280,7 @@ What can happen:
 
 Why:
 
-- Allowances set via `forceApprove` are not explicitly cleared after calls.
+- GSM approvals are reset to zero after each call; only the exact-amount `forceApprove` approvals to static aTokens and sGHO are not explicitly cleared.
 
 Impact:
 
@@ -293,3 +317,4 @@ Current mitigation:
 3. Monitor router token balances for residual/stuck funds.
 4. Alert on downstream GSM/static aToken/sGHO upgrades, pauses, and parameter changes.
 5. Treat fork tests as integration smoke tests, not full economic assurance.
+6. Check `paused()` before routing; monitor `Paused`/`Unpaused` events.

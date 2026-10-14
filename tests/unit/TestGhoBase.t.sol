@@ -146,6 +146,7 @@ contract TestGhoBase is
   GhoBucketSteward GHO_BUCKET_STEWARD;
   MockPoolDataProvider MOCK_POOL_DATA_PROVIDER;
   GhoRouter GHO_ROUTER;
+  address public immutable ROUTER_GUARDIAN = makeAddr('ROUTER_GUARDIAN');
 
   FixedFeeStrategyFactory FIXED_FEE_STRATEGY_FACTORY;
   MockUpgradeableLockReleaseTokenPool GHO_TOKEN_POOL;
@@ -318,7 +319,7 @@ contract TestGhoBase is
         )
       )
     );
-    GHO_ROUTER = new GhoRouter(address(this), address(GHO_TOKEN), address(SGHO));
+    GHO_ROUTER = new GhoRouter(address(this), ROUTER_GUARDIAN, address(GHO_TOKEN), address(SGHO));
   }
 
   function ghoFaucet(address to, uint256 amount) public {

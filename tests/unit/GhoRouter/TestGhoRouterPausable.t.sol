@@ -11,10 +11,60 @@ import {Pausable} from '@openzeppelin/contracts/utils/Pausable.sol';
  * @dev Run with: forge test --match-path test/unit/GhoRouter/TestGhoRouterPausable.t.sol -vvv
  */
 contract PausableTest is TestGhoRouterBase {
-  function testPauseNonOwner() public {
+  function testPauseUnauthorized() public {
     vm.prank(USER);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+    vm.expectRevert(
+      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, USER)
+    );
     GHO_ROUTER.pause();
+  }
+
+  function testPauseByGuardian() public {
+    vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+    emit Pausable.Paused(ROUTER_GUARDIAN);
+    vm.prank(ROUTER_GUARDIAN);
+    GHO_ROUTER.pause();
+
+    assertEq(GHO_ROUTER.paused(), true);
+  }
+
+  function testPauseByGuardianWhenAlreadyPaused() public {
+    GHO_ROUTER.pause();
+
+    vm.prank(ROUTER_GUARDIAN);
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    GHO_ROUTER.pause();
+  }
+
+  function testUnpauseByGuardian() public {
+    vm.prank(ROUTER_GUARDIAN);
+    GHO_ROUTER.pause();
+
+    vm.prank(ROUTER_GUARDIAN);
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, ROUTER_GUARDIAN)
+    );
+    GHO_ROUTER.unpause();
+  }
+
+  function testSwapWhenPausedByGuardian() public {
+    uint256 amount = 1_000e6;
+    _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
+
+    vm.prank(ROUTER_GUARDIAN);
+    GHO_ROUTER.pause();
+
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    vm.prank(USER);
+    GHO_ROUTER.swap(
+      address(USDX_4626_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
   }
 
   function testUnpauseNonOwner() public {

@@ -91,7 +91,6 @@ contract SetTokenToStataTest is TestGhoRouterBase {
   }
 
   function testSetTokenToStataAlreadySet() public {
-    // USDX_TOKEN is mapped in setUp
     vm.expectRevert(IGhoRouter.TokenToStataAlreadySet.selector);
     GHO_ROUTER.setTokenToStata(address(USDX_TOKEN), address(USDX_4626_TOKEN));
   }
@@ -101,6 +100,16 @@ contract SetTokenToStataTest is TestGhoRouterBase {
     MockBadStata stata = new MockBadStata();
     vm.expectRevert(IGhoRouter.InvalidToken.selector);
     GHO_ROUTER.setTokenToStata(makeAddr('token'), address(stata));
+  }
+
+  function testSetTokenToStataGhoToken() public {
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.setTokenToStata(address(GHO_TOKEN), makeAddr('stata'));
+  }
+
+  function testSetTokenToStataSGhoToken() public {
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.setTokenToStata(address(SGHO), makeAddr('stata'));
   }
 
   function testSetTokenToStata() public {
@@ -126,7 +135,6 @@ contract SetTokenToStataTest is TestGhoRouterBase {
   }
 
   function testRemoveTokenToStata() public {
-    // USDX_TOKEN is mapped in setUp
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
     emit IGhoRouter.TokenToStataRemoved(address(USDX_TOKEN), address(USDX_4626_TOKEN));
     GHO_ROUTER.removeTokenToStata(address(USDX_TOKEN));

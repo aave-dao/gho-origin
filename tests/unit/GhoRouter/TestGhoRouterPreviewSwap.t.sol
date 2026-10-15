@@ -65,7 +65,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
       amount
     );
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
@@ -84,7 +84,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
       amount
     );
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
@@ -109,7 +109,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
       amount
     );
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
 
@@ -162,7 +162,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     );
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
@@ -182,7 +182,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     );
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
@@ -208,7 +208,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     );
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
 
@@ -371,7 +371,8 @@ contract PreviewMatchesSwapTest is TestGhoRouterBase {
     uint256 vaultRateBps,
     uint256 yieldDays
   ) public {
-    amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
+    // GSM holds 10M shares; with sGHO yield and a lower buy fee, larger redeems exceed its liquidity
+    amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS / 2);
     vaultRateBps = bound(vaultRateBps, 1e4, 2e4);
     yieldDays = bound(yieldDays, 0, 365);
 
@@ -395,7 +396,8 @@ contract PreviewMatchesSwapTest is TestGhoRouterBase {
     uint256 vaultRateBps,
     uint256 yieldDays
   ) public {
-    amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
+    // GSM holds 10M shares; with sGHO yield and a lower buy fee, larger redeems exceed its liquidity
+    amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS / 2);
     vaultRateBps = bound(vaultRateBps, 1e4, 2e4);
     yieldDays = bound(yieldDays, 0, 365);
 

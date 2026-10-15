@@ -116,8 +116,8 @@ contract SwapToGHOTest is TestGhoRouterBase {
     vm.prank(USER);
     vm.expectRevert(IGhoRouter.ZeroAddress.selector);
     GHO_ROUTER.swap(
-      address(GHO_TOKEN),
       address(USDX_4626_TOKEN),
+      address(GHO_TOKEN),
       address(GHO_GSM_4626),
       1,
       0,
@@ -131,7 +131,7 @@ contract SwapToGHOTest is TestGhoRouterBase {
     _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
 
     uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 expectedOut = grossGho - fee;
 
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
@@ -167,7 +167,7 @@ contract SwapToGHOTest is TestGhoRouterBase {
 
     uint256 shares = USDX_4626_TOKEN.previewDeposit(amount);
     uint256 grossGho = (shares * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 expectedOut = grossGho - fee;
 
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
@@ -198,7 +198,7 @@ contract SwapToGHOTest is TestGhoRouterBase {
     _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
 
     uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 expectedOut = grossGho - fee;
 
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
@@ -230,7 +230,7 @@ contract SwapToGHOTest is TestGhoRouterBase {
 
     uint256 shares = USDX_4626_TOKEN.previewDeposit(amount);
     uint256 grossGho = (shares * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 expectedOut = grossGho - fee;
 
     vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
@@ -332,10 +332,10 @@ contract SwapFromGHOTest is TestGhoRouterBase {
   }
 
   function testSwapFromGHOToUSDX_4626_TOKENPullsOnlyGhoUsed() public {
-    uint256 amount = 100 ether;
+    uint256 amount = 100 ether + 1;
     _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 ghoUsed = _ghoForBuy(USDX_4626_TOKEN.previewMint(expectedOut) * 1e12);
@@ -397,7 +397,7 @@ contract SwapFromGHOTest is TestGhoRouterBase {
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
     _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     // USDX is 6 decimals, GHO is 18 — scale the gross GHO amount down to the asset amount
     uint256 expectedAmount = (grossAmount * 1e6) / 1e18;
 
@@ -434,7 +434,7 @@ contract SwapFromGHOTest is TestGhoRouterBase {
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
     _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 stataAmount = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(stataAmount);
@@ -466,7 +466,7 @@ contract SwapFromGHOTest is TestGhoRouterBase {
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
     _dealAndApprove(address(GHO_TOKEN), address(GHO_ROUTER), amount);
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedAmount = USDX_4626_TOKEN.convertToShares(vaultAssets);
 
@@ -544,7 +544,7 @@ contract SwapToSGhoTest is TestGhoRouterBase {
 
     uint256 shares = USDX_4626_TOKEN.previewDeposit(amount);
     uint256 grossGho = (shares * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 ghoOut = grossGho - fee;
     uint256 expectedOut = SGHO.previewDeposit(ghoOut);
 
@@ -577,7 +577,7 @@ contract SwapToSGhoTest is TestGhoRouterBase {
     _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
 
     uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 ghoOut = grossGho - fee;
     uint256 expectedOut = SGHO.previewDeposit(ghoOut);
 
@@ -608,7 +608,7 @@ contract SwapToSGhoTest is TestGhoRouterBase {
 
     uint256 shares = USDX_4626_TOKEN.previewDeposit(amount);
     uint256 grossGho = (shares * 1e18) / 1e6;
-    uint256 fee = (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 fee = (grossGho * sellFee) / 1e4;
     uint256 ghoOut = grossGho - fee;
     uint256 expectedOut = SGHO.previewDeposit(ghoOut);
 
@@ -736,7 +736,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     // Sanity: shares now redeem for strictly more GHO than were burned
     assertGt(ghoAmount, amount, 'Index should have accrued yield');
 
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 stataAmount = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(stataAmount);
@@ -771,7 +771,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     SGHO.approve(address(GHO_ROUTER), amount);
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 stataAmount = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(stataAmount);
@@ -808,7 +808,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     uint256 userBalanceBefore = IERC20(address(USDX_4626_TOKEN)).balanceOf(USER);
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 ghoUsed = _ghoForBuy(USDX_4626_TOKEN.previewMint(expectedOut) * 1e12);
@@ -847,7 +847,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     SGHO.approve(address(GHO_ROUTER), amount);
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + DEFAULT_GSM_BUY_FEE);
+    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
     uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 ghoUsed = _ghoForBuy(USDX_4626_TOKEN.previewMint(expectedOut) * 1e12);

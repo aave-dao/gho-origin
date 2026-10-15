@@ -147,4 +147,64 @@ contract SetTokenToStataTest is TestGhoRouterBase {
 
     assertEq(GHO_ROUTER.tokenToStata(address(USDX_TOKEN)), address(0));
   }
+
+  function testSwapAfterRevokeGsm() public {
+    GHO_ROUTER.revokeGsm(address(GHO_GSM_4626));
+
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    GHO_ROUTER.swap(
+      address(USDX_4626_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      1_000e6,
+      0,
+      USER,
+      block.timestamp
+    );
+
+    vm.expectRevert(IGhoRouter.GsmNotConfigured.selector);
+    GHO_ROUTER.previewSwap(
+      address(USDX_4626_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      1_000e6
+    );
+  }
+
+  function testSwapAfterRemoveTokenToStata() public {
+    GHO_ROUTER.removeTokenToStata(address(USDX_TOKEN));
+
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.swap(
+      address(USDX_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      1_000e6,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
+  function testSwapAfterRevokeAndAllowGsm() public {
+    uint256 amount = 1_000e6;
+    GHO_ROUTER.revokeGsm(address(GHO_GSM_4626));
+    GHO_ROUTER.allowGsm(address(GHO_GSM_4626));
+    _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
+
+    vm.prank(USER);
+    uint256 ghoReceived = GHO_ROUTER.swap(
+      address(USDX_4626_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+
+    assertEq(ghoReceived, _ghoFromSell(USDX_4626_TOKEN.convertToAssets(amount) * 1e12));
+  }
 }

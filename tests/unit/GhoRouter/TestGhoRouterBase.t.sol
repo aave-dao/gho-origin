@@ -24,7 +24,10 @@ contract TestGhoRouterBase is TestGhoBase {
   address public immutable USER = makeAddr('0xF00DBA11');
   address public immutable RECIPIENT = makeAddr('0xCAFEF00D');
 
-  function setUp() public {
+  uint256 internal buyFee = DEFAULT_GSM_BUY_FEE;
+  uint256 internal sellFee = DEFAULT_GSM_SELL_FEE;
+
+  function setUp() public virtual {
     GHO_ROUTER.allowGsm(address(GHO_GSM_4626));
     GHO_ROUTER.setTokenToStata(address(USDX_TOKEN), address(USDX_4626_TOKEN));
 
@@ -45,6 +48,16 @@ contract TestGhoRouterBase is TestGhoBase {
   function _setUsdxVaultRate(uint256 numerator, uint256 denominator) internal {
     uint256 vaultAssets = USDX_TOKEN.balanceOf(address(USDX_4626_TOKEN));
     deal(address(USDX_TOKEN), address(USDX_4626_TOKEN), (vaultAssets * numerator) / denominator);
+  }
+
+  function _setGsmFees(uint256 newBuyFee, uint256 newSellFee) internal {
+    address feeStrategy = newBuyFee == 0 && newSellFee == 0
+      ? address(0)
+      : address(new FixedFeeStrategy(newBuyFee, newSellFee));
+    GHO_GSM.updateFeeStrategy(feeStrategy);
+    GHO_GSM_4626.updateFeeStrategy(feeStrategy);
+    buyFee = newBuyFee;
+    sellFee = newSellFee;
   }
 
   function _allowAndFundPlainGsm() internal {
@@ -84,13 +97,13 @@ contract TestGhoRouterBase is TestGhoBase {
   }
 
   /// @dev GHO a GSM charges to buy assets worth `grossGho`: gross plus buy fee rounded up
-  function _ghoForBuy(uint256 grossGho) internal pure returns (uint256) {
-    return grossGho + Math.mulDiv(grossGho, DEFAULT_GSM_BUY_FEE, 1e4, Math.Rounding.Ceil);
+  function _ghoForBuy(uint256 grossGho) internal view returns (uint256) {
+    return grossGho + Math.mulDiv(grossGho, buyFee, 1e4, Math.Rounding.Ceil);
   }
 
   /// @dev GHO a GSM pays out for assets worth `grossGho`: gross minus sell fee rounded up
-  function _ghoFromSell(uint256 grossGho) internal pure returns (uint256) {
-    return grossGho - Math.mulDiv(grossGho, DEFAULT_GSM_SELL_FEE, 1e4, Math.Rounding.Ceil);
+  function _ghoFromSell(uint256 grossGho) internal view returns (uint256) {
+    return grossGho - Math.mulDiv(grossGho, sellFee, 1e4, Math.Rounding.Ceil);
   }
 
   function _mintSgho(uint256 amount) internal {

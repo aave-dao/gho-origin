@@ -148,7 +148,7 @@ contract PausableTest is TestGhoRouterBase {
     GHO_ROUTER.unpause();
 
     uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 expectedOut = grossGho - (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 expectedOut = grossGho - (grossGho * sellFee) / 1e4;
 
     vm.prank(USER);
     uint256 ghoReceived = GHO_ROUTER.swap(
@@ -171,7 +171,7 @@ contract PausableTest is TestGhoRouterBase {
     GHO_ROUTER.unpause();
 
     uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 expectedOut = grossGho - (grossGho * DEFAULT_GSM_SELL_FEE) / 1e4;
+    uint256 expectedOut = grossGho - (grossGho * sellFee) / 1e4;
 
     uint256 ghoAmount = GHO_ROUTER.previewSwap(
       address(USDX_4626_TOKEN),
@@ -191,5 +191,61 @@ contract PausableTest is TestGhoRouterBase {
 
     GHO_ROUTER.revokeGsm(address(GHO_GSM));
     assertEq(GHO_ROUTER.allowedGsm(address(GHO_GSM)), false);
+
+    GHO_ROUTER.removeTokenToStata(address(USDX_TOKEN));
+    assertEq(GHO_ROUTER.tokenToStata(address(USDX_TOKEN)), address(0));
+
+    GHO_ROUTER.setTokenToStata(address(USDX_TOKEN), address(USDX_4626_TOKEN));
+    assertEq(GHO_ROUTER.tokenToStata(address(USDX_TOKEN)), address(USDX_4626_TOKEN));
+
+    deal(address(GHO_TOKEN), address(GHO_ROUTER), 1 ether);
+    GHO_ROUTER.rescueToken(address(GHO_TOKEN), RECIPIENT, 1 ether);
+    assertEq(GHO_TOKEN.balanceOf(RECIPIENT), 1 ether);
+  }
+
+  function testDepositForSGHOWhenPaused() public {
+    GHO_ROUTER.pause();
+
+    vm.prank(USER);
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    GHO_ROUTER.swap(
+      address(GHO_TOKEN),
+      address(SGHO),
+      address(0),
+      1 ether,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
+  function testRedeemSGHOWhenPaused() public {
+    GHO_ROUTER.pause();
+
+    vm.prank(USER);
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    GHO_ROUTER.swap(
+      address(SGHO),
+      address(GHO_TOKEN),
+      address(0),
+      1 ether,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
+  function testPreviewDepositForSGHOWhenPaused() public {
+    GHO_ROUTER.pause();
+
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    GHO_ROUTER.previewSwap(address(GHO_TOKEN), address(SGHO), address(0), 1 ether);
+  }
+
+  function testPreviewRedeemSGHOWhenPaused() public {
+    GHO_ROUTER.pause();
+
+    vm.expectRevert(Pausable.EnforcedPause.selector);
+    GHO_ROUTER.previewSwap(address(SGHO), address(GHO_TOKEN), address(0), 1 ether);
   }
 }

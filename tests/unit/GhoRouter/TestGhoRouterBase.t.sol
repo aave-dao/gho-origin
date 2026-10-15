@@ -68,11 +68,7 @@ contract TestGhoRouterBase is TestGhoBase {
   }
 
   function _assertRouterEmpty() internal view {
-    _assertRouterHoldsOnlyGho(0);
-  }
-
-  function _assertRouterHoldsOnlyGho(uint256 ghoAmount) internal view {
-    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), ghoAmount, 'Unexpected router GHO balance');
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no GHO');
     assertEq(IERC20(address(SGHO)).balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no sGHO');
     assertEq(USDX_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no USDX_TOKEN');
     assertEq(USDX_4626_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no stata');
@@ -104,6 +100,11 @@ contract TestGhoRouterBase is TestGhoBase {
   /// @dev GHO a GSM pays out for assets worth `grossGho`: gross minus sell fee rounded up
   function _ghoFromSell(uint256 grossGho) internal view returns (uint256) {
     return grossGho - Math.mulDiv(grossGho, sellFee, 1e4, Math.Rounding.Ceil);
+  }
+
+  /// @dev Underlying-asset amount a GSM sells for `ghoAmount`: gross after buy fee, scaled 18 -> 6 decimals
+  function _usdxForBuy(uint256 ghoAmount) internal view returns (uint256) {
+    return Math.mulDiv(ghoAmount, 1e4, 1e4 + buyFee) / 1e12;
   }
 
   function _mintSgho(uint256 amount) internal {

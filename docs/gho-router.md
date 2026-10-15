@@ -217,19 +217,21 @@ Current mitigation:
 - Execution-time minimum output checks via `minAmountOut`.
 - Conservative slippage buffers.
 
-### 5) Partial consumption and residual balances
+### 5) Residual balances
 
 What can happen:
 
-- Requested amounts are not fully consumed by downstream contracts.
+- In normal operation the router holds no tokens after a swap. One bounded exception remains: if a static aToken's exchange rate falls below 1, a GSM sell can take up to 1 share less than the router approved, and that share stays in the router.
 
 Why:
 
-- GSM buy/sell paths can partially fill based on external conditions (rounding error).
+- GSMs do not partially fill: `buyAsset`/`sellAsset` either execute in full for the quoted amount or revert.
+- On buy paths the GSM quotes whole units of its asset, so the GHO actually spent (`ghoUsed`) can be slightly below the GHO available. For GHO → token the router pulls only `ghoUsed` from the caller. For sGHO → token the caller's sGHO is redeemed in full first, and the unspent `ghoAmount - ghoUsed` is returned to the caller.
+- On sell paths the GSM recomputes the asset amount it takes from the quoted GHO. With a static aToken rate at or above 1 this always equals the approved amount; below 1, rounding can leave 1 share behind.
 
 Impact:
 
-- A tiny portion could be lost but the gas used to return funds would be more expensive than the funds (rounding error).
+- At most 1 static aToken share per affected sell, only while the vault rate is below 1.
 
 Current mitigation:
 

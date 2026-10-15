@@ -65,8 +65,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
       amount
     );
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 vaultAssets = _usdxForBuy(amount);
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
 
@@ -84,8 +83,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
       amount
     );
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 vaultAssets = _usdxForBuy(amount);
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
 
@@ -109,8 +107,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
       amount
     );
 
-    uint256 grossAmount = (amount * 1e4) / (1e4 + buyFee);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 vaultAssets = _usdxForBuy(amount);
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
 
     assertEq(outputAmount, expectedOut, 'Should preview static aToken output amount');
@@ -162,8 +159,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     );
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 vaultAssets = _usdxForBuy(ghoAmount);
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
 
@@ -182,8 +178,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     );
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 vaultAssets = _usdxForBuy(ghoAmount);
     uint256 expectedShares = USDX_4626_TOKEN.convertToShares(vaultAssets);
     uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(expectedShares);
 
@@ -208,8 +203,7 @@ contract PreviewSwapsTest is TestGhoRouterBase {
     );
 
     uint256 ghoAmount = SGHO.previewRedeem(amount);
-    uint256 grossAmount = (ghoAmount * 1e4) / (1e4 + buyFee);
-    uint256 vaultAssets = (grossAmount * 1e6) / 1e18;
+    uint256 vaultAssets = _usdxForBuy(ghoAmount);
     uint256 expectedOut = USDX_4626_TOKEN.convertToShares(vaultAssets);
 
     assertEq(outputAmount, expectedOut, 'Should preview static aToken output');
@@ -487,5 +481,6 @@ contract PreviewMatchesSwapTest is TestGhoRouterBase {
       amountOut,
       'User should receive swap output'
     );
+    _assertRouterEmpty();
   }
 }

@@ -147,8 +147,7 @@ contract PausableTest is TestGhoRouterBase {
     GHO_ROUTER.pause();
     GHO_ROUTER.unpause();
 
-    uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 expectedOut = grossGho - (grossGho * sellFee) / 1e4;
+    uint256 expectedOut = _ghoFromSell(USDX_4626_TOKEN.convertToAssets(amount) * 1e12);
 
     vm.prank(USER);
     uint256 ghoReceived = GHO_ROUTER.swap(
@@ -170,8 +169,7 @@ contract PausableTest is TestGhoRouterBase {
     GHO_ROUTER.pause();
     GHO_ROUTER.unpause();
 
-    uint256 grossGho = (amount * 1e18) / 1e6;
-    uint256 expectedOut = grossGho - (grossGho * sellFee) / 1e4;
+    uint256 expectedOut = _ghoFromSell(USDX_4626_TOKEN.convertToAssets(amount) * 1e12);
 
     uint256 ghoAmount = GHO_ROUTER.previewSwap(
       address(USDX_4626_TOKEN),

@@ -4,7 +4,6 @@ pragma solidity 0.8.27;
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable2Step.sol';
 import {Pausable} from '@openzeppelin/contracts/utils/Pausable.sol';
 import {ReentrancyGuard} from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import {Ownable2StepWithGuardian} from 'solidity-utils/contracts/access-control/Ownable2StepWithGuardian.sol';
@@ -255,7 +254,6 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Swaps GHO into a caller-selected GSM token (GSM asset or its underlying) and forwards output.
-   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param token Output token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Maximum allowed amount of GHO to be pulled from the caller.
@@ -333,7 +331,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Redeems sGHO into GHO, then swaps through GSM into a caller-selected token.
-   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
+   * @dev GHO left over from the redeem and not spent on the GSM buy is returned to the caller.
    * @param token Output token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Amount of sGHO shares pulled from the caller.
@@ -364,6 +362,11 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
       outputReceiver: recipient,
       minOutputAmount: minOutputAmount
     });
+
+    uint256 unusedGho = ghoAmount - ghoUsed;
+    if (unusedGho > 0) {
+      IERC20(GHO).safeTransfer(msg.sender, unusedGho);
+    }
 
     return outputAmount;
   }
@@ -485,7 +488,6 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Buys the GSM asset with GHO, then returns either the GSM asset or its underlying.
-   * @dev An almost negligible amount of dust can be left unsued, would cost more in gas than amount returned.
    * @param gsm Whitelisted GSM used for the buy path.
    * @param gsmAsset GSM underlying asset acquired from the GSM.
    * @param isStata Whether the acquired `gsmAsset` must be unwrapped into its underlying before delivery.

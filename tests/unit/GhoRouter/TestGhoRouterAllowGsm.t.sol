@@ -123,6 +123,12 @@ contract SetTokenToStataTest is TestGhoRouterBase {
     assertEq(GHO_ROUTER.tokenToStata(address(token)), address(stata));
   }
 
+  function testSetTokenToStataAssetMismatchNonZero() public {
+    // SGHO.asset() is GHO, a non-zero asset that does not match the provided token
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.setTokenToStata(makeAddr('token'), address(SGHO));
+  }
+
   function testRemoveTokenToStataNonOwner() public {
     vm.prank(USER);
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));

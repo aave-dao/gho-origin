@@ -145,6 +145,8 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
   function rescueToken(address token, address to, uint256 amount) external onlyOwner {
     require(token != address(0) && to != address(0), ZeroAddress());
     IERC20(token).safeTransfer(to, amount);
+
+    emit TokenRescued(token, to, amount);
   }
 
   /// @inheritdoc IGhoRouter

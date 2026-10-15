@@ -38,10 +38,14 @@ contract ConstructorTest is TestGhoRouterBase {
   }
 
   function testConstructor() public {
+    address routerOwner = makeAddr('router-owner');
+
+    vm.expectEmit(true, true, true, true);
+    emit Ownable.OwnershipTransferred(address(0), routerOwner);
     vm.expectEmit(true, true, true, true);
     emit IWithGuardian.GuardianUpdated(address(0), ROUTER_GUARDIAN);
     GhoRouter router = new GhoRouter(
-      address(this),
+      routerOwner,
       ROUTER_GUARDIAN,
       address(GHO_TOKEN),
       address(SGHO)
@@ -49,7 +53,7 @@ contract ConstructorTest is TestGhoRouterBase {
 
     assertEq(router.GHO(), address(GHO_TOKEN));
     assertEq(router.sGHO(), address(SGHO));
-    assertEq(router.owner(), address(this));
+    assertEq(router.owner(), routerOwner);
     assertEq(router.pendingOwner(), address(0));
     assertEq(router.guardian(), ROUTER_GUARDIAN);
   }

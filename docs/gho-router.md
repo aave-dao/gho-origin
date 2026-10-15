@@ -202,6 +202,7 @@ Current mitigation:
 What can happen:
 
 - Preview outputs can differ from write-call outcomes due to dynamic fees/rates/capacity.
+- On the underlying → GHO/sGHO wrap path, `previewSwap` prices the static aToken shares before the router's deposit. Because the deposit rounds shares down, the actual output can exceed the preview by up to one share's worth of underlying. The preview never overestimates on this path.
 
 Why:
 

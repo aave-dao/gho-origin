@@ -26,15 +26,34 @@ contract RescueTokenTest is TestGhoRouterBase {
   }
 
   function testRescueToken() public {
-    uint256 amount = 1_000 ether;
-    deal(address(GHO_TOKEN), address(GHO_ROUTER), amount);
+    uint256 balance = 1_000 ether;
+    uint256 amount = 400 ether;
+    deal(address(GHO_TOKEN), address(GHO_ROUTER), balance);
 
-    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), amount);
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), balance);
     assertEq(GHO_TOKEN.balanceOf(RECIPIENT), 0);
 
+    vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+    emit IGhoRouter.TokenRescued(address(GHO_TOKEN), RECIPIENT, amount);
     GHO_ROUTER.rescueToken(address(GHO_TOKEN), RECIPIENT, amount);
 
-    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), 0);
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), balance - amount);
     assertEq(GHO_TOKEN.balanceOf(RECIPIENT), amount);
+  }
+
+  function testRescueTokenNonGho() public {
+    uint256 balance = 1_000e6;
+    uint256 amount = 400e6;
+    deal(address(USDX_TOKEN), address(GHO_ROUTER), balance);
+
+    assertEq(USDX_TOKEN.balanceOf(address(GHO_ROUTER)), balance);
+    assertEq(USDX_TOKEN.balanceOf(RECIPIENT), 0);
+
+    vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+    emit IGhoRouter.TokenRescued(address(USDX_TOKEN), RECIPIENT, amount);
+    GHO_ROUTER.rescueToken(address(USDX_TOKEN), RECIPIENT, amount);
+
+    assertEq(USDX_TOKEN.balanceOf(address(GHO_ROUTER)), balance - amount);
+    assertEq(USDX_TOKEN.balanceOf(RECIPIENT), amount);
   }
 }

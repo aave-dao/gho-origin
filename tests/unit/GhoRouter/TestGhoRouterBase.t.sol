@@ -5,11 +5,12 @@ import '../TestGhoBase.t.sol';
 
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
 import {MockBadGsm} from '../../mocks/MockBadGsm.sol';
-import {MockBadStata} from '../../mocks/MockBadStataToken.sol';
+import {MockBadStata} from '../../mocks/MockBadStata.sol';
 
 /**
  * @title GhoRouterTest
@@ -39,6 +40,57 @@ contract TestGhoRouterBase is TestGhoBase {
     deal(token, USER, amount);
     vm.prank(USER);
     IERC20(token).approve(spender, amount);
+  }
+
+  function _setUsdxVaultRate(uint256 numerator, uint256 denominator) internal {
+    uint256 vaultAssets = USDX_TOKEN.balanceOf(address(USDX_4626_TOKEN));
+    deal(address(USDX_TOKEN), address(USDX_4626_TOKEN), (vaultAssets * numerator) / denominator);
+  }
+
+  function _allowAndFundPlainGsm() internal {
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
+    deal(address(USDX_TOKEN), address(this), MAX_FUZZ_AMOUNT_6_DECIMALS);
+    USDX_TOKEN.approve(address(GHO_GSM), MAX_FUZZ_AMOUNT_6_DECIMALS);
+    GHO_GSM.sellAsset(MAX_FUZZ_AMOUNT_6_DECIMALS, address(this));
+  }
+
+  function _assertRouterEmpty() internal view {
+    _assertRouterHoldsOnlyGho(0);
+  }
+
+  function _assertRouterHoldsOnlyGho(uint256 ghoAmount) internal view {
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), ghoAmount, 'Unexpected router GHO balance');
+    assertEq(IERC20(address(SGHO)).balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no sGHO');
+    assertEq(USDX_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no USDX_TOKEN');
+    assertEq(USDX_4626_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no stata');
+  }
+
+  function _assertNoRouterAllowances() internal view {
+    address router = address(GHO_ROUTER);
+    assertEq(USDX_TOKEN.allowance(router, address(GHO_GSM)), 0, 'USDX_TOKEN -> GSM allowance');
+    assertEq(
+      USDX_TOKEN.allowance(router, address(USDX_4626_TOKEN)),
+      0,
+      'USDX_TOKEN -> stata allowance'
+    );
+    assertEq(
+      USDX_4626_TOKEN.allowance(router, address(GHO_GSM_4626)),
+      0,
+      'stata -> GSM_4626 allowance'
+    );
+    assertEq(GHO_TOKEN.allowance(router, address(GHO_GSM)), 0, 'GHO -> GSM allowance');
+    assertEq(GHO_TOKEN.allowance(router, address(GHO_GSM_4626)), 0, 'GHO -> GSM_4626 allowance');
+    assertEq(GHO_TOKEN.allowance(router, address(SGHO)), 0, 'GHO -> sGHO allowance');
+  }
+
+  /// @dev GHO a GSM charges to buy assets worth `grossGho`: gross plus buy fee rounded up
+  function _ghoForBuy(uint256 grossGho) internal pure returns (uint256) {
+    return grossGho + Math.mulDiv(grossGho, DEFAULT_GSM_BUY_FEE, 1e4, Math.Rounding.Ceil);
+  }
+
+  /// @dev GHO a GSM pays out for assets worth `grossGho`: gross minus sell fee rounded up
+  function _ghoFromSell(uint256 grossGho) internal pure returns (uint256) {
+    return grossGho - Math.mulDiv(grossGho, DEFAULT_GSM_SELL_FEE, 1e4, Math.Rounding.Ceil);
   }
 
   function _mintSgho(uint256 amount) internal {

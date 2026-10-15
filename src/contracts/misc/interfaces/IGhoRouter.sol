@@ -92,6 +92,14 @@ interface IGhoRouter {
   event TokenToStataRemoved(address indexed token, address indexed stata);
 
   /**
+   * @notice Emitted when tokens held by the router are rescued.
+   * @param token Address of the rescued token
+   * @param to Address receiving the rescued tokens
+   * @param amount Amount of tokens rescued
+   */
+  event TokenRescued(address indexed token, address indexed to, uint256 amount);
+
+  /**
    * @notice Swap tokenIn for tokenOut and send output to recipient
    * @dev In GHO <-> sGHO paths, GSM is ignored
    * @dev Reverts while the router is paused

@@ -2,21 +2,25 @@
 pragma solidity ^0.8.10;
 
 import {Gsm} from 'src/contracts/facilitators/gsm/Gsm.sol';
+import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermissionedGsm.sol';
 
 /**
  * @title PermissionedGsm
  * @author Aave
- * @notice GHO Stability Module restricted to addresses holding the Swapper Role
- * @dev The role is checked against the originator of the request, so that signature-based swaps
+ * @notice GHO Stability Module restricting buys to addresses holding the Buy Asset Role and sells
+ * to addresses holding the Sell Asset Role
+ * @dev The roles are checked against the originator of the request, so that signature-based swaps
  * are gated by the signer and not by the relayer submitting the transaction
  * @dev To be covered by a proxy contract.
  */
-contract PermissionedGsm is Gsm {
-  /**
-   * @notice Returns the identifier of the Swapper Role
-   * @return The bytes32 id hash of the Swapper role
-   */
-  bytes32 public constant SWAPPER_ROLE = keccak256('SWAPPER_ROLE');
+contract PermissionedGsm is Gsm, IPermissionedGsm {
+  /// @inheritdoc IPermissionedGsm
+  bytes32 public constant BUY_ASSET_ROLE = keccak256('BUY_ASSET_ROLE');
+
+  /// @inheritdoc IPermissionedGsm
+  bytes32 public constant SELL_ASSET_ROLE = keccak256('SELL_ASSET_ROLE');
+
+  bool internal _isPermissionless;
 
   /**
    * @dev Constructor
@@ -32,13 +36,29 @@ contract PermissionedGsm is Gsm {
     // Intentionally left blank
   }
 
+  /// @inheritdoc IPermissionedGsm
+  function setPermissionless(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
+    if (enable) {
+      require(!_isPermissionless, 'GSM_ALREADY_PERMISSIONLESS');
+    } else {
+      require(_isPermissionless, 'GSM_ALREADY_PERMISSIONED');
+    }
+    _isPermissionless = enable;
+    emit PermissionlessUpdated(msg.sender, enable);
+  }
+
+  /// @inheritdoc IPermissionedGsm
+  function getIsPermissionless() external view returns (bool) {
+    return _isPermissionless;
+  }
+
   /// @inheritdoc Gsm
   function _buyAsset(
     address originator,
     uint256 minAmount,
     address receiver
   ) internal override returns (uint256, uint256) {
-    _checkRole(SWAPPER_ROLE, originator);
+    if (!_isPermissionless) _checkRole(BUY_ASSET_ROLE, originator);
     return super._buyAsset(originator, minAmount, receiver);
   }
 
@@ -48,7 +68,7 @@ contract PermissionedGsm is Gsm {
     uint256 maxAmount,
     address receiver
   ) internal override returns (uint256, uint256) {
-    _checkRole(SWAPPER_ROLE, originator);
+    if (!_isPermissionless) _checkRole(SELL_ASSET_ROLE, originator);
     return super._sellAsset(originator, maxAmount, receiver);
   }
 }

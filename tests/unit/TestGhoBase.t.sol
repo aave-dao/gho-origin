@@ -356,7 +356,7 @@ contract TestGhoBase is
     );
     Gsm gsm = Gsm(address(gsmProxy));
     if (_isPermissionedGsm()) {
-      _grantSwapperRole(gsm, admin);
+      _grantSwapRoles(gsm, admin);
     }
     return gsm;
   }
@@ -367,7 +367,9 @@ contract TestGhoBase is
     uint128 exposureCap
   ) internal returns (Gsm4626) {
     Gsm4626 gsmImpl = _isPermissionedGsm()
-      ? Gsm4626(address(new PermissionedGsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy)))
+      ? Gsm4626(
+        address(new PermissionedGsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy))
+      )
       : new Gsm4626(address(GHO_TOKEN), underlyingToken, priceStrategy);
     AdminUpgradeabilityProxy gsmProxy = new AdminUpgradeabilityProxy(
       address(gsmImpl),
@@ -382,7 +384,7 @@ contract TestGhoBase is
     );
     Gsm4626 gsm = Gsm4626(address(gsmProxy));
     if (_isPermissionedGsm()) {
-      _grantSwapperRole(Gsm(address(gsm)), address(this));
+      _grantSwapRoles(Gsm(address(gsm)), address(this));
     }
     return gsm;
   }
@@ -396,11 +398,11 @@ contract TestGhoBase is
   }
 
   /**
-   * @dev Grants the Swapper Role to the addresses the GSM test suites originate swaps from
-   * @param gsm The permissioned GSM to grant the role on
+   * @dev Grants the Buy and Sell Asset Roles to the addresses the GSM test suites originate swaps from
+   * @param gsm The permissioned GSM to grant the roles on
    * @param admin The address holding the default admin role on `gsm`
    */
-  function _grantSwapperRole(Gsm gsm, address admin) internal {
+  function _grantSwapRoles(Gsm gsm, address admin) internal {
     address[6] memory swappers = [
       address(this),
       ALICE,
@@ -411,7 +413,9 @@ contract TestGhoBase is
     ];
     for (uint256 i = 0; i < swappers.length; i++) {
       vm.prank(admin);
-      gsm.grantRole(GSM_SWAPPER_ROLE, swappers[i]);
+      gsm.grantRole(GSM_BUY_ASSET_ROLE, swappers[i]);
+      vm.prank(admin);
+      gsm.grantRole(GSM_SELL_ASSET_ROLE, swappers[i]);
     }
   }
 

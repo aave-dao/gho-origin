@@ -159,6 +159,35 @@ contract SwapToGHOTest is TestGhoRouterBase {
     _assertNoRouterAllowances();
   }
 
+  function testSwapToGHOStataRateBelowOne(uint256 amount, uint256 vaultRateBps) public {
+    amount = bound(amount, 1e6, MAX_FUZZ_AMOUNT_6_DECIMALS);
+    vaultRateBps = bound(vaultRateBps, 5e3, 1e4 - 1);
+    _setUsdxVaultRate(vaultRateBps, 1e4);
+    _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
+
+    vm.prank(USER);
+    uint256 ghoReceived = GHO_ROUTER.swap(
+      address(USDX_4626_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+
+    assertEq(GHO_TOKEN.balanceOf(USER), ghoReceived, 'User should receive GHO');
+    assertLe(
+      USDX_4626_TOKEN.balanceOf(address(GHO_ROUTER)),
+      1,
+      'Router should hold at most 1 stata share'
+    );
+    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no GHO');
+    assertEq(IERC20(address(SGHO)).balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no sGHO');
+    assertEq(USDX_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no USDX_TOKEN');
+    _assertNoRouterAllowances();
+  }
+
   function testSwapToGHOUnderlying(uint256 amount) public {
     amount = bound(amount, 1e6, MAX_FUZZ_AMOUNT_6_DECIMALS);
     _dealAndApprove(address(USDX_TOKEN), address(GHO_ROUTER), amount);
@@ -773,6 +802,37 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
     assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, 'User should spend all sGHO');
     assertEq(USDX_TOKEN.balanceOf(USER), expectedOut, 'User should receive USDX_TOKEN');
     assertEq(GHO_TOKEN.balanceOf(USER), ghoAmount - ghoUsed, 'Caller should get unused GHO back');
+    _assertRouterEmpty();
+    _assertNoRouterAllowances();
+  }
+
+  function testSwapFromSGHONoUnusedGho(uint256 amount) public {
+    _setGsmFees(0, 0);
+    amount = bound(amount, 1, MAX_FUZZ_AMOUNT_6_DECIMALS) * 1e12;
+    _mintSgho(amount);
+
+    uint256 ghoAmount = SGHO.previewRedeem(amount);
+    (uint256 stataAmount, uint256 ghoUsed, , ) = GHO_GSM_4626.getAssetAmountForBuyAsset(ghoAmount);
+    assertEq(ghoUsed, ghoAmount, 'GSM should spend all redeemed GHO');
+    uint256 expectedOut = USDX_4626_TOKEN.previewRedeem(stataAmount);
+
+    vm.startPrank(USER);
+    SGHO.approve(address(GHO_ROUTER), amount);
+    vm.expectCall(address(GHO_TOKEN), abi.encodeWithSelector(IERC20.transfer.selector, USER), 0);
+    uint256 outputAmount = GHO_ROUTER.swap(
+      address(SGHO),
+      address(USDX_TOKEN),
+      address(GHO_GSM_4626),
+      amount,
+      1,
+      USER,
+      block.timestamp
+    );
+    vm.stopPrank();
+
+    assertEq(outputAmount, expectedOut, 'Should receive USDX_TOKEN');
+    assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, 'User should spend all sGHO');
+    assertEq(GHO_TOKEN.balanceOf(USER), 0, 'Caller should get no GHO back');
     _assertRouterEmpty();
     _assertNoRouterAllowances();
   }

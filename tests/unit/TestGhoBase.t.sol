@@ -398,7 +398,8 @@ contract TestGhoBase is
   }
 
   /**
-   * @dev Grants the Buy and Sell Asset Roles to the addresses the GSM test suites originate swaps from
+   * @dev Grants the `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE` to the addresses the GSM test suites
+   * originate swaps from
    * @param gsm The permissioned GSM to grant the roles on
    * @param admin The address holding the default admin role on `gsm`
    */

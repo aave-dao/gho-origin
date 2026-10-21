@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
  * @title IPermissionedGsm
  * @author Aave
  * @notice Defines the behaviour of a GHO Stability Module restricting buys to addresses holding the
- * Buy Asset Role and sells to addresses holding the Sell Asset Role
+ * `BUY_ASSET_ROLE` and sells to addresses holding the `SELL_ASSET_ROLE`
  */
 interface IPermissionedGsm {
   /**
@@ -29,14 +29,14 @@ interface IPermissionedGsm {
   function getIsPermissionless() external view returns (bool);
 
   /**
-   * @notice Returns the identifier of the Buy Asset Role
-   * @return The bytes32 id hash of the Buy Asset Role
+   * @notice Returns the identifier of the `BUY_ASSET_ROLE`
+   * @return The bytes32 id hash of the `BUY_ASSET_ROLE`
    */
   function BUY_ASSET_ROLE() external pure returns (bytes32);
 
   /**
-   * @notice Returns the identifier of the Sell Asset Role
-   * @return The bytes32 id hash of the Sell Asset Role
+   * @notice Returns the identifier of the `SELL_ASSET_ROLE`
+   * @return The bytes32 id hash of the `SELL_ASSET_ROLE`
    */
   function SELL_ASSET_ROLE() external pure returns (bytes32);
 }

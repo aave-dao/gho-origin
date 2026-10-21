@@ -7,8 +7,8 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
 /**
  * @title TestPermissionedGsmAccess
  * @dev Covers the swap gating added by `PermissionedGsm`/`PermissionedGsm4626`, which the
- * inherited GSM suites do not exercise since they grant the Buy and Sell Asset Roles to every
- * originator
+ * inherited GSM suites do not exercise since they grant the `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE`
+ * to every originator
  */
 contract TestPermissionedGsmAccess is TestGhoBase {
   address internal unauthorizedAddr;
@@ -47,22 +47,22 @@ contract TestPermissionedGsmAccess is TestGhoBase {
     assertEq(
       IPermissionedGsm(address(GHO_GSM)).BUY_ASSET_ROLE(),
       GSM_BUY_ASSET_ROLE,
-      'Unexpected Buy Asset Role identifier'
+      'Unexpected BUY_ASSET_ROLE identifier'
     );
     assertEq(
       IPermissionedGsm(address(GHO_GSM)).SELL_ASSET_ROLE(),
       GSM_SELL_ASSET_ROLE,
-      'Unexpected Sell Asset Role identifier'
+      'Unexpected SELL_ASSET_ROLE identifier'
     );
     assertEq(
       IPermissionedGsm(address(GHO_GSM_4626)).BUY_ASSET_ROLE(),
       GSM_BUY_ASSET_ROLE,
-      'Unexpected Buy Asset Role identifier on the 4626 flavour'
+      'Unexpected BUY_ASSET_ROLE identifier on the 4626 flavour'
     );
     assertEq(
       IPermissionedGsm(address(GHO_GSM_4626)).SELL_ASSET_ROLE(),
       GSM_SELL_ASSET_ROLE,
-      'Unexpected Sell Asset Role identifier on the 4626 flavour'
+      'Unexpected SELL_ASSET_ROLE identifier on the 4626 flavour'
     );
   }
 
@@ -251,33 +251,134 @@ contract TestPermissionedGsmAccess is TestGhoBase {
     vm.prank(gsmSignerAddr);
     USDX_TOKEN.approve(address(GHO_GSM), type(uint256).max);
 
-    bytes32 digest = _getSellAssetTypedDataHash(
-      address(GHO_GSM),
-      EIP712Types.SellAssetWithSig({
-        originator: gsmSignerAddr,
-        maxAmount: DEFAULT_GSM_USDX_AMOUNT,
-        receiver: gsmSignerAddr,
-        nonce: GHO_GSM.nonces(gsmSignerAddr),
-        deadline: deadline
-      })
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+    bytes memory signature;
+    {
+      bytes32 digest = _getSellAssetTypedDataHash(
+        address(GHO_GSM),
+        EIP712Types.SellAssetWithSig({
+          originator: gsmSignerAddr,
+          maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+          receiver: gsmSignerAddr,
+          nonce: GHO_GSM.nonces(gsmSignerAddr),
+          deadline: deadline
+        })
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
 
+    assertTrue(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, gsmSignerAddr),
+      'Signer does not hold the SELL_ASSET_ROLE'
+    );
     assertFalse(
       GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr),
-      'Relayer unexpectedly holds the Sell Asset Role'
+      'Relayer unexpectedly holds the SELL_ASSET_ROLE'
     );
+
+    uint256 signerGhoBefore = GHO_TOKEN.balanceOf(gsmSignerAddr);
+    uint256 signerUsdxBefore = USDX_TOKEN.balanceOf(gsmSignerAddr);
+    uint256 relayerGhoBefore = GHO_TOKEN.balanceOf(unauthorizedAddr);
+    uint256 relayerUsdxBefore = USDX_TOKEN.balanceOf(unauthorizedAddr);
 
     // The relayer holds no role, but the signed originator does
     vm.prank(unauthorizedAddr);
-    (uint256 assetAmount, ) = GHO_GSM.sellAssetWithSig(
+    (uint256 assetAmount, uint256 ghoBought) = GHO_GSM.sellAssetWithSig(
       gsmSignerAddr,
       DEFAULT_GSM_USDX_AMOUNT,
       gsmSignerAddr,
       deadline,
-      abi.encodePacked(r, s, v)
+      signature
     );
     assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected sold asset amount');
+    assertEq(
+      GHO_TOKEN.balanceOf(gsmSignerAddr),
+      signerGhoBefore + ghoBought,
+      'Unexpected signer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(gsmSignerAddr),
+      signerUsdxBefore - assetAmount,
+      'Unexpected signer USDX balance'
+    );
+    assertEq(
+      GHO_TOKEN.balanceOf(unauthorizedAddr),
+      relayerGhoBefore,
+      'Unexpected relayer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(unauthorizedAddr),
+      relayerUsdxBefore,
+      'Unexpected relayer USDX balance'
+    );
+  }
+
+  function testBuyAssetWithSigAuthorizedSignerUnauthorizedRelayer() public {
+    uint256 deadline = block.timestamp + 1 hours;
+    ghoFaucet(gsmSignerAddr, DEFAULT_GSM_GHO_AMOUNT * 2);
+    vm.prank(gsmSignerAddr);
+    GHO_TOKEN.approve(address(GHO_GSM), type(uint256).max);
+
+    bytes memory signature;
+    {
+      bytes32 digest = _getBuyAssetTypedDataHash(
+        address(GHO_GSM),
+        EIP712Types.BuyAssetWithSig({
+          originator: gsmSignerAddr,
+          minAmount: DEFAULT_GSM_USDX_AMOUNT,
+          receiver: gsmSignerAddr,
+          nonce: GHO_GSM.nonces(gsmSignerAddr),
+          deadline: deadline
+        })
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(gsmSignerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
+
+    assertTrue(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, gsmSignerAddr),
+      'Signer does not hold the BUY_ASSET_ROLE'
+    );
+    assertFalse(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr),
+      'Relayer unexpectedly holds the BUY_ASSET_ROLE'
+    );
+
+    uint256 signerGhoBefore = GHO_TOKEN.balanceOf(gsmSignerAddr);
+    uint256 signerUsdxBefore = USDX_TOKEN.balanceOf(gsmSignerAddr);
+    uint256 relayerGhoBefore = GHO_TOKEN.balanceOf(unauthorizedAddr);
+    uint256 relayerUsdxBefore = USDX_TOKEN.balanceOf(unauthorizedAddr);
+
+    // The relayer holds no role, but the signed originator does
+    vm.prank(unauthorizedAddr);
+    (uint256 assetAmount, uint256 ghoSold) = GHO_GSM.buyAssetWithSig(
+      gsmSignerAddr,
+      DEFAULT_GSM_USDX_AMOUNT,
+      gsmSignerAddr,
+      deadline,
+      signature
+    );
+    assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected bought asset amount');
+    assertEq(
+      GHO_TOKEN.balanceOf(gsmSignerAddr),
+      signerGhoBefore - ghoSold,
+      'Unexpected signer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(gsmSignerAddr),
+      signerUsdxBefore + assetAmount,
+      'Unexpected signer USDX balance'
+    );
+    assertEq(
+      GHO_TOKEN.balanceOf(unauthorizedAddr),
+      relayerGhoBefore,
+      'Unexpected relayer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(unauthorizedAddr),
+      relayerUsdxBefore,
+      'Unexpected relayer USDX balance'
+    );
   }
 
   function testBuyAssetAfterBuyRoleGranted() public {
@@ -299,7 +400,7 @@ contract TestPermissionedGsmAccess is TestGhoBase {
   function testRevertBuyAssetAfterBuyRoleRevoked() public {
     assertTrue(
       GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, ALICE),
-      'Alice does not hold the Buy Asset Role'
+      'Alice does not hold the BUY_ASSET_ROLE'
     );
     GHO_GSM.revokeRole(GSM_BUY_ASSET_ROLE, ALICE);
 
@@ -487,26 +588,472 @@ contract TestPermissionedGsmAccess is TestGhoBase {
     vm.prank(signer);
     GHO_TOKEN.approve(address(GHO_GSM), type(uint256).max);
 
-    bytes32 digest = _getBuyAssetTypedDataHash(
-      address(GHO_GSM),
-      EIP712Types.BuyAssetWithSig({
-        originator: signer,
-        minAmount: DEFAULT_GSM_USDX_AMOUNT,
-        receiver: signer,
-        nonce: GHO_GSM.nonces(signer),
-        deadline: deadline
-      })
+    bytes memory signature;
+    {
+      bytes32 digest = _getBuyAssetTypedDataHash(
+        address(GHO_GSM),
+        EIP712Types.BuyAssetWithSig({
+          originator: signer,
+          minAmount: DEFAULT_GSM_USDX_AMOUNT,
+          receiver: signer,
+          nonce: GHO_GSM.nonces(signer),
+          deadline: deadline
+        })
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
+
+    assertFalse(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, signer),
+      'Signer unexpectedly holds the BUY_ASSET_ROLE'
     );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+    assertFalse(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr),
+      'Relayer unexpectedly holds the BUY_ASSET_ROLE'
+    );
+
+    uint256 signerGhoBefore = GHO_TOKEN.balanceOf(signer);
+    uint256 signerUsdxBefore = USDX_TOKEN.balanceOf(signer);
+    uint256 relayerGhoBefore = GHO_TOKEN.balanceOf(unauthorizedAddr);
+    uint256 relayerUsdxBefore = USDX_TOKEN.balanceOf(unauthorizedAddr);
 
     vm.prank(unauthorizedAddr);
-    (uint256 assetAmount, ) = GHO_GSM.buyAssetWithSig(
+    (uint256 assetAmount, uint256 ghoSold) = GHO_GSM.buyAssetWithSig(
       signer,
       DEFAULT_GSM_USDX_AMOUNT,
       signer,
       deadline,
-      abi.encodePacked(r, s, v)
+      signature
     );
     assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected bought asset amount');
+    assertEq(
+      GHO_TOKEN.balanceOf(signer),
+      signerGhoBefore - ghoSold,
+      'Unexpected signer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(signer),
+      signerUsdxBefore + assetAmount,
+      'Unexpected signer USDX balance'
+    );
+    assertEq(
+      GHO_TOKEN.balanceOf(unauthorizedAddr),
+      relayerGhoBefore,
+      'Unexpected relayer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(unauthorizedAddr),
+      relayerUsdxBefore,
+      'Unexpected relayer USDX balance'
+    );
+  }
+
+  function testSellAssetWithSigUnauthorizedSignerWhenPermissionless() public {
+    IPermissionedGsm(address(GHO_GSM)).setPermissionless(true);
+
+    uint256 deadline = block.timestamp + 1 hours;
+    (address signer, uint256 signerKey) = makeAddrAndKey('unauthorizedSigner');
+    vm.prank(FAUCET);
+    USDX_TOKEN.mint(signer, DEFAULT_GSM_USDX_AMOUNT);
+    vm.prank(signer);
+    USDX_TOKEN.approve(address(GHO_GSM), type(uint256).max);
+
+    bytes memory signature;
+    {
+      bytes32 digest = _getSellAssetTypedDataHash(
+        address(GHO_GSM),
+        EIP712Types.SellAssetWithSig({
+          originator: signer,
+          maxAmount: DEFAULT_GSM_USDX_AMOUNT,
+          receiver: signer,
+          nonce: GHO_GSM.nonces(signer),
+          deadline: deadline
+        })
+      );
+      (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+      signature = abi.encodePacked(r, s, v);
+    }
+
+    assertFalse(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, signer),
+      'Signer unexpectedly holds the SELL_ASSET_ROLE'
+    );
+    assertFalse(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr),
+      'Relayer unexpectedly holds the SELL_ASSET_ROLE'
+    );
+
+    uint256 signerGhoBefore = GHO_TOKEN.balanceOf(signer);
+    uint256 signerUsdxBefore = USDX_TOKEN.balanceOf(signer);
+    uint256 relayerGhoBefore = GHO_TOKEN.balanceOf(unauthorizedAddr);
+    uint256 relayerUsdxBefore = USDX_TOKEN.balanceOf(unauthorizedAddr);
+
+    vm.prank(unauthorizedAddr);
+    (uint256 assetAmount, uint256 ghoBought) = GHO_GSM.sellAssetWithSig(
+      signer,
+      DEFAULT_GSM_USDX_AMOUNT,
+      signer,
+      deadline,
+      signature
+    );
+    assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected sold asset amount');
+    assertEq(
+      GHO_TOKEN.balanceOf(signer),
+      signerGhoBefore + ghoBought,
+      'Unexpected signer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(signer),
+      signerUsdxBefore - assetAmount,
+      'Unexpected signer USDX balance'
+    );
+    assertEq(
+      GHO_TOKEN.balanceOf(unauthorizedAddr),
+      relayerGhoBefore,
+      'Unexpected relayer GHO balance'
+    );
+    assertEq(
+      USDX_TOKEN.balanceOf(unauthorizedAddr),
+      relayerUsdxBefore,
+      'Unexpected relayer USDX balance'
+    );
+  }
+
+  function testSwapRolesAdminIsDefaultAdmin() public view {
+    assertEq(
+      GHO_GSM.getRoleAdmin(GSM_BUY_ASSET_ROLE),
+      DEFAULT_ADMIN_ROLE,
+      'Unexpected BUY_ASSET_ROLE admin'
+    );
+    assertEq(
+      GHO_GSM.getRoleAdmin(GSM_SELL_ASSET_ROLE),
+      DEFAULT_ADMIN_ROLE,
+      'Unexpected SELL_ASSET_ROLE admin'
+    );
+  }
+
+  function testAdminGrantsAndRevokesSwapRoles() public {
+    assertTrue(GHO_GSM.hasRole(DEFAULT_ADMIN_ROLE, address(this)), 'Test is not the admin');
+
+    GHO_GSM.grantRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
+    GHO_GSM.grantRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
+    assertTrue(GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr), 'BUY_ASSET_ROLE not granted');
+    assertTrue(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr),
+      'SELL_ASSET_ROLE not granted'
+    );
+
+    GHO_GSM.revokeRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
+    GHO_GSM.revokeRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
+    assertFalse(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr),
+      'BUY_ASSET_ROLE not revoked'
+    );
+    assertFalse(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr),
+      'SELL_ASSET_ROLE not revoked'
+    );
+  }
+
+  function testRevertSwapRolesManagedByNonAdmin() public {
+    bytes32[6] memory roles = [
+      GSM_CONFIGURATOR_ROLE,
+      GSM_TOKEN_RESCUER_ROLE,
+      GSM_SWAP_FREEZER_ROLE,
+      GSM_LIQUIDATOR_ROLE,
+      GSM_BUY_ASSET_ROLE,
+      GSM_SELL_ASSET_ROLE
+    ];
+    for (uint256 i = 0; i < roles.length; i++) {
+      address holder = makeAddr(string.concat('roleHolder', vm.toString(i)));
+      GHO_GSM.grantRole(roles[i], holder);
+
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          IAccessControl.AccessControlUnauthorizedAccount.selector,
+          holder,
+          DEFAULT_ADMIN_ROLE
+        )
+      );
+      vm.prank(holder);
+      GHO_GSM.grantRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
+
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          IAccessControl.AccessControlUnauthorizedAccount.selector,
+          holder,
+          DEFAULT_ADMIN_ROLE
+        )
+      );
+      vm.prank(holder);
+      GHO_GSM.grantRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
+
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          IAccessControl.AccessControlUnauthorizedAccount.selector,
+          holder,
+          DEFAULT_ADMIN_ROLE
+        )
+      );
+      vm.prank(holder);
+      GHO_GSM.revokeRole(GSM_BUY_ASSET_ROLE, ALICE);
+
+      vm.expectRevert(
+        abi.encodeWithSelector(
+          IAccessControl.AccessControlUnauthorizedAccount.selector,
+          holder,
+          DEFAULT_ADMIN_ROLE
+        )
+      );
+      vm.prank(holder);
+      GHO_GSM.revokeRole(GSM_SELL_ASSET_ROLE, ALICE);
+    }
+  }
+
+  function testBuyAssetToReceiverWithoutRole() public {
+    address receiver = makeAddr('receiver');
+    ghoFaucet(ALICE, DEFAULT_GSM_GHO_AMOUNT * 2);
+    vm.prank(ALICE);
+    GHO_TOKEN.approve(address(GHO_GSM), type(uint256).max);
+
+    assertTrue(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, ALICE),
+      'Alice does not hold the BUY_ASSET_ROLE'
+    );
+    assertFalse(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, receiver),
+      'Receiver unexpectedly holds the BUY_ASSET_ROLE'
+    );
+
+    uint256 aliceGhoBefore = GHO_TOKEN.balanceOf(ALICE);
+    uint256 aliceUsdxBefore = USDX_TOKEN.balanceOf(ALICE);
+
+    vm.prank(ALICE);
+    (uint256 assetAmount, uint256 ghoSold) = GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, receiver);
+    assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected bought asset amount');
+    assertEq(GHO_TOKEN.balanceOf(ALICE), aliceGhoBefore - ghoSold, 'Unexpected Alice GHO balance');
+    assertEq(USDX_TOKEN.balanceOf(ALICE), aliceUsdxBefore, 'Unexpected Alice USDX balance');
+    assertEq(USDX_TOKEN.balanceOf(receiver), assetAmount, 'Unexpected receiver USDX balance');
+    assertEq(GHO_TOKEN.balanceOf(receiver), 0, 'Unexpected receiver GHO balance');
+  }
+
+  function testSellAssetToReceiverWithoutRole() public {
+    address receiver = makeAddr('receiver');
+    vm.prank(FAUCET);
+    USDX_TOKEN.mint(ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.prank(ALICE);
+    USDX_TOKEN.approve(address(GHO_GSM), type(uint256).max);
+
+    assertTrue(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, ALICE),
+      'Alice does not hold the SELL_ASSET_ROLE'
+    );
+    assertFalse(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, receiver),
+      'Receiver unexpectedly holds the SELL_ASSET_ROLE'
+    );
+
+    uint256 aliceGhoBefore = GHO_TOKEN.balanceOf(ALICE);
+    uint256 aliceUsdxBefore = USDX_TOKEN.balanceOf(ALICE);
+
+    vm.prank(ALICE);
+    (uint256 assetAmount, uint256 ghoBought) = GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, receiver);
+    assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected sold asset amount');
+    assertEq(
+      USDX_TOKEN.balanceOf(ALICE),
+      aliceUsdxBefore - assetAmount,
+      'Unexpected Alice USDX balance'
+    );
+    assertEq(GHO_TOKEN.balanceOf(ALICE), aliceGhoBefore, 'Unexpected Alice GHO balance');
+    assertEq(GHO_TOKEN.balanceOf(receiver), ghoBought, 'Unexpected receiver GHO balance');
+    assertEq(USDX_TOKEN.balanceOf(receiver), 0, 'Unexpected receiver USDX balance');
+  }
+
+  function testRevertBuyAssetUnauthorizedToReceiverWithRole() public {
+    assertTrue(
+      GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, ALICE),
+      'Alice does not hold the BUY_ASSET_ROLE'
+    );
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_BUY_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+  }
+
+  function testRevertSellAssetUnauthorizedToReceiverWithRole() public {
+    assertTrue(
+      GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, ALICE),
+      'Alice does not hold the SELL_ASSET_ROLE'
+    );
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_SELL_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+  }
+
+  function testFuzzRevertBuyAssetUnauthorizedOriginator(address originator) public {
+    // The proxy admin cannot call through the proxy
+    vm.assume(originator != SHORT_EXECUTOR);
+    vm.assume(!GHO_GSM.hasRole(GSM_BUY_ASSET_ROLE, originator));
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        originator,
+        GSM_BUY_ASSET_ROLE
+      )
+    );
+    vm.prank(originator);
+    GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
+  }
+
+  function testFuzzRevertSellAssetUnauthorizedOriginator(address originator) public {
+    // The proxy admin cannot call through the proxy
+    vm.assume(originator != SHORT_EXECUTOR);
+    vm.assume(!GHO_GSM.hasRole(GSM_SELL_ASSET_ROLE, originator));
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        originator,
+        GSM_SELL_ASSET_ROLE
+      )
+    );
+    vm.prank(originator);
+    GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
+  }
+
+  function testRevertBuyAssetUnauthorizedBeforeZeroAmount() public {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_BUY_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.buyAsset(0, unauthorizedAddr);
+
+    GHO_GSM.grantRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
+    vm.expectRevert('INVALID_AMOUNT');
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.buyAsset(0, unauthorizedAddr);
+  }
+
+  function testRevertSellAssetUnauthorizedBeforeZeroAmount() public {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_SELL_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.sellAsset(0, unauthorizedAddr);
+
+    GHO_GSM.grantRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
+    vm.expectRevert('INVALID_AMOUNT');
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.sellAsset(0, unauthorizedAddr);
+  }
+
+  function testRevertBuyAssetUnauthorizedBeforeInsufficientLiquidity() public {
+    uint256 amount = GHO_GSM.getAvailableLiquidity() + 1;
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_BUY_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.buyAsset(amount, unauthorizedAddr);
+
+    GHO_GSM.grantRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
+    vm.expectRevert('INSUFFICIENT_AVAILABLE_EXOGENOUS_ASSET_LIQUIDITY');
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.buyAsset(amount, unauthorizedAddr);
+  }
+
+  function testRevertSellAssetUnauthorizedBeforeExposureCap() public {
+    uint256 amount = uint256(GHO_GSM.getExposureCap()) + 1;
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_SELL_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.sellAsset(amount, unauthorizedAddr);
+
+    GHO_GSM.grantRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
+    vm.expectRevert('EXOGENOUS_ASSET_EXPOSURE_TOO_HIGH');
+    vm.prank(unauthorizedAddr);
+    GHO_GSM.sellAsset(amount, unauthorizedAddr);
+  }
+
+  function testRevertBuyAssetUnauthorizedBeforeInsufficientBalance() public {
+    address originator = makeAddr('noBalance');
+    vm.prank(originator);
+    GHO_TOKEN.approve(address(GHO_GSM), type(uint256).max);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        originator,
+        GSM_BUY_ASSET_ROLE
+      )
+    );
+    vm.prank(originator);
+    GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
+
+    GHO_GSM.grantRole(GSM_BUY_ASSET_ROLE, originator);
+    vm.expectRevert(stdError.arithmeticError);
+    vm.prank(originator);
+    GHO_GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
+  }
+
+  function testRevertSellAssetUnauthorizedBeforeInsufficientBalance() public {
+    address originator = makeAddr('noBalance');
+    vm.prank(originator);
+    USDX_TOKEN.approve(address(GHO_GSM), type(uint256).max);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        originator,
+        GSM_SELL_ASSET_ROLE
+      )
+    );
+    vm.prank(originator);
+    GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
+
+    GHO_GSM.grantRole(GSM_SELL_ASSET_ROLE, originator);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IERC20Errors.ERC20InsufficientBalance.selector,
+        originator,
+        0,
+        DEFAULT_GSM_USDX_AMOUNT
+      )
+    );
+    vm.prank(originator);
+    GHO_GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
   }
 }

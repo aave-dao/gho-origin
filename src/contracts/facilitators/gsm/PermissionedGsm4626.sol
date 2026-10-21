@@ -9,9 +9,11 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
  * @title PermissionedGsm4626
  * @author Aave
  * @notice GHO Stability Module for ERC4626 vault shares, restricting buys to addresses holding the
- * Buy Asset Role and sells to addresses holding the Sell Asset Role
+ * `BUY_ASSET_ROLE` and sells to addresses holding the `SELL_ASSET_ROLE`
  * @dev The roles are checked against the originator of the request, so that signature-based swaps
  * are gated by the signer and not by the relayer submitting the transaction
+ * @dev Duplicated with `PermissionedGsm` on purpose: extending `Gsm` and `Gsm4626` as is keeps the
+ * audited contracts untouched and the change minimal
  * @dev To be covered by a proxy contract.
  */
 contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {

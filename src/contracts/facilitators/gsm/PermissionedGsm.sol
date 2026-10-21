@@ -7,10 +7,12 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
 /**
  * @title PermissionedGsm
  * @author Aave
- * @notice GHO Stability Module restricting buys to addresses holding the Buy Asset Role and sells
- * to addresses holding the Sell Asset Role
+ * @notice GHO Stability Module restricting buys to addresses holding the `BUY_ASSET_ROLE` and sells
+ * to addresses holding the `SELL_ASSET_ROLE`
  * @dev The roles are checked against the originator of the request, so that signature-based swaps
  * are gated by the signer and not by the relayer submitting the transaction
+ * @dev Duplicated with `PermissionedGsm4626` on purpose: extending `Gsm` and `Gsm4626` as is keeps
+ * the audited contracts untouched and the change minimal
  * @dev To be covered by a proxy contract.
  */
 contract PermissionedGsm is Gsm, IPermissionedGsm {

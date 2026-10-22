@@ -390,7 +390,7 @@ contract TestGhoBase is
   }
 
   /**
-   * @dev Whether the GSM deployment helpers deploy the permissioned flavours of the GSMs.
+   * @dev Whether the GSM deployment helpers deploy the permissioned versions of the GSMs.
    * @dev Overridden by the test suites under `tests/unit/permissioned-gsm`
    */
   function _isPermissionedGsm() internal view virtual returns (bool) {

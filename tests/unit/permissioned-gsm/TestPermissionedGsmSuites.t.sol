@@ -11,7 +11,7 @@ import {TestGsmSwapFuzz} from '../TestGsmSwapFuzz.t.sol';
 
 /**
  * @dev Reruns the regular GSM test suites against `PermissionedGsm`/`PermissionedGsm4626`. The
- * deployment helpers in `TestGhoBase` deploy the permissioned flavours and grant the
+ * deployment helpers in `TestGhoBase` deploy the permissioned versions and grant the
  * `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE` to the swap originators, so every assertion holding for
  * the regular GSMs must hold here too.
  */

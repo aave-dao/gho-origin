@@ -13,7 +13,9 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
  * @dev The roles are checked against the originator of the request, so that signature-based swaps
  * are gated by the signer and not by the relayer submitting the transaction
  * @dev Duplicated with `PermissionedGsm` on purpose: extending `Gsm` and `Gsm4626` as is keeps the
- * audited contracts untouched and the change minimal
+ * audited contracts untouched and the change minimal. A shared abstract contract is avoided as
+ * `Gsm4626` extends `Gsm` with its own overrides, which would lead to a diamond inheritance, so the
+ * common surface is defined in `IPermissionedGsm` instead
  * @dev To be covered by a proxy contract.
  */
 contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {

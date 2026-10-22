@@ -7,7 +7,7 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
 /**
  * @dev Covers the swap gating added by `PermissionedGsm`/`PermissionedGsm4626`, which the
  * inherited GSM suites do not exercise since they grant the `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE`
- * to every originator. Run against both flavours through the concrete suites below.
+ * to every originator. Run against both versions through the concrete suites below.
  */
 abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
   Gsm internal GSM;

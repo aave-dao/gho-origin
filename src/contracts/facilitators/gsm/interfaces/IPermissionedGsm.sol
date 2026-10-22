@@ -4,29 +4,46 @@ pragma solidity ^0.8.0;
 /**
  * @title IPermissionedGsm
  * @author Aave
- * @notice Defines the behaviour of a GHO Stability Module restricting buys to addresses holding the
- * `BUY_ASSET_ROLE` and sells to addresses holding the `SELL_ASSET_ROLE`
+ * @notice Defines the access restriction behaviour of the GHO Stability Module
  */
 interface IPermissionedGsm {
   /**
-   * @dev Emitted when the Configurator lifts or restores the swap restrictions
+   * @dev Emitted when the Configurator lifts or restores the buy restriction
    * @param configurator The address of the Configurator
-   * @param enabled True if swap functions are permissionless, False otherwise
+   * @param enabled True if `buyAsset` is permissionless, False otherwise
    */
-  event PermissionlessUpdated(address indexed configurator, bool enabled);
+  event BuyPermissionlessUpdated(address indexed configurator, bool enabled);
 
   /**
-   * @notice Lift or restore the role restrictions on swap functions
-   * @dev Swap functions are role restricted by default
-   * @param enable True to make swap functions permissionless, false otherwise
+   * @dev Emitted when the Configurator lifts or restores the sell restriction
+   * @param configurator The address of the Configurator
+   * @param enabled True if `sellAsset` is permissionless, False otherwise
    */
-  function setPermissionless(bool enable) external;
+  event SellPermissionlessUpdated(address indexed configurator, bool enabled);
 
   /**
-   * @notice Returns the permissionless status of the GSM
-   * @return True if swap functions are permissionless, false if they are role restricted
+   * @notice Lift or restore the `BUY_ASSET_ROLE` restriction on buys
+   * @param enable True to make `buyAsset` permissionless, false otherwise
    */
-  function getIsPermissionless() external view returns (bool);
+  function setBuyPermissionless(bool enable) external;
+
+  /**
+   * @notice Lift or restore the `SELL_ASSET_ROLE` restriction on sells
+   * @param enable True to make `sellAsset` permissionless, false otherwise
+   */
+  function setSellPermissionless(bool enable) external;
+
+  /**
+   * @notice Returns the permissionless status of buys
+   * @return True if `buyAsset` is permissionless, false if it is role restricted
+   */
+  function getIsBuyPermissionless() external view returns (bool);
+
+  /**
+   * @notice Returns the permissionless status of sells
+   * @return True if `sellAsset` is permissionless, false if it is role restricted
+   */
+  function getIsSellPermissionless() external view returns (bool);
 
   /**
    * @notice Returns the identifier of the `BUY_ASSET_ROLE`

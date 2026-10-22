@@ -43,8 +43,12 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
       assertEq(afterSnapshot[i], beforeSnapshot[i], 'Unexpected storage value updated');
     }
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsPermissionless(),
-      'Unexpected permissionless status'
+      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
+      'Unexpected buy permissionless status'
+    );
+    assertFalse(
+      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
+      'Unexpected sell permissionless status'
     );
 
     vm.expectRevert(
@@ -98,7 +102,9 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
     }
 
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GSM)).getIsPermissionless();
+    IPermissionedGsm(address(GSM)).getIsBuyPermissionless();
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GSM)).getIsSellPermissionless();
 
     vm.prank(ALICE);
     (uint256 assetAmount, ) = GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
@@ -111,7 +117,7 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
 
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(permissionedImpl);
-    IPermissionedGsm(address(GSM)).setPermissionless(true);
+    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
 
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(plainImpl);
@@ -119,13 +125,17 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(permissionedImpl);
 
     assertTrue(
-      IPermissionedGsm(address(GSM)).getIsPermissionless(),
-      'Unexpected permissionless status'
+      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
+      'Unexpected buy permissionless status'
+    );
+    assertFalse(
+      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
+      'Unexpected sell permissionless status'
     );
   }
 
   function _getStorageSnapshot() internal view returns (bytes32[] memory) {
-    // lastInitializedRevision (slot 1) and GSM storage (56-60), `_isPermissionless` packs into 60
+    // lastInitializedRevision (slot 1) and GSM storage (56-60), the permissionless flags pack into 60
     bytes32[] memory data = new bytes32[](6);
     data[0] = vm.load(address(GSM), bytes32(uint256(1)));
     for (uint256 i = 1; i < data.length; i++) {

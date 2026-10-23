@@ -331,7 +331,8 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Redeems sGHO into GHO, then swaps through GSM into a caller-selected token.
-   * @dev GHO left over from the redeem and not spent on the GSM buy is returned to the caller.
+   * @dev GHO left over from the redeem and not spent on the GSM buy is returned to `msg.sender`, not
+   * to `recipient`.
    * @param token Output token (GSM asset or its underlying).
    * @param gsm Whitelisted GSM used for the swap.
    * @param exactAmountIn Amount of sGHO shares pulled from the caller.

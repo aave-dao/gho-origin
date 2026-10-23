@@ -102,6 +102,8 @@ interface IGhoRouter {
   /**
    * @notice Swap tokenIn for tokenOut and send output to recipient
    * @dev In GHO <-> sGHO paths, GSM is ignored
+   * @dev On sGHO -> token paths, GHO left over from the redeem is returned to `msg.sender`, not to
+   * `recipient`, so integrations swapping on behalf of users must forward it
    * @dev Reverts while the router is paused
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to

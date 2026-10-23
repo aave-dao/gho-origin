@@ -26,7 +26,7 @@ Internally, the router dispatches to one of six flows based on the `tokenIn`/`to
 
 On `GHO <-> sGHO` paths, the GSM address is ignored.
 Any `tokenIn`/`tokenOut` pair that does not match these six paths reverts with `InvalidTokenPair(tokenIn, tokenOut)`.
-A `GHO <-> GHO` path will revert with `InvalidToken` rather than the above mentioned `InvalidTokenPair(tokenIn, tokenOut)`.
+`GHO <-> GHO` and `sGHO <-> sGHO` paths revert with `InvalidToken` (or `GsmNotConfigured` if `gsm` is not allowed) rather than the above mentioned `InvalidTokenPair(tokenIn, tokenOut)`.
 
 Important shape of the current design:
 
@@ -226,7 +226,7 @@ What can happen:
 Why:
 
 - GSMs do not partially fill: `buyAsset`/`sellAsset` either execute in full for the quoted amount or revert.
-- On buy paths the GSM quotes whole units of its asset, so the GHO actually spent (`ghoUsed`) can be slightly below the GHO available. For GHO → token the router pulls only `ghoUsed` from the caller. For sGHO → token the caller's sGHO is redeemed in full first, and the unspent `ghoAmount - ghoUsed` is returned to the caller.
+- On buy paths the GSM quotes whole units of its asset, so the GHO actually spent (`ghoUsed`) can be slightly below the GHO available. For GHO → token the router pulls only `ghoUsed` from the caller. For sGHO → token the caller's sGHO is redeemed in full first, and the unspent `ghoAmount - ghoUsed` is returned to the caller (`msg.sender`), not to `recipient`. Integrations calling the router on behalf of users receive this GHO and must forward it themselves.
 - On sell paths the GSM recomputes the asset amount it takes from the quoted GHO. With a static aToken rate at or above 1 this always equals the approved amount; below 1, rounding can leave 1 share behind.
 
 Impact:

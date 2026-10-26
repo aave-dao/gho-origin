@@ -1,0 +1,31 @@
+src/contracts/misc/interfaces/IGhoRouter.sol
+  s_3ac7e60bd238cf::t_0cfbe54ce39deb 117-118
+  s_3ac7e60bd238cf::t_2bdfa166a3a633 151-152
+  s_3ac7e60bd238cf::t_2089745f160a73 136-137
+src/contracts/misc/GhoRouter.sol
+  s_3ac7e60bd238cf::t_e83cc3ede99a98 574-575
+tests/unit/GhoRouter/TestGhoRouterSwapRouting.t.sol
+  s_3ac7e60bd238cf::t_a90bc21a734e91 104-115
+docs/gho-router.md
+  s_3ac7e60bd238cf::t_f38c35fb7c5088 228
+  s_3ac7e60bd238cf::t_24403dcf73d5e4 324
+tests/unit/GhoRouter/TestGhoRouterSellRefund.t.sol
+  s_3ac7e60bd238cf::t_de5dc1239bf456 243-251
+  s_3ac7e60bd238cf::t_6e945ba662641d 127-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bdf9f9c0c8fcc3ef5f749f9e3eaace5c52704415",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

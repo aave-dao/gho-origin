@@ -114,7 +114,8 @@ interface IGhoRouter {
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
    * @param gsm Address of the GSM used to perform swap
-   * @param exactAmountIn Amount of tokens to swap
+   * @param exactAmountIn Amount of tokens to swap. On GHO -> token paths, the maximum GHO to spend;
+   * only the GHO the GSM uses is pulled
    * @param minAmountOut Minimum amount of output token to receive (slippage protection)
    * @param recipient Address that receives output token
    * @param deadline Maximum timestamp at which the swap can be executed
@@ -132,6 +133,8 @@ interface IGhoRouter {
 
   /**
    * @notice Allows a GSM to be used for swaps
+   * @dev Reverts with `InvalidGsm` if `gsm` has no code, its `GHO_TOKEN` is not GHO, or its
+   * `UNDERLYING_ASSET` is zero, GHO or sGHO
    * @param gsm GSM address to allow
    */
   function allowGsm(address gsm) external;
@@ -145,8 +148,8 @@ interface IGhoRouter {
   /**
    * @notice Maps an underlying token to its static aToken (stata) so the router can route
    *         swaps that wrap/unwrap through a stata GSM.
-   * @dev Reverts if `token` already has a mapping (remove it first), or unless `stata` is an
-   *      ERC4626 whose `asset()` is `token`.
+   * @dev Reverts if `token` is GHO or sGHO, if `token` already has a mapping (remove it first), or
+   *      unless `stata` is an ERC4626 whose `asset()` is `token`.
    * @param token Underlying token address
    * @param stata Static aToken (ERC4626) that wraps `token`
    */

@@ -101,6 +101,18 @@ contract SwapRoutingTest is TestGhoRouterBase {
     GHO_ROUTER.previewSwap(address(GHO_TOKEN), address(GHO_TOKEN), address(GHO_GSM), 1 ether);
   }
 
+  function testPreviewSwapSGHOToSGHOGsmSettlingInSGho() public {
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
+    vm.mockCall(
+      address(GHO_GSM),
+      abi.encodeWithSelector(IGsm.UNDERLYING_ASSET.selector),
+      abi.encode(address(SGHO))
+    );
+
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.previewSwap(address(SGHO), address(SGHO), address(GHO_GSM), 1 ether);
+  }
+
   function testSwapRecipientIsRouterGHOToSGho() public {
     vm.prank(USER);
     vm.expectRevert(IGhoRouter.InvalidRecipient.selector);

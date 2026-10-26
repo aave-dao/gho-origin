@@ -225,7 +225,7 @@ What can happen:
 
 Why:
 
-- GSMs do not partially fill: `buyAsset`/`sellAsset` either execute in full for the quoted amount or revert.
+- GSMs do not partially fill: `buyAsset`/`sellAsset` either execute in full for the amount the GSM quotes or revert. On sells, that amount can be below the amount the router offers.
 - On buy paths the GSM quotes whole units of its asset, so the GHO actually spent (`ghoUsed`) can be slightly below the GHO available. For GHO → token the router pulls only `ghoUsed` from the caller. For sGHO → token the caller's sGHO is redeemed in full first, and the unspent `ghoAmount - ghoUsed` is returned to the caller (`msg.sender`), not to `recipient`. Integrations calling the router on behalf of users receive this GHO and must forward it themselves.
 - On sell paths the GSM recomputes the asset amount it takes from the quoted GHO, which can be below the amount offered (e.g. 18-decimal assets or static aTokens with a sell fee, or a static aToken rate below 1). The unsold `amount - assetSold` of the GSM asset is returned to the caller (`msg.sender`), not to `recipient`. On the underlying → GHO/sGHO path it is returned as static aToken shares, not unwrapped.
 
@@ -321,3 +321,4 @@ Current mitigation:
 4. Alert on downstream GSM/static aToken/sGHO upgrades, pauses, and parameter changes.
 5. Treat fork tests as integration smoke tests, not full economic assurance.
 6. Check `paused()` before routing; monitor `Paused`/`Unpaused` events.
+7. Expect refunds to `msg.sender`, not `recipient`: unsold GSM asset on token → GHO/sGHO (as static aToken shares on the underlying path) and unused GHO on sGHO → token. Contracts swapping on behalf of users must forward them.

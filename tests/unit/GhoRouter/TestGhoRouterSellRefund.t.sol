@@ -124,6 +124,78 @@ contract SellRefundTest is TestGhoRouterBase {
     _assertRouterEmpty();
   }
 
+  function testSwapToSGhoStata18DecimalsUnderlyingRefundsUnsoldShares() public {
+    uint256 amount = 1_100 ether + 502;
+    uint256 shares = STATA_18.previewDeposit(amount);
+    uint256 gsmSharesBefore = STATA_18.balanceOf(address(GSM_STATA_18));
+    _dealAndApprove(address(UNDERLYING_18), address(GHO_ROUTER), amount);
+
+    vm.prank(USER);
+    uint256 sghoReceived = GHO_ROUTER.swap(
+      address(UNDERLYING_18),
+      address(SGHO),
+      address(GSM_STATA_18),
+      amount,
+      0,
+      RECIPIENT,
+      block.timestamp
+    );
+
+    uint256 sharesSold = STATA_18.balanceOf(address(GSM_STATA_18)) - gsmSharesBefore;
+    assertEq(SGHO.balanceOf(RECIPIENT), sghoReceived, 'Recipient should receive sGHO');
+    assertEq(UNDERLYING_18.balanceOf(USER), 0, 'Caller should spend all underlying');
+    assertGt(STATA_18.balanceOf(USER), 0, 'GSM should take less than offered');
+    assertEq(STATA_18.balanceOf(USER), shares - sharesSold, 'Unsold shares should be refunded');
+    assertEq(STATA_18.balanceOf(RECIPIENT), 0, 'Recipient should not receive the refund');
+    _assertRouterHoldsNo18DecimalsAssets();
+    _assertRouterEmpty();
+  }
+
+  function testSwapToGHOStata18DecimalsRefundsUnsoldShares() public {
+    uint256 shares = _mintStata18(1_100 ether + 502);
+    (uint256 sharesSold, uint256 expectedGho, , ) = GSM_STATA_18.getGhoAmountForSellAsset(shares);
+    assertGt(shares - sharesSold, 0, 'GSM should take less than offered');
+
+    vm.startPrank(USER);
+    STATA_18.approve(address(GHO_ROUTER), shares);
+    uint256 ghoReceived = GHO_ROUTER.swap(
+      address(STATA_18),
+      address(GHO_TOKEN),
+      address(GSM_STATA_18),
+      shares,
+      expectedGho,
+      USER,
+      block.timestamp
+    );
+    vm.stopPrank();
+
+    assertEq(ghoReceived, expectedGho, 'Received GHO does not match');
+    assertEq(STATA_18.balanceOf(USER), shares - sharesSold, 'Unsold shares should be refunded');
+    _assertRouterHoldsNo18DecimalsAssets();
+    _assertRouterEmpty();
+  }
+
+  function testSwapToGHOPlain18DecimalsRefundEmitsFullAmountIn() public {
+    uint256 amount = 1_000 ether + 1;
+    (uint256 assetSold, uint256 expectedGho, , ) = GSM_18.getGhoAmountForSellAsset(amount);
+    assertGt(amount - assetSold, 0, 'GSM should take less than offered');
+    _dealAndApprove(address(TOKEN_18), address(GHO_ROUTER), amount);
+
+    // The event reports the full input pulled from the caller; the refund is not netted
+    vm.expectEmit(true, true, true, true, address(GHO_ROUTER));
+    emit IGhoRouter.Swap(USER, address(TOKEN_18), address(GHO_TOKEN), amount, expectedGho, USER);
+    vm.prank(USER);
+    GHO_ROUTER.swap(
+      address(TOKEN_18),
+      address(GHO_TOKEN),
+      address(GSM_18),
+      amount,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
   function testFuzzSwapToGHOPlain18DecimalsRouterEmpty(uint256 amount) public {
     amount = bound(amount, 1 ether, MAX_FUZZ_AMOUNT_18_DECIMALS);
     (uint256 assetSold, , , ) = GSM_18.getGhoAmountForSellAsset(amount);
@@ -166,6 +238,15 @@ contract SellRefundTest is TestGhoRouterBase {
     assertEq(STATA_18.balanceOf(USER), shares - sharesSold, 'Unsold shares should be refunded');
     _assertRouterHoldsNo18DecimalsAssets();
     _assertRouterEmpty();
+  }
+
+  function _mintStata18(uint256 underlyingAmount) internal returns (uint256) {
+    deal(address(UNDERLYING_18), USER, underlyingAmount);
+    vm.startPrank(USER);
+    UNDERLYING_18.approve(address(STATA_18), underlyingAmount);
+    uint256 shares = STATA_18.deposit(underlyingAmount, USER);
+    vm.stopPrank();
+    return shares;
   }
 
   function _assertRouterHoldsNo18DecimalsAssets() internal view {

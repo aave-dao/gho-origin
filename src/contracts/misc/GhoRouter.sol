@@ -571,7 +571,8 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Validates a swap's `token`/`gsm` pairing and resolves how to route it.
-   *      The GSM must be whitelisted, and `token` must be either the GSM asset itself
+   *      The GSM must be whitelisted and its asset must not be GHO or sGHO (re-checked here in case
+   *      the GSM was upgraded after being allowed). `token` must be either the GSM asset itself
    *      or an underlying registered in `tokenToStata` whose static aToken is the GSM asset.
    *      Validation never calls `asset()` on the GSM asset, so a plain (non-stata) GSM
    *      paired with an incompatible token reverts cleanly with `InvalidToken`.

@@ -384,60 +384,57 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
 
   function testPermissionedByDefault() public view {
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
-      'Unexpected buy permissionless status'
+      IPermissionedGsm(address(GSM)).getIsBuyAccessOpen(),
+      'Unexpected buy access status'
     );
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
-      'Unexpected sell permissionless status'
+      IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
+      'Unexpected sell access status'
     );
   }
 
-  function testSetBuyPermissionless() public {
+  function testSetBuyAccessOpen() public {
     vm.expectEmit(true, true, true, true, address(GSM));
-    emit IPermissionedGsm.BuyPermissionlessUpdated(address(this), true);
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+    emit IPermissionedGsm.BuyAccessOpenUpdated(address(this), true);
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
+    assertTrue(IPermissionedGsm(address(GSM)).getIsBuyAccessOpen(), 'Unexpected buy access status');
+    assertFalse(
+      IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
+      'Unexpected sell access status'
+    );
+
+    vm.expectEmit(true, true, true, true, address(GSM));
+    emit IPermissionedGsm.BuyAccessOpenUpdated(address(this), false);
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(false);
+    assertFalse(
+      IPermissionedGsm(address(GSM)).getIsBuyAccessOpen(),
+      'Unexpected buy access status'
+    );
+  }
+
+  function testSetSellAccessOpen() public {
+    vm.expectEmit(true, true, true, true, address(GSM));
+    emit IPermissionedGsm.SellAccessOpenUpdated(address(this), true);
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
     assertTrue(
-      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
-      'Unexpected buy permissionless status'
+      IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
+      'Unexpected sell access status'
     );
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
-      'Unexpected sell permissionless status'
+      IPermissionedGsm(address(GSM)).getIsBuyAccessOpen(),
+      'Unexpected buy access status'
     );
 
     vm.expectEmit(true, true, true, true, address(GSM));
-    emit IPermissionedGsm.BuyPermissionlessUpdated(address(this), false);
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(false);
+    emit IPermissionedGsm.SellAccessOpenUpdated(address(this), false);
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(false);
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
-      'Unexpected buy permissionless status'
+      IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
+      'Unexpected sell access status'
     );
   }
 
-  function testSetSellPermissionless() public {
-    vm.expectEmit(true, true, true, true, address(GSM));
-    emit IPermissionedGsm.SellPermissionlessUpdated(address(this), true);
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
-    assertTrue(
-      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
-      'Unexpected sell permissionless status'
-    );
-    assertFalse(
-      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
-      'Unexpected buy permissionless status'
-    );
-
-    vm.expectEmit(true, true, true, true, address(GSM));
-    emit IPermissionedGsm.SellPermissionlessUpdated(address(this), false);
-    IPermissionedGsm(address(GSM)).setSellPermissionless(false);
-    assertFalse(
-      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
-      'Unexpected sell permissionless status'
-    );
-  }
-
-  function testRevertSetBuyPermissionlessUnauthorized() public {
+  function testRevertSetBuyAccessOpenUnauthorized() public {
     vm.expectRevert(
       abi.encodeWithSelector(
         IAccessControl.AccessControlUnauthorizedAccount.selector,
@@ -446,10 +443,10 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
       )
     );
     vm.prank(unauthorizedAddr);
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
   }
 
-  function testRevertSetSellPermissionlessUnauthorized() public {
+  function testRevertSetSellAccessOpenUnauthorized() public {
     vm.expectRevert(
       abi.encodeWithSelector(
         IAccessControl.AccessControlUnauthorizedAccount.selector,
@@ -458,36 +455,36 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
       )
     );
     vm.prank(unauthorizedAddr);
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
   }
 
-  function testRevertSetBuyPermissionlessAlreadyPermissionless() public {
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+  function testRevertSetBuyAccessOpenAlreadyOpen() public {
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
 
-    vm.expectRevert('GSM_NO_CHANGE_IN_BUY_PERMISSIONLESS');
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+    vm.expectRevert('GSM_NO_CHANGE_IN_BUY_ACCESS');
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
   }
 
-  function testRevertSetBuyPermissionlessAlreadyPermissioned() public {
-    vm.expectRevert('GSM_NO_CHANGE_IN_BUY_PERMISSIONLESS');
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(false);
+  function testRevertSetBuyAccessOpenAlreadyRestricted() public {
+    vm.expectRevert('GSM_NO_CHANGE_IN_BUY_ACCESS');
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(false);
   }
 
-  function testRevertSetSellPermissionlessAlreadyPermissionless() public {
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
+  function testRevertSetSellAccessOpenAlreadyOpen() public {
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
 
-    vm.expectRevert('GSM_NO_CHANGE_IN_SELL_PERMISSIONLESS');
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
+    vm.expectRevert('GSM_NO_CHANGE_IN_SELL_ACCESS');
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
   }
 
-  function testRevertSetSellPermissionlessAlreadyPermissioned() public {
-    vm.expectRevert('GSM_NO_CHANGE_IN_SELL_PERMISSIONLESS');
-    IPermissionedGsm(address(GSM)).setSellPermissionless(false);
+  function testRevertSetSellAccessOpenAlreadyRestricted() public {
+    vm.expectRevert('GSM_NO_CHANGE_IN_SELL_ACCESS');
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(false);
   }
 
-  function testSwapWhenPermissionless() public {
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
+  function testSwapWhenAccessOpen() public {
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
 
     vm.startPrank(unauthorizedAddr);
     (uint256 soldAmount, ) = GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -498,8 +495,8 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertEq(boughtAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected bought asset amount');
   }
 
-  function testBuyAssetWhenOnlyBuyPermissionless() public {
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+  function testBuyAssetWhenOnlyBuyAccessOpen() public {
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
 
     vm.prank(unauthorizedAddr);
     (uint256 boughtAmount, ) = GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -516,8 +513,8 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
   }
 
-  function testSellAssetWhenOnlySellPermissionless() public {
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
+  function testSellAssetWhenOnlySellAccessOpen() public {
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
 
     vm.prank(unauthorizedAddr);
     (uint256 soldAmount, ) = GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -534,11 +531,11 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
   }
 
-  function testRevertSwapAfterPermissionlessDisabled() public {
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(false);
-    IPermissionedGsm(address(GSM)).setSellPermissionless(false);
+  function testRevertSwapAfterAccessClosed() public {
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(false);
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(false);
 
     vm.expectRevert(
       abi.encodeWithSelector(
@@ -561,8 +558,8 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
   }
 
-  function testBuyAssetWithSigUnauthorizedSignerWhenPermissionless() public {
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+  function testBuyAssetWithSigUnauthorizedSignerWhenAccessOpen() public {
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
 
     uint256 deadline = block.timestamp + 1 hours;
     (address signer, uint256 signerKey) = makeAddrAndKey('unauthorizedSigner');
@@ -631,8 +628,8 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     );
   }
 
-  function testSellAssetWithSigUnauthorizedSignerWhenPermissionless() public {
-    IPermissionedGsm(address(GSM)).setSellPermissionless(true);
+  function testSellAssetWithSigUnauthorizedSignerWhenAccessOpen() public {
+    IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
 
     uint256 deadline = block.timestamp + 1 hours;
     (address signer, uint256 signerKey) = makeAddrAndKey('unauthorizedSigner');

@@ -43,12 +43,12 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
       assertEq(afterSnapshot[i], beforeSnapshot[i], 'Unexpected storage value updated');
     }
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
-      'Unexpected buy permissionless status'
+      IPermissionedGsm(address(GSM)).getIsBuyAccessOpen(),
+      'Unexpected buy access status'
     );
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
-      'Unexpected sell permissionless status'
+      IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
+      'Unexpected sell access status'
     );
 
     vm.expectRevert(
@@ -102,40 +102,37 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
     }
 
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GSM)).getIsBuyPermissionless();
+    IPermissionedGsm(address(GSM)).getIsBuyAccessOpen();
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GSM)).getIsSellPermissionless();
+    IPermissionedGsm(address(GSM)).getIsSellAccessOpen();
 
     vm.prank(ALICE);
     (uint256 assetAmount, ) = GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected sold asset amount');
   }
 
-  function testPermissionlessStatusKeptAcrossPlainUpgrade() public {
+  function testAccessOpenStatusKeptAcrossPlainUpgrade() public {
     address permissionedImpl = _newPermissionedImpl();
     address plainImpl = _newPlainImpl();
 
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(permissionedImpl);
-    IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
+    IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
 
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(plainImpl);
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(permissionedImpl);
 
-    assertTrue(
-      IPermissionedGsm(address(GSM)).getIsBuyPermissionless(),
-      'Unexpected buy permissionless status'
-    );
+    assertTrue(IPermissionedGsm(address(GSM)).getIsBuyAccessOpen(), 'Unexpected buy access status');
     assertFalse(
-      IPermissionedGsm(address(GSM)).getIsSellPermissionless(),
-      'Unexpected sell permissionless status'
+      IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
+      'Unexpected sell access status'
     );
   }
 
   function _getStorageSnapshot() internal view returns (bytes32[] memory) {
-    // lastInitializedRevision (slot 1) and GSM storage (56-60), the permissionless flags pack into 60
+    // lastInitializedRevision (slot 1) and GSM storage (56-60), the access flags pack into 60
     bytes32[] memory data = new bytes32[](6);
     data[0] = vm.load(address(GSM), bytes32(uint256(1)));
     for (uint256 i = 1; i < data.length; i++) {

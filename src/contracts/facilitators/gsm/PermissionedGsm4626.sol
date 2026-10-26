@@ -19,8 +19,8 @@ contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {
   /// @inheritdoc IPermissionedGsm
   bytes32 public constant SELL_ASSET_ROLE = keccak256('SELL_ASSET_ROLE');
 
-  bool internal _isBuyPermissionless;
-  bool internal _isSellPermissionless;
+  bool internal _isBuyAccessOpen;
+  bool internal _isSellAccessOpen;
 
   /**
    * @dev Constructor
@@ -38,27 +38,27 @@ contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {
   }
 
   /// @inheritdoc IPermissionedGsm
-  function setBuyPermissionless(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
-    require(enable != _isBuyPermissionless, 'GSM_NO_CHANGE_IN_BUY_PERMISSIONLESS');
-    _isBuyPermissionless = enable;
-    emit BuyPermissionlessUpdated(msg.sender, enable);
+  function setBuyAccessOpen(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
+    require(enable != _isBuyAccessOpen, 'GSM_NO_CHANGE_IN_BUY_ACCESS');
+    _isBuyAccessOpen = enable;
+    emit BuyAccessOpenUpdated(msg.sender, enable);
   }
 
   /// @inheritdoc IPermissionedGsm
-  function setSellPermissionless(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
-    require(enable != _isSellPermissionless, 'GSM_NO_CHANGE_IN_SELL_PERMISSIONLESS');
-    _isSellPermissionless = enable;
-    emit SellPermissionlessUpdated(msg.sender, enable);
+  function setSellAccessOpen(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
+    require(enable != _isSellAccessOpen, 'GSM_NO_CHANGE_IN_SELL_ACCESS');
+    _isSellAccessOpen = enable;
+    emit SellAccessOpenUpdated(msg.sender, enable);
   }
 
   /// @inheritdoc IPermissionedGsm
-  function getIsBuyPermissionless() external view returns (bool) {
-    return _isBuyPermissionless;
+  function getIsBuyAccessOpen() external view returns (bool) {
+    return _isBuyAccessOpen;
   }
 
   /// @inheritdoc IPermissionedGsm
-  function getIsSellPermissionless() external view returns (bool) {
-    return _isSellPermissionless;
+  function getIsSellAccessOpen() external view returns (bool) {
+    return _isSellAccessOpen;
   }
 
   /// @inheritdoc Gsm
@@ -67,7 +67,7 @@ contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {
     uint256 minAmount,
     address receiver
   ) internal override returns (uint256, uint256) {
-    if (!_isBuyPermissionless) {
+    if (!_isBuyAccessOpen) {
       _checkRole(BUY_ASSET_ROLE, originator);
     }
     return super._buyAsset(originator, minAmount, receiver);
@@ -79,7 +79,7 @@ contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {
     uint256 maxAmount,
     address receiver
   ) internal override returns (uint256, uint256) {
-    if (!_isSellPermissionless) {
+    if (!_isSellAccessOpen) {
       _checkRole(SELL_ASSET_ROLE, originator);
     }
     return super._sellAsset(originator, maxAmount, receiver);

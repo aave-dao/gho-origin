@@ -10,17 +10,17 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
 contract TestPermissionedGsmInterface is TestGhoBase {
   function testRevertPermissionedFunctionsOnGsm() public {
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM)).setBuyPermissionless(true);
+    IPermissionedGsm(address(GHO_GSM)).setBuyAccessOpen(true);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM)).setBuyPermissionless(false);
+    IPermissionedGsm(address(GHO_GSM)).setBuyAccessOpen(false);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM)).setSellPermissionless(true);
+    IPermissionedGsm(address(GHO_GSM)).setSellAccessOpen(true);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM)).setSellPermissionless(false);
+    IPermissionedGsm(address(GHO_GSM)).setSellAccessOpen(false);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM)).getIsBuyPermissionless();
+    IPermissionedGsm(address(GHO_GSM)).getIsBuyAccessOpen();
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM)).getIsSellPermissionless();
+    IPermissionedGsm(address(GHO_GSM)).getIsSellAccessOpen();
     vm.expectRevert(bytes(''));
     IPermissionedGsm(address(GHO_GSM)).BUY_ASSET_ROLE();
     vm.expectRevert(bytes(''));
@@ -29,17 +29,17 @@ contract TestPermissionedGsmInterface is TestGhoBase {
 
   function testRevertPermissionedFunctionsOnGsm4626() public {
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM_4626)).setBuyPermissionless(true);
+    IPermissionedGsm(address(GHO_GSM_4626)).setBuyAccessOpen(true);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM_4626)).setBuyPermissionless(false);
+    IPermissionedGsm(address(GHO_GSM_4626)).setBuyAccessOpen(false);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM_4626)).setSellPermissionless(true);
+    IPermissionedGsm(address(GHO_GSM_4626)).setSellAccessOpen(true);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM_4626)).setSellPermissionless(false);
+    IPermissionedGsm(address(GHO_GSM_4626)).setSellAccessOpen(false);
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM_4626)).getIsBuyPermissionless();
+    IPermissionedGsm(address(GHO_GSM_4626)).getIsBuyAccessOpen();
     vm.expectRevert(bytes(''));
-    IPermissionedGsm(address(GHO_GSM_4626)).getIsSellPermissionless();
+    IPermissionedGsm(address(GHO_GSM_4626)).getIsSellAccessOpen();
     vm.expectRevert(bytes(''));
     IPermissionedGsm(address(GHO_GSM_4626)).BUY_ASSET_ROLE();
     vm.expectRevert(bytes(''));

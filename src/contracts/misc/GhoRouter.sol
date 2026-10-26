@@ -260,7 +260,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
    * @param minOutputAmount Minimum acceptable output-token amount.
    * @param recipient Address that receives the resulting token.
    * @return outputAmount Amount of output tokens sent to `recipient`.
-   * @return ghoUsed Amount of GHO actually consumed by the swap.
+   * @return ghoUsed Amount of GHO pulled from the caller, as quoted by the GSM.
    */
   function _ghoToToken(
     address token,
@@ -497,6 +497,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Buys the GSM asset with GHO, then returns either the GSM asset or its underlying.
+   * @dev Any GHO approved but not spent by the GSM is refunded to `msg.sender`.
    * @param gsm Whitelisted GSM used for the buy path.
    * @param gsmAsset GSM underlying asset acquired from the GSM.
    * @param isStata Whether the acquired `gsmAsset` must be unwrapped into its underlying before delivery.
@@ -516,11 +517,15 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
     uint256 minOutputAmount
   ) internal returns (uint256) {
     IERC20(GHO).forceApprove(gsm, exactAmountIn);
-    (uint256 underlyingAmount, ) = IGsm(gsm).buyAsset({
+    (uint256 underlyingAmount, uint256 ghoSold) = IGsm(gsm).buyAsset({
       minAmount: amountToBuy,
       receiver: address(this)
     });
     IERC20(GHO).forceApprove(gsm, 0);
+
+    if (exactAmountIn > ghoSold) {
+      IERC20(GHO).safeTransfer(msg.sender, exactAmountIn - ghoSold);
+    }
 
     uint256 outputAmount = underlyingAmount;
     if (isStata) {

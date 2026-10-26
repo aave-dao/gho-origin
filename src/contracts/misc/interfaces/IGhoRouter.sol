@@ -56,7 +56,7 @@ interface IGhoRouter {
    * @param tokenIn The address of the token to swap from
    * @param tokenOut The address of the token to swap to
    * @param exactAmountIn The amount of tokenIn pulled from the caller (on GHO -> token paths, the
-   * GHO actually used). Refunds of unsold GSM asset or unused GHO are not netted
+   * GHO the GSM quoted). Refunds of unsold GSM asset or unused GHO are not netted
    * @param amountOut The amount of tokenOut received
    * @param recipient The address of the recipient of tokenOut
    */
@@ -108,6 +108,7 @@ interface IGhoRouter {
    * @dev In GHO <-> sGHO paths, GSM is ignored
    * @dev On sGHO -> token paths, GHO left over from the redeem is returned to `msg.sender`, not to
    * `recipient`, so integrations swapping on behalf of users must forward it
+   * @dev On GHO -> token paths, GHO pulled but not spent by the GSM is returned to `msg.sender`
    * @dev On token -> GHO/sGHO paths, GSM asset not taken by the GSM is returned to `msg.sender`, not
    * to `recipient`
    * @dev Reverts while the router is paused

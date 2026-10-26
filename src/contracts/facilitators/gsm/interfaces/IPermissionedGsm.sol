@@ -10,28 +10,28 @@ interface IPermissionedGsm {
   /**
    * @dev Emitted when the Configurator lifts or restores the buy restriction
    * @param configurator The address of the Configurator
-   * @param enabled True if `buyAsset` is open to any address, False otherwise
+   * @param open True if `buyAsset` is open to any address, False otherwise
    */
-  event BuyAccessOpenUpdated(address indexed configurator, bool enabled);
+  event BuyAccessOpenUpdated(address indexed configurator, bool open);
 
   /**
    * @dev Emitted when the Configurator lifts or restores the sell restriction
    * @param configurator The address of the Configurator
-   * @param enabled True if `sellAsset` is open to any address, False otherwise
+   * @param open True if `sellAsset` is open to any address, False otherwise
    */
-  event SellAccessOpenUpdated(address indexed configurator, bool enabled);
+  event SellAccessOpenUpdated(address indexed configurator, bool open);
 
   /**
    * @notice Lift or restore the `BUY_ASSET_ROLE` restriction on buys
-   * @param enable True to open `buyAsset` to any address, false otherwise
+   * @param open True to open `buyAsset` to any address, false otherwise
    */
-  function setBuyAccessOpen(bool enable) external;
+  function setBuyAccessOpen(bool open) external;
 
   /**
    * @notice Lift or restore the `SELL_ASSET_ROLE` restriction on sells
-   * @param enable True to open `sellAsset` to any address, false otherwise
+   * @param open True to open `sellAsset` to any address, false otherwise
    */
-  function setSellAccessOpen(bool enable) external;
+  function setSellAccessOpen(bool open) external;
 
   /**
    * @notice Returns whether buys are open to any address

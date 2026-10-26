@@ -38,17 +38,17 @@ contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {
   }
 
   /// @inheritdoc IPermissionedGsm
-  function setBuyAccessOpen(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
-    require(enable != _isBuyAccessOpen, 'GSM_NO_CHANGE_IN_BUY_ACCESS');
-    _isBuyAccessOpen = enable;
-    emit BuyAccessOpenUpdated(msg.sender, enable);
+  function setBuyAccessOpen(bool open) external onlyRole(CONFIGURATOR_ROLE) {
+    require(open != _isBuyAccessOpen, 'GSM_NO_CHANGE_IN_BUY_ACCESS');
+    _isBuyAccessOpen = open;
+    emit BuyAccessOpenUpdated(msg.sender, open);
   }
 
   /// @inheritdoc IPermissionedGsm
-  function setSellAccessOpen(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
-    require(enable != _isSellAccessOpen, 'GSM_NO_CHANGE_IN_SELL_ACCESS');
-    _isSellAccessOpen = enable;
-    emit SellAccessOpenUpdated(msg.sender, enable);
+  function setSellAccessOpen(bool open) external onlyRole(CONFIGURATOR_ROLE) {
+    require(open != _isSellAccessOpen, 'GSM_NO_CHANGE_IN_SELL_ACCESS');
+    _isSellAccessOpen = open;
+    emit SellAccessOpenUpdated(msg.sender, open);
   }
 
   /// @inheritdoc IPermissionedGsm

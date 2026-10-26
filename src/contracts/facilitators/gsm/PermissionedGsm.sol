@@ -38,22 +38,14 @@ contract PermissionedGsm is Gsm, IPermissionedGsm {
 
   /// @inheritdoc IPermissionedGsm
   function setBuyPermissionless(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
-    if (enable) {
-      require(!_isBuyPermissionless, 'GSM_BUY_ALREADY_PERMISSIONLESS');
-    } else {
-      require(_isBuyPermissionless, 'GSM_BUY_ALREADY_PERMISSIONED');
-    }
+    require(enable != _isBuyPermissionless, 'GSM_NO_CHANGE_IN_BUY_PERMISSIONLESS');
     _isBuyPermissionless = enable;
     emit BuyPermissionlessUpdated(msg.sender, enable);
   }
 
   /// @inheritdoc IPermissionedGsm
   function setSellPermissionless(bool enable) external onlyRole(CONFIGURATOR_ROLE) {
-    if (enable) {
-      require(!_isSellPermissionless, 'GSM_SELL_ALREADY_PERMISSIONLESS');
-    } else {
-      require(_isSellPermissionless, 'GSM_SELL_ALREADY_PERMISSIONED');
-    }
+    require(enable != _isSellPermissionless, 'GSM_NO_CHANGE_IN_SELL_PERMISSIONLESS');
     _isSellPermissionless = enable;
     emit SellPermissionlessUpdated(msg.sender, enable);
   }

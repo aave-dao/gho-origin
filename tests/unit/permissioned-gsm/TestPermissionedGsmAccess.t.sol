@@ -464,24 +464,24 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
   function testRevertSetBuyPermissionlessAlreadyPermissionless() public {
     IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
 
-    vm.expectRevert('GSM_BUY_ALREADY_PERMISSIONLESS');
+    vm.expectRevert('GSM_NO_CHANGE_IN_BUY_PERMISSIONLESS');
     IPermissionedGsm(address(GSM)).setBuyPermissionless(true);
   }
 
   function testRevertSetBuyPermissionlessAlreadyPermissioned() public {
-    vm.expectRevert('GSM_BUY_ALREADY_PERMISSIONED');
+    vm.expectRevert('GSM_NO_CHANGE_IN_BUY_PERMISSIONLESS');
     IPermissionedGsm(address(GSM)).setBuyPermissionless(false);
   }
 
   function testRevertSetSellPermissionlessAlreadyPermissionless() public {
     IPermissionedGsm(address(GSM)).setSellPermissionless(true);
 
-    vm.expectRevert('GSM_SELL_ALREADY_PERMISSIONLESS');
+    vm.expectRevert('GSM_NO_CHANGE_IN_SELL_PERMISSIONLESS');
     IPermissionedGsm(address(GSM)).setSellPermissionless(true);
   }
 
   function testRevertSetSellPermissionlessAlreadyPermissioned() public {
-    vm.expectRevert('GSM_SELL_ALREADY_PERMISSIONED');
+    vm.expectRevert('GSM_NO_CHANGE_IN_SELL_PERMISSIONLESS');
     IPermissionedGsm(address(GSM)).setSellPermissionless(false);
   }
 

@@ -26,6 +26,9 @@ interface IGhoRouter {
   /// @dev Unsupported token provided
   error InvalidToken();
 
+  /// @dev The router itself cannot be the swap recipient
+  error InvalidRecipient();
+
   /// @dev Swap amount is lower than minimum expected amount
   error SlippageExceeded();
 
@@ -52,7 +55,8 @@ interface IGhoRouter {
    * @param caller The address of the initiator of the swap
    * @param tokenIn The address of the token to swap from
    * @param tokenOut The address of the token to swap to
-   * @param exactAmountIn The amount of tokenIn swapped
+   * @param exactAmountIn The amount of tokenIn pulled from the caller (on GHO -> token paths, the
+   * GHO actually used). Refunds of unsold GSM asset or unused GHO are not netted
    * @param amountOut The amount of tokenOut received
    * @param recipient The address of the recipient of tokenOut
    */
@@ -104,6 +108,8 @@ interface IGhoRouter {
    * @dev In GHO <-> sGHO paths, GSM is ignored
    * @dev On sGHO -> token paths, GHO left over from the redeem is returned to `msg.sender`, not to
    * `recipient`, so integrations swapping on behalf of users must forward it
+   * @dev On token -> GHO/sGHO paths, GSM asset not taken by the GSM is returned to `msg.sender`, not
+   * to `recipient`
    * @dev Reverts while the router is paused
    * @param tokenIn Input token to swap from
    * @param tokenOut Output token address to swap to
@@ -200,6 +206,7 @@ interface IGhoRouter {
 
   /**
    * @notice Preview the amount of tokens received for a given input amount
+   * @dev Refunds of unsold GSM asset or unused GHO are not included in the returned amount
    * @dev Reverts while the router is paused
    * @param tokenIn Input token address
    * @param tokenOut Output token address

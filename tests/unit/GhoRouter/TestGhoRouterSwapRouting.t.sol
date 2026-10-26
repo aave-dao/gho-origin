@@ -55,6 +55,80 @@ contract SwapRoutingTest is TestGhoRouterBase {
     );
   }
 
+  function testSwapGHOToGHOGsmSettlingInGho() public {
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
+    vm.mockCall(
+      address(GHO_GSM),
+      abi.encodeWithSelector(IGsm.UNDERLYING_ASSET.selector),
+      abi.encode(address(GHO_TOKEN))
+    );
+
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.swap(
+      address(GHO_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM),
+      1,
+      0,
+      USER,
+      block.timestamp
+    );
+  }
+
+  function testSwapSGHOToSGHOGsmSettlingInSGho() public {
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
+    vm.mockCall(
+      address(GHO_GSM),
+      abi.encodeWithSelector(IGsm.UNDERLYING_ASSET.selector),
+      abi.encode(address(SGHO))
+    );
+
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.swap(address(SGHO), address(SGHO), address(GHO_GSM), 1, 0, USER, block.timestamp);
+  }
+
+  function testPreviewSwapGHOToGHOGsmSettlingInGho() public {
+    GHO_ROUTER.allowGsm(address(GHO_GSM));
+    vm.mockCall(
+      address(GHO_GSM),
+      abi.encodeWithSelector(IGsm.UNDERLYING_ASSET.selector),
+      abi.encode(address(GHO_TOKEN))
+    );
+
+    vm.expectRevert(IGhoRouter.InvalidToken.selector);
+    GHO_ROUTER.previewSwap(address(GHO_TOKEN), address(GHO_TOKEN), address(GHO_GSM), 1 ether);
+  }
+
+  function testSwapRecipientIsRouterGHOToSGho() public {
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.InvalidRecipient.selector);
+    GHO_ROUTER.swap(
+      address(GHO_TOKEN),
+      address(SGHO),
+      address(0),
+      1,
+      0,
+      address(GHO_ROUTER),
+      block.timestamp
+    );
+  }
+
+  function testSwapRecipientIsRouterTokenToGHO() public {
+    vm.prank(USER);
+    vm.expectRevert(IGhoRouter.InvalidRecipient.selector);
+    GHO_ROUTER.swap(
+      address(USDX_TOKEN),
+      address(GHO_TOKEN),
+      address(GHO_GSM_4626),
+      1,
+      0,
+      address(GHO_ROUTER),
+      block.timestamp
+    );
+  }
+
   function testSwapSGHOToSGHO() public {
     vm.prank(USER);
     vm.expectRevert(IGhoRouter.InvalidToken.selector);

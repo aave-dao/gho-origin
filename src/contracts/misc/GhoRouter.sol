@@ -457,6 +457,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Sells input tokens through GSM for GHO, wrapping the underlying into the GSM asset when needed.
+   * @dev Any GSM asset not taken by the GSM is refunded to `msg.sender`.
    * @param gsm Whitelisted GSM used for the sell path.
    * @param token Input token address provided by the caller.
    * @param gsmAsset GSM underlying asset the sale is settled in.
@@ -480,8 +481,15 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
     }
 
     IERC20(gsmAsset).forceApprove(gsm, amount);
-    (, uint256 ghoAmount) = IGsm(gsm).sellAsset({maxAmount: amount, receiver: address(this)});
+    (uint256 assetSold, uint256 ghoAmount) = IGsm(gsm).sellAsset({
+      maxAmount: amount,
+      receiver: address(this)
+    });
     IERC20(gsmAsset).forceApprove(gsm, 0);
+
+    if (amount > assetSold) {
+      IERC20(gsmAsset).safeTransfer(msg.sender, amount - assetSold);
+    }
 
     require(ghoAmount >= minGhoAmount, SlippageExceeded());
     return ghoAmount;
@@ -550,13 +558,15 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
 
   /**
    * @dev Validates that a GSM is structurally compatible with the router before it is whitelisted.
+   * @dev Rejects GSMs settling in GHO or sGHO, which would only enable GHO -> GHO / sGHO -> sGHO round trips.
    * @param gsm GSM address to validate.
    */
   function _validateGsm(address gsm) internal view {
     require(gsm.code.length != 0, InvalidGsm());
 
     require(IGsm(gsm).GHO_TOKEN() == GHO, InvalidGsm());
-    require(IGsm(gsm).UNDERLYING_ASSET() != address(0), InvalidGsm());
+    address gsmAsset = IGsm(gsm).UNDERLYING_ASSET();
+    require(gsmAsset != address(0) && gsmAsset != GHO && gsmAsset != sGHO, InvalidGsm());
   }
 
   /**
@@ -574,6 +584,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
     require(allowedGsm[gsm], GsmNotConfigured());
 
     address gsmAsset = IGsm(gsm).UNDERLYING_ASSET();
+    require(gsmAsset != GHO && gsmAsset != sGHO, InvalidToken());
     bool isStata;
     if (token != gsmAsset) {
       require(tokenToStata[token] == gsmAsset, InvalidToken());
@@ -586,12 +597,13 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
   /**
    * @dev Validates non-zero inputs.
    * @param amount Input amount that must be non-zero.
-   * @param recipient Recipient address that must be non-zero.
+   * @param recipient Recipient address that must be non-zero and not the router.
    * @param deadline Maximum timestamp swap can be executed
    */
   function _validateInputs(uint256 amount, address recipient, uint256 deadline) internal view {
     require(amount > 0, InvalidAmount());
     require(deadline >= block.timestamp, DeadlineExpired());
     require(recipient != address(0), ZeroAddress());
+    require(recipient != address(this), InvalidRecipient());
   }
 }

@@ -53,7 +53,7 @@ The configuration is split into two independent concerns: which GSMs are trusted
   - `_validateGsm(gsm)` is run:
     - `gsm.code.length != 0`
     - `IGsm(gsm).GHO_TOKEN() == GHO`
-    - `IGsm(gsm).UNDERLYING_ASSET() != address(0)`
+    - `IGsm(gsm).UNDERLYING_ASSET()` is not `address(0)`, `GHO` or `sGHO` (a GSM settling in GHO or sGHO would only enable `GHO -> GHO` / `sGHO -> sGHO` round trips)
 - Constraints on `revokeGsm`:
   - `gsm` must currently be allowed, otherwise reverts `GsmNotSet()`.
 - Constraints on `setTokenToStata`:
@@ -65,7 +65,7 @@ The configuration is split into two independent concerns: which GSMs are trusted
   - `token` must currently have a mapping, otherwise reverts `TokenToStataNotSet()`.
 - Swap enforcement (`_validateGsmInput(token, gsm)`):
   - `allowedGsm[gsm]` must be set, otherwise reverts `GsmNotConfigured()`.
-  - Let `gsmAsset = IGsm(gsm).UNDERLYING_ASSET()`. Then:
+  - Let `gsmAsset = IGsm(gsm).UNDERLYING_ASSET()`. It is re-checked against `GHO` and `sGHO` (reverts `InvalidToken()`), so a GSM upgraded after being allowlisted cannot reopen those round trips. Then:
     - `token == gsmAsset` → route directly through the GSM (no wrapping).
     - `tokenToStata[token] == gsmAsset` → wrap/unwrap `token` through the stata around the GSM call.
     - otherwise reverts `InvalidToken()`.
@@ -103,7 +103,7 @@ For GSM paths, the caller supplies the `gsm` and the router composes the route f
 Important properties:
 
 - Token classification never calls `IERC4626(gsmAsset).asset()` at swap time. It relies on the curated `tokenToStata` registry, so a plain (non-stata) GSM paired with an incompatible token reverts cleanly with `InvalidToken()` rather than a low-level revert.
-- `_validateGsm` checks full GSM compatibility (e.g. `GHO_TOKEN`) only when the GSM is allowlisted, not on every swap.
+- `_validateGsm` checks full GSM compatibility (e.g. `GHO_TOKEN`) only when the GSM is allowlisted, not on every swap. The exception is the `GHO`/`sGHO` check on `UNDERLYING_ASSET()`, which `_validateGsmInput` repeats on every swap and preview.
 - Preview methods do not re-validate the GSM's `GHO_TOKEN` on each call.
 
 ## Security assumptions
@@ -124,7 +124,7 @@ The current implementation assumes:
 - Slippage checks are enforced on write flows via `SlippageExceeded`:
   - `minAmountOut` covers all six internal paths.
 - Deadline is validated on every `swap()` call via `DeadlineExpired()`.
-- Recipient is validated as non-zero on all write flows.
+- Recipient is validated as non-zero and different from the router on all write flows (`ZeroAddress()` / `InvalidRecipient()`).
 - GSM write flows are gated by `allowedGsm[gsm]` for the caller-supplied `gsm`.
 - GSM write flows enforce input/output token compatibility against the GSM asset and `tokenToStata` registry (`InvalidToken()`).
 - `rescueToken` is `onlyOwner`.
@@ -134,7 +134,7 @@ The current implementation assumes:
 
 Limitations of current implementation:
 
-- No on-swap revalidation of GSM `GHO_TOKEN`.
+- No on-swap revalidation of GSM `GHO_TOKEN`; only `UNDERLYING_ASSET()` is re-checked against `GHO` and `sGHO`.
 - Allowances to static aTokens and sGHO are exact-amount (`forceApprove`) and are not explicitly reset, since they are expected to be fully consumed.
 
 ## Documented failure modes
@@ -187,7 +187,7 @@ What can happen:
 
 Why:
 
-- Underlying route components are re-read at runtime, while `_validateGsm` is only checked on `allowGsm`.
+- Underlying route components are re-read at runtime, while `_validateGsm` is only checked on `allowGsm`. A GSM upgraded to settle in `GHO` or `sGHO` is still rejected at swap time; other drift is not caught.
 
 Impact:
 
@@ -221,17 +221,17 @@ Current mitigation:
 
 What can happen:
 
-- In normal operation the router holds no tokens after a swap. One bounded exception remains: if a static aToken's exchange rate falls below 1, a GSM sell can take up to 1 share less than the router approved, and that share stays in the router.
+- The router holds no tokens after a swap. Rounding can make the GSM take or spend slightly less than offered; the router returns the difference to the caller instead of keeping it.
 
 Why:
 
 - GSMs do not partially fill: `buyAsset`/`sellAsset` either execute in full for the quoted amount or revert.
 - On buy paths the GSM quotes whole units of its asset, so the GHO actually spent (`ghoUsed`) can be slightly below the GHO available. For GHO → token the router pulls only `ghoUsed` from the caller. For sGHO → token the caller's sGHO is redeemed in full first, and the unspent `ghoAmount - ghoUsed` is returned to the caller (`msg.sender`), not to `recipient`. Integrations calling the router on behalf of users receive this GHO and must forward it themselves.
-- On sell paths the GSM recomputes the asset amount it takes from the quoted GHO. With a static aToken rate at or above 1 this always equals the approved amount; below 1, rounding can leave 1 share behind.
+- On sell paths the GSM recomputes the asset amount it takes from the quoted GHO, which can be below the amount offered (e.g. 18-decimal assets or static aTokens with a sell fee, or a static aToken rate below 1). The unsold `amount - assetSold` of the GSM asset is returned to the caller (`msg.sender`), not to `recipient`. On the underlying → GHO/sGHO path it is returned as static aToken shares, not unwrapped.
 
 Impact:
 
-- At most 1 static aToken share per affected sell, only while the vault rate is below 1.
+- None for the router balance. Integrations calling the router on behalf of users receive the refunded GSM asset or GHO and must forward it themselves.
 
 Current mitigation:
 

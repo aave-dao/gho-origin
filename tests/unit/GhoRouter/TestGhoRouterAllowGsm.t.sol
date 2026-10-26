@@ -37,6 +37,18 @@ contract AllowGsmTest is TestGhoRouterBase {
     GHO_ROUTER.allowGsm(address(gsm));
   }
 
+  function testAllowGsmGhoUnderlying() public {
+    MockBadGsm gsm = new MockBadGsm(address(GHO_TOKEN), address(GHO_TOKEN));
+    vm.expectRevert(IGhoRouter.InvalidGsm.selector);
+    GHO_ROUTER.allowGsm(address(gsm));
+  }
+
+  function testAllowGsmSGhoUnderlying() public {
+    MockBadGsm gsm = new MockBadGsm(address(GHO_TOKEN), address(SGHO));
+    vm.expectRevert(IGhoRouter.InvalidGsm.selector);
+    GHO_ROUTER.allowGsm(address(gsm));
+  }
+
   function testAllowGsmAlreadySet() public {
     // GHO_GSM_4626 is allowed in setUp
     vm.expectRevert(IGhoRouter.GsmAlreadySet.selector);

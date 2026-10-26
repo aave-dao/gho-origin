@@ -163,6 +163,7 @@ contract SwapToGHOTest is TestGhoRouterBase {
     amount = bound(amount, 1e6, MAX_FUZZ_AMOUNT_6_DECIMALS);
     vaultRateBps = bound(vaultRateBps, 5e3, 1e4 - 1);
     _setUsdxVaultRate(vaultRateBps, 1e4);
+    (uint256 sharesSold, , , ) = GHO_GSM_4626.getGhoAmountForSellAsset(amount);
     _dealAndApprove(address(USDX_4626_TOKEN), address(GHO_ROUTER), amount);
 
     vm.prank(USER);
@@ -177,14 +178,12 @@ contract SwapToGHOTest is TestGhoRouterBase {
     );
 
     assertEq(GHO_TOKEN.balanceOf(USER), ghoReceived, 'User should receive GHO');
-    assertLe(
-      USDX_4626_TOKEN.balanceOf(address(GHO_ROUTER)),
-      1,
-      'Router should hold at most 1 stata share'
+    assertEq(
+      USDX_4626_TOKEN.balanceOf(USER),
+      amount - sharesSold,
+      'Unsold shares should be refunded'
     );
-    assertEq(GHO_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no GHO');
-    assertEq(IERC20(address(SGHO)).balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no sGHO');
-    assertEq(USDX_TOKEN.balanceOf(address(GHO_ROUTER)), 0, 'Router should hold no USDX_TOKEN');
+    _assertRouterEmpty();
     _assertNoRouterAllowances();
   }
 

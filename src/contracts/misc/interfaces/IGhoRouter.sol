@@ -108,7 +108,8 @@ interface IGhoRouter {
    * @dev In GHO <-> sGHO paths, GSM is ignored
    * @dev On sGHO -> token paths, GHO left over from the redeem is returned to `msg.sender`, not to
    * `recipient`, so integrations swapping on behalf of users must forward it
-   * @dev On GHO -> token paths, GHO pulled but not spent by the GSM is returned to `msg.sender`
+   * @dev On GHO -> token paths, GHO pulled but not spent by the GSM is returned to `msg.sender`, not
+   * to `recipient`
    * @dev On token -> GHO/sGHO paths, GSM asset not taken by the GSM is returned to `msg.sender`, not
    * to `recipient`
    * @dev Reverts while the router is paused

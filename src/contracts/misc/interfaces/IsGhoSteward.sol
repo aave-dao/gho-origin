@@ -88,7 +88,7 @@ interface IsGhoSteward {
 
   /**
    * @notice Updates `supplyCap` on `sGHO`.
-   * @dev Could be updated to any `uint160` value, reverts otherwise.
+   * @dev In whole GHO units (no decimals); reverts above `uint40`.
    * Only callable by `SUPPLY_CAP_MANAGER_ROLE`.
    * @param supplyCap_ New `supplyCap` to set.
    */

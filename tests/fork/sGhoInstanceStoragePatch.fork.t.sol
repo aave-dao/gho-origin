@@ -6,6 +6,7 @@ import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {ProxyAdmin} from 'openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol';
 import {ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
+import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {sGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {sGhoInstanceStoragePatch} from 'src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol';
@@ -124,6 +125,40 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     // The orphaned second slot of the old layout is wiped
     bytes32 slot1 = bytes32(uint256(STORAGE_LOCATION) + 1);
     assertEq(vm.load(PROXY, slot1), bytes32(0), 'old slot 1 not cleared');
+  }
+
+  function test_fork_upgrade_preservesDepositLimit() external onlyForked {
+    // The old layout compares an asset-terms cap with totalAssets; the new one scales a whole-GHO cap
+    uint256 maxDepositBefore = sgho.maxDeposit(address(0));
+    assertGt(maxDepositBefore, 0, 'vault should accept deposits');
+
+    _upgrade();
+
+    // Converting to whole GHO can only round the limit down, by less than 1 GHO
+    uint256 maxDepositAfter = sgho.maxDeposit(address(0));
+    assertLe(maxDepositAfter, maxDepositBefore, 'deposit limit increased');
+    assertLt(
+      maxDepositBefore - maxDepositAfter,
+      10 ** sgho.decimals(),
+      'deposit limit lost more than rounding'
+    );
+
+    // The limit is enforced: one wei over reverts, the limit itself goes through
+    address user = makeAddr('capUser');
+    deal(sgho.asset(), user, maxDepositAfter + 1);
+    vm.startPrank(user);
+    IERC20(sgho.asset()).approve(address(sgho), maxDepositAfter + 1);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector,
+        user,
+        maxDepositAfter + 1,
+        maxDepositAfter
+      )
+    );
+    sgho.deposit(maxDepositAfter + 1, user);
+    sgho.deposit(maxDepositAfter, user);
+    vm.stopPrank();
   }
 
   function test_fork_patch_revertsIfIndexNotCheckpointed() external onlyForked {

@@ -4,13 +4,15 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoYield is TestSGhoBase {
+  using SafeCast for uint256;
+
   // ========================================
   // YIELD ACCRUAL & INTEGRATION TESTS
   // ========================================
 
   function test_yield_claimSavingsIntegration(uint256 depositAmount, uint64 timeSkip) external {
     depositAmount = uint256(bound(depositAmount, 1 ether, 100_000 ether));
-    timeSkip = uint64(bound(timeSkip, 1, 30 days));
+    timeSkip = (bound(timeSkip, 1, 30 days)).toUint64();
 
     // Initial deposit at the RAY index
     vm.startPrank(user1);
@@ -50,7 +52,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_10_percent_one_year() external {
     // Set target rate to 10% APR
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR is 1000 bps
+    sgho.setTargetRate(1000, block.timestamp.toUint40()); // 10% APR is 1000 bps
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -86,9 +88,9 @@ contract TestSGhoYield is TestSGhoBase {
   }
 
   function test_yield_checkpointsCompound_withIntermediateRateUpdates(uint16 rate) external {
-    rate = uint16(bound(rate, 100, 5000));
+    rate = (bound(rate, 100, 5000)).toUint16();
     vm.startPrank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -103,7 +105,7 @@ contract TestSGhoYield is TestSGhoBase {
     for (uint256 i = 0; i < 365; i++) {
       vm.warp(block.timestamp + 1 days);
       vm.prank(yManager);
-      sgho.setTargetRate(rate);
+      sgho.setTargetRate(rate, block.timestamp.toUint40());
       expectedIndex = _emulateYieldIndex(expectedIndex, rate, 1 days);
     }
 
@@ -213,7 +215,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     // Switch to 20% for another year
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
     vm.warp(block.timestamp + 365 days);
 
     // The new rate applies to the value at the rate change: 110 * 1.2 = 132, not 100 + 10 + 20
@@ -227,10 +229,10 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_rateAppliesToValueAtCheckpoint() external {
     // Bring the index to exactly 2.0: two years at 50% from RAY
     vm.prank(yManager);
-    sgho.setTargetRate(5000);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
     vm.warp(block.timestamp + 730 days);
     vm.prank(yManager);
-    sgho.setTargetRate(1000);
+    sgho.setTargetRate(1000, block.timestamp.toUint40());
     assertEq(sgho.yieldIndex(), 2 * RAY, 'index not at 2.0');
 
     // 100 GHO deposited at index 2.0 buys 50 shares
@@ -250,13 +252,13 @@ contract TestSGhoYield is TestSGhoBase {
     uint16 rate,
     uint32 timeBeforeDeposit
   ) external {
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
-    timeBeforeDeposit = uint32(bound(timeBeforeDeposit, 0, 3650 days));
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
+    timeBeforeDeposit = (bound(timeBeforeDeposit, 0, 3650 days)).toUint32();
 
     // Let the index drift away from RAY at the 10% rate from setUp, then checkpoint at `rate`
     vm.warp(block.timestamp + timeBeforeDeposit);
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     uint256 depositAmount = 100 ether;
     vm.prank(user1);
@@ -290,7 +292,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     // Changing the rate checkpoints accrual at the old rate (10% over 180 days)
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
 
     uint256 expectedIndex = _emulateYieldIndex(storedBefore, 1000, 180 days);
     assertEq(sgho.yieldIndex(), expectedIndex, 'index not checkpointed at the old rate');
@@ -311,7 +313,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_zeroTargetRate() external {
     // Set target rate to 0
     vm.startPrank(yManager);
-    sgho.setTargetRate(0);
+    sgho.setTargetRate(0, block.timestamp.toUint40());
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -386,7 +388,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_accrual_atSupplyCap() external {
     // Set a higher target rate to ensure significant yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(5000); // 50% APR to ensure significant yield
+    sgho.setTargetRate(5000, block.timestamp.toUint40()); // 50% APR to ensure significant yield
     vm.stopPrank();
 
     // Fill the vault to supply cap
@@ -565,7 +567,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_precision_yieldIndex_fuzz(uint256 timeSkip, uint16 rate) external pure {
     // Bound inputs to reasonable ranges
     timeSkip = bound(timeSkip, 1, 365 days * 10); // 1 second to 10 years
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE)); // 0.01% to 50%
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16(); // 0.01% to 50%
 
     uint256 prevYieldIndex = RAY;
     uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
@@ -605,7 +607,7 @@ contract TestSGhoYield is TestSGhoBase {
     vm.warp(block.timestamp + timeSkip);
     // Re-setting the rate checkpoints the index
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 contractYieldIndex = sgho.yieldIndex();
     uint256 emulatedYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
     assertEq(contractYieldIndex, emulatedYieldIndex, 'Yield index calculation mismatch');
@@ -640,7 +642,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_ExchangeRateUpdatedEvent_basic() external {
     // Set a target rate to ensure yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
+    sgho.setTargetRate(1000, block.timestamp.toUint40()); // 10% APR
     vm.stopPrank();
 
     // Initial state
@@ -655,7 +657,7 @@ contract TestSGhoYield is TestSGhoBase {
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.ExchangeRateUpdated(block.timestamp, emulatedYieldIndex);
     vm.prank(yManager);
-    sgho.setTargetRate(1000);
+    sgho.setTargetRate(1000, block.timestamp.toUint40());
 
     // Verify yield index has increased
     uint256 newYieldIndex = sgho.yieldIndex();

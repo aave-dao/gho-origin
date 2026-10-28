@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoPause is TestSGhoBase {
+  using SafeCast for uint256;
+
   // ========================================
   // PAUSABILITY TESTS
   // ========================================
@@ -76,7 +78,7 @@ contract TestSGhoPause is TestSGhoBase {
     // Test 1: Set target rate while paused (should work)
     vm.startPrank(yManager);
     uint16 newRate = 2000; // 20% APR
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, block.timestamp.toUint40());
     assertEq(sgho.targetRate(), newRate, 'Target rate should be updated while paused');
     vm.stopPrank();
 

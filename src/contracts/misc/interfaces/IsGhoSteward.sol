@@ -27,6 +27,7 @@ interface IsGhoSteward {
    * @dev Event is emitted whenever the `rateConfig` is updated.
    * @param caller Message sender, who initiated the update
    * @param targetRate Target rate set in `sGHO` after update
+   * @param effectiveAt Timestamp at which the target rate takes effect on `sGHO`
    * @param amplification Amplification factor used to calculate `targetRate`
    * @param floatRate Float rate used to calculate `targetRate`
    * @param fixedRate Fixed rate used to calculate `targetRate`
@@ -34,6 +35,7 @@ interface IsGhoSteward {
   event RateConfigUpdated(
     address indexed caller,
     uint16 targetRate,
+    uint40 effectiveAt,
     uint16 amplification,
     uint16 floatRate,
     uint16 fixedRate
@@ -81,10 +83,18 @@ interface IsGhoSteward {
    *   - `FLOAT_RATE_MANAGER_ROLE`
    *   - `FIXED_RATE_MANAGER_ROLE`
    *
+   * @dev The rate takes effect on `sGHO` at `effectiveAt`. Submitting the same config with the
+   * same `effectiveAt` on the stewards of every chain keeps the yield indexes in sync; passing
+   * the current timestamp applies immediately and is only suitable for single-chain deployments.
+   *
    * @param rateConfig_ Set of parameters for calculating `targetRate`
+   * @param effectiveAt Timestamp at which the rate takes effect (must not be in the past)
    * @return targetRate `targetRate` set in `sGHO`
    */
-  function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16);
+  function setRateConfig(
+    RateConfig calldata rateConfig_,
+    uint40 effectiveAt
+  ) external returns (uint16);
 
   /**
    * @notice Updates `supplyCap` on `sGHO`.

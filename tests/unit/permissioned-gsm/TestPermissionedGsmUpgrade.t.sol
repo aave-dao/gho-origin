@@ -131,6 +131,26 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
     );
   }
 
+  function testAccessManagerAfterUpgradeToPermissioned() public {
+    address manager = makeAddr('accessManager');
+    address permissionedImpl = _newPermissionedImpl();
+    vm.prank(SHORT_EXECUTOR);
+    AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(permissionedImpl);
+    GSM.grantRole(GSM_SWAP_ACCESS_MANAGER_ROLE, manager);
+
+    vm.startPrank(manager);
+    IPermissionedGsm(address(GSM)).grantBuyAccess(ALICE);
+    IPermissionedGsm(address(GSM)).grantSellAccess(ALICE);
+    vm.stopPrank();
+
+    vm.startPrank(ALICE);
+    GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    GHO_TOKEN.approve(address(GSM), type(uint256).max);
+    (uint256 assetAmount, ) = GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
+    vm.stopPrank();
+    assertEq(assetAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected bought asset amount');
+  }
+
   function _getStorageSnapshot() internal view returns (bytes32[] memory) {
     // lastInitializedRevision (slot 1) and GSM storage (56-60), the access flags pack into 60
     bytes32[] memory data = new bytes32[](6);

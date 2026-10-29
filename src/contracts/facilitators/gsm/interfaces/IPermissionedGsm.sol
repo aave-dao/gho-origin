@@ -34,6 +34,38 @@ interface IPermissionedGsm {
   function setSellAccessOpen(bool open) external;
 
   /**
+   * @notice Grants the `BUY_ASSET_ROLE` to an account
+   * @dev Only callable by the `SWAP_ACCESS_MANAGER_ROLE`.
+   * No-op if the account already holds the role
+   * @param account The address to grant the role to
+   */
+  function grantBuyAccess(address account) external;
+
+  /**
+   * @notice Revokes the `BUY_ASSET_ROLE` from an account
+   * @dev Only callable by the `SWAP_ACCESS_MANAGER_ROLE`.
+   * No-op if the account does not hold the role
+   * @param account The address to revoke the role from
+   */
+  function revokeBuyAccess(address account) external;
+
+  /**
+   * @notice Grants the `SELL_ASSET_ROLE` to an account
+   * @dev Only callable by the `SWAP_ACCESS_MANAGER_ROLE`.
+   * No-op if the account already holds the role
+   * @param account The address to grant the role to
+   */
+  function grantSellAccess(address account) external;
+
+  /**
+   * @notice Revokes the `SELL_ASSET_ROLE` from an account
+   * @dev Only callable by the `SWAP_ACCESS_MANAGER_ROLE`.
+   * No-op if the account does not hold the role
+   * @param account The address to revoke the role from
+   */
+  function revokeSellAccess(address account) external;
+
+  /**
    * @notice Returns whether buys are open to any address
    * @return True if `buyAsset` is open to any address, false if it is role restricted
    */
@@ -56,4 +88,11 @@ interface IPermissionedGsm {
    * @return The bytes32 id hash of the `SELL_ASSET_ROLE`
    */
   function SELL_ASSET_ROLE() external pure returns (bytes32);
+
+  /**
+   * @notice Returns the identifier of the `SWAP_ACCESS_MANAGER_ROLE`, which can grant
+   * and revoke the `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE` without holding their admin role
+   * @return The bytes32 id hash of the `SWAP_ACCESS_MANAGER_ROLE`
+   */
+  function SWAP_ACCESS_MANAGER_ROLE() external pure returns (bytes32);
 }

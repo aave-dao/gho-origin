@@ -25,6 +25,16 @@ contract TestPermissionedGsmInterface is TestGhoBase {
     IPermissionedGsm(address(GHO_GSM)).BUY_ASSET_ROLE();
     vm.expectRevert(bytes(''));
     IPermissionedGsm(address(GHO_GSM)).SELL_ASSET_ROLE();
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM)).SWAP_ACCESS_MANAGER_ROLE();
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM)).grantBuyAccess(ALICE);
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM)).revokeBuyAccess(ALICE);
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM)).grantSellAccess(ALICE);
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM)).revokeSellAccess(ALICE);
   }
 
   function testRevertPermissionedFunctionsOnGsm4626() public {
@@ -44,5 +54,15 @@ contract TestPermissionedGsmInterface is TestGhoBase {
     IPermissionedGsm(address(GHO_GSM_4626)).BUY_ASSET_ROLE();
     vm.expectRevert(bytes(''));
     IPermissionedGsm(address(GHO_GSM_4626)).SELL_ASSET_ROLE();
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM_4626)).SWAP_ACCESS_MANAGER_ROLE();
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM_4626)).grantBuyAccess(ALICE);
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM_4626)).revokeBuyAccess(ALICE);
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM_4626)).grantSellAccess(ALICE);
+    vm.expectRevert(bytes(''));
+    IPermissionedGsm(address(GHO_GSM_4626)).revokeSellAccess(ALICE);
   }
 }

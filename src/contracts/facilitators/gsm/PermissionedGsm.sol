@@ -18,6 +18,9 @@ contract PermissionedGsm is Gsm, IPermissionedGsm {
   /// @inheritdoc IPermissionedGsm
   bytes32 public constant SELL_ASSET_ROLE = keccak256('SELL_ASSET_ROLE');
 
+  /// @inheritdoc IPermissionedGsm
+  bytes32 public constant SWAP_ACCESS_MANAGER_ROLE = keccak256('SWAP_ACCESS_MANAGER_ROLE');
+
   bool internal _isBuyAccessOpen;
   bool internal _isSellAccessOpen;
 
@@ -48,6 +51,26 @@ contract PermissionedGsm is Gsm, IPermissionedGsm {
     require(open != _isSellAccessOpen, 'GSM_NO_CHANGE_IN_SELL_ACCESS');
     _isSellAccessOpen = open;
     emit SellAccessOpenUpdated(msg.sender, open);
+  }
+
+  /// @inheritdoc IPermissionedGsm
+  function grantBuyAccess(address account) external onlyRole(SWAP_ACCESS_MANAGER_ROLE) {
+    _grantRole(BUY_ASSET_ROLE, account);
+  }
+
+  /// @inheritdoc IPermissionedGsm
+  function revokeBuyAccess(address account) external onlyRole(SWAP_ACCESS_MANAGER_ROLE) {
+    _revokeRole(BUY_ASSET_ROLE, account);
+  }
+
+  /// @inheritdoc IPermissionedGsm
+  function grantSellAccess(address account) external onlyRole(SWAP_ACCESS_MANAGER_ROLE) {
+    _grantRole(SELL_ASSET_ROLE, account);
+  }
+
+  /// @inheritdoc IPermissionedGsm
+  function revokeSellAccess(address account) external onlyRole(SWAP_ACCESS_MANAGER_ROLE) {
+    _revokeRole(SELL_ASSET_ROLE, account);
   }
 
   /// @inheritdoc IPermissionedGsm

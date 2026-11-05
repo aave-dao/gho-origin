@@ -10,11 +10,15 @@ Furthermore, the Aave Governance has the ability to approve entities as Facilita
 
 ## Documentation
 
-See the link to the technical paper
-
 - [Technical Paper](./techpaper/GHO_Technical_Paper.pdf)
 - [Developer Documentation](https://docs.gho.xyz/)
 - [Gho Stewards](./docs/gho-stewards.md)
+- [Remote Facilitator](./docs/remote-facilitator.md)
+- [sGHO](./docs/sgho.md)
+- [sGHO Precision Analysis](./docs/sgho-precision-analysis/precision.md)
+- [sGhoSteward](./docs/sGhoSteward.md)
+- [StkGhoMigrator](./docs/stkgho-migrator.md)
+- [GSM Upgrades](./docs/gsm-upgrades.md)
 
 ## Security
 

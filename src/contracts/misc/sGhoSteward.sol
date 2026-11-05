@@ -56,7 +56,10 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   }
 
   /// @inheritdoc IsGhoSteward
-  function setRateConfig(RateConfig calldata rateConfig) external returns (uint16) {
+  function setRateConfig(
+    RateConfig calldata rateConfig,
+    uint40 effectiveAt
+  ) external returns (uint16) {
     RateConfig memory rateConfigCopy = _rateConfig;
     bool isRateChanged;
 
@@ -85,7 +88,7 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       revert RateUnchanged();
     }
 
-    return _setRateConfig(rateConfigCopy);
+    return _setRateConfig(rateConfigCopy, effectiveAt);
   }
 
   /// @inheritdoc IsGhoSteward
@@ -115,19 +118,23 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     return _sGho;
   }
 
-  function _setRateConfig(RateConfig memory rateConfig) internal returns (uint16) {
+  function _setRateConfig(
+    RateConfig memory rateConfig,
+    uint40 effectiveAt
+  ) internal returns (uint16) {
     uint16 targetRate = _computeRateConfig(rateConfig);
 
-    _sGho.setTargetRate(targetRate);
+    _sGho.setTargetRate(targetRate, effectiveAt);
     _rateConfig = rateConfig;
 
-    emit RateConfigUpdated(
-      msg.sender,
-      targetRate,
-      rateConfig.amplification,
-      rateConfig.floatRate,
-      rateConfig.fixedRate
-    );
+    emit RateConfigUpdated({
+      caller: msg.sender,
+      targetRate: targetRate,
+      effectiveAt: effectiveAt,
+      amplification: rateConfig.amplification,
+      floatRate: rateConfig.floatRate,
+      fixedRate: rateConfig.fixedRate
+    });
 
     return targetRate;
   }

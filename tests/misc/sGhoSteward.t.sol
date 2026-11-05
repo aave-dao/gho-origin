@@ -6,11 +6,14 @@ import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 import {AccessControl} from 'openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
 
 contract sGhoStewardTest is TestSGhoBase {
+  using SafeCast for uint256;
+
   sGhoSteward public steward;
 
   address public riskCouncil = makeAddr('riskCouncil');
@@ -94,7 +97,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -103,6 +106,55 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(configAfterUpdate.fixedRate, 200);
 
     assertEq(sgho.targetRate(), 400);
+  }
+
+  function test_setRateConfig_scheduled() public {
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 100_00, // AMPLIFICATION_NUMERATOR
+      floatRate: 200, // 2%
+      fixedRate: 200 // 2%
+    });
+    uint40 effectiveAt = (block.timestamp + 1 days).toUint40();
+
+    // Scheduling the same config with the same effectiveAt on every chain's steward keeps the
+    // sGho yield indexes in sync
+    vm.expectEmit(true, true, true, true, address(steward));
+    emit IsGhoSteward.RateConfigUpdated({
+      caller: riskCouncil,
+      targetRate: 400,
+      effectiveAt: effectiveAt,
+      amplification: 100_00,
+      floatRate: 200,
+      fixedRate: 200
+    });
+    vm.prank(riskCouncil);
+    steward.setRateConfig(newConfig, effectiveAt);
+
+    // The steward config updates instantly; the sGho rate only at the effective timestamp
+    IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
+    assertEq(configAfterUpdate.amplification, 100_00);
+    assertEq(configAfterUpdate.floatRate, 200);
+    assertEq(configAfterUpdate.fixedRate, 200);
+
+    (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
+    assertEq(pendingRate, 400);
+    assertEq(pendingEffectiveAt, effectiveAt);
+    assertEq(sgho.targetRate(), 1000);
+
+    vm.warp(effectiveAt);
+    assertEq(sgho.targetRate(), 400);
+  }
+
+  function test_setRateConfig_revertsOnPastEffectiveAt() public {
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 100_00, // AMPLIFICATION_NUMERATOR
+      floatRate: 200, // 2%
+      fixedRate: 200 // 2%
+    });
+
+    vm.expectRevert(IsGho.EffectiveTimestampInPast.selector);
+    vm.prank(riskCouncil);
+    steward.setRateConfig(newConfig, (block.timestamp - 1).toUint40());
   }
 
   function test_setRateConfigAmplificationRateOnly() public {
@@ -119,7 +171,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -141,7 +193,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     configAfterUpdate = steward.getRateConfig();
 
@@ -164,7 +216,7 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.startPrank(riskCouncil);
 
     vm.expectRevert(_craftError(riskCouncil, AMPLIFICATION_MANAGER_ROLE));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_setRateConfigFloatRateOnly() public {
@@ -181,7 +233,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -203,7 +255,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     configAfterUpdate = steward.getRateConfig();
 
@@ -224,7 +276,7 @@ contract sGhoStewardTest is TestSGhoBase {
 
     vm.startPrank(riskCouncil);
     vm.expectRevert(_craftError(riskCouncil, FLOAT_RATE_MANAGER_ROLE));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_setRateConfigFixedRateOnly() public {
@@ -241,7 +293,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -263,7 +315,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     configAfterUpdate = steward.getRateConfig();
 
@@ -286,7 +338,7 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.startPrank(riskCouncil);
 
     vm.expectRevert(_craftError(riskCouncil, FIXED_RATE_MANAGER_ROLE));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_setRateSameValue() public {
@@ -304,7 +356,7 @@ contract sGhoStewardTest is TestSGhoBase {
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.RateUnchanged.selector));
     vm.prank(riskCouncil);
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function test_supplyCap() public {
@@ -361,7 +413,7 @@ contract sGhoStewardTest is TestSGhoBase {
     });
 
     uint16 target = steward.previewTargetRate(newConfig);
-    uint16 resultTarget = steward.setRateConfig(newConfig);
+    uint16 resultTarget = steward.setRateConfig(newConfig, block.timestamp.toUint40());
 
     IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -394,7 +446,7 @@ contract sGhoStewardTest is TestSGhoBase {
       uint16 previewFuzzRate = steward.previewTargetRate(fuzzConfig);
       assertEq(previewFuzzRate, fuzzTarget);
 
-      steward.setRateConfig(fuzzConfig);
+      steward.setRateConfig(fuzzConfig, block.timestamp.toUint40());
 
       IsGhoSteward.RateConfig memory configAfterUpdate = steward.getRateConfig();
 
@@ -408,7 +460,7 @@ contract sGhoStewardTest is TestSGhoBase {
       steward.previewTargetRate(fuzzConfig);
 
       vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
-      steward.setRateConfig(fuzzConfig);
+      steward.setRateConfig(fuzzConfig, block.timestamp.toUint40());
     }
   }
 
@@ -427,7 +479,7 @@ contract sGhoStewardTest is TestSGhoBase {
     steward.previewTargetRate(newConfig);
 
     vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.MaxRateExceeded.selector));
-    steward.setRateConfig(newConfig);
+    steward.setRateConfig(newConfig, block.timestamp.toUint40());
   }
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {
@@ -437,5 +489,149 @@ contract sGhoStewardTest is TestSGhoBase {
         account,
         role
       );
+  }
+
+  /// @dev A new chain cold-started from a live checkpoint, rate included, stays in sync with no
+  /// steward call of its own; the first rate change scheduled on both chains keeps them in sync.
+  function test_coldStart_emptyStewardStaysInSyncThroughMirroredUpdate() public {
+    vm.warp(block.timestamp + 180 days);
+    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
+
+    IsGhoSteward.RateConfig memory empty;
+    assertEq(abi.encode(l2Steward.getRateConfig()), abi.encode(empty), 'L2 steward not empty');
+    assertEq(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'Not in sync at deployment');
+
+    vm.warp(block.timestamp + 100 days);
+    assertEq(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'Diverged before any update');
+
+    // One rate change scheduled on both stewards at the same effectiveAt, executed 12h apart
+    uint256 checkpointIndex = sgho.yieldIndex();
+    uint256 checkpointTime = sgho.lastUpdate();
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 0,
+      floatRate: 0,
+      fixedRate: 1500
+    });
+    uint40 effectiveAt = (block.timestamp + 1 days).toUint40();
+    vm.prank(riskCouncil);
+    steward.setRateConfig(newConfig, effectiveAt);
+    vm.warp(block.timestamp + 12 hours);
+    vm.prank(riskCouncil);
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+
+    vm.warp(effectiveAt + 365 days);
+    uint256 expectedIndex = _emulateYieldIndex(
+      _emulateYieldIndex(checkpointIndex, 1000, effectiveAt - checkpointTime),
+      1500,
+      365 days
+    );
+    assertEq(sgho.convertToAssets(RAY), expectedIndex, 'Source index off spec');
+    assertEq(l2.convertToAssets(RAY), expectedIndex, 'L2 index off spec');
+    assertEq(l2.targetRate(), 1500, 'L2 rate not applied');
+    assertEq(
+      abi.encode(l2Steward.getRateConfig()),
+      abi.encode(newConfig),
+      'L2 steward config not set'
+    );
+  }
+
+  /// @dev Configuring the new chain's steward on its own checkpoints that chain only, so it
+  /// accrues on a different base than the source from then on.
+  function test_coldStart_standaloneStewardConfigDesyncs() public {
+    vm.warp(block.timestamp + 180 days);
+    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
+
+    uint256 sourceIndex = sgho.yieldIndex();
+    uint256 sourceTime = sgho.lastUpdate();
+    vm.prank(riskCouncil);
+    l2Steward.setRateConfig(
+      IsGhoSteward.RateConfig({amplification: 0, floatRate: 0, fixedRate: 1000}),
+      block.timestamp.toUint40()
+    );
+    uint256 l2Index = l2.yieldIndex();
+
+    vm.warp(block.timestamp + 365 days);
+    uint256 elapsed = block.timestamp - sourceTime;
+    assertEq(
+      sgho.convertToAssets(RAY),
+      _emulateYieldIndex(sourceIndex, 1000, elapsed),
+      'Source index off spec'
+    );
+    assertEq(
+      l2.convertToAssets(RAY),
+      _emulateYieldIndex(l2Index, 1000, 365 days),
+      'L2 index off spec'
+    );
+    assertGt(l2.convertToAssets(RAY), sgho.convertToAssets(RAY), 'L2 must accrue on a higher base');
+  }
+
+  /// @dev A sync discards a steward-scheduled update but not the steward's stored config, so the
+  /// same config reverts; a different config followed by the intended one re-schedules it.
+  function test_syncDiscardsPending_rescheduleThroughStewardViaInterimConfig() public {
+    vm.warp(block.timestamp + 180 days);
+    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
+
+    IsGhoSteward.RateConfig memory newConfig = IsGhoSteward.RateConfig({
+      amplification: 0,
+      floatRate: 0,
+      fixedRate: 1500
+    });
+    uint256 checkpointIndex = sgho.yieldIndex();
+    uint256 checkpointTime = sgho.lastUpdate();
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.startPrank(riskCouncil);
+    steward.setRateConfig(newConfig, effectiveAt);
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+    vm.stopPrank();
+
+    // Reconciliation on the L2 before effectiveAt discards its pending update
+    vm.warp(block.timestamp + 1 days);
+    l2.syncYieldIndex(
+      sgho.yieldIndex().toUint120(),
+      sgho.lastUpdate().toUint40(),
+      sgho.targetRate()
+    );
+    (uint16 pendingRate, ) = l2.pendingTargetRate();
+    assertEq(pendingRate, 0, 'Sync must discard the pending update');
+    assertEq(
+      abi.encode(l2Steward.getRateConfig()),
+      abi.encode(newConfig),
+      'Steward must still hold the discarded config'
+    );
+
+    vm.prank(riskCouncil);
+    vm.expectRevert(IsGhoSteward.RateUnchanged.selector);
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+
+    vm.startPrank(riskCouncil);
+    l2Steward.setRateConfig(
+      IsGhoSteward.RateConfig({amplification: 0, floatRate: 0, fixedRate: 1499}),
+      effectiveAt
+    );
+    l2Steward.setRateConfig(newConfig, effectiveAt);
+    vm.stopPrank();
+
+    (pendingRate, ) = l2.pendingTargetRate();
+    assertEq(pendingRate, 1500, 'Intended rate not re-scheduled');
+    assertEq(l2.lastUpdate(), checkpointTime, 'Interim config must not checkpoint');
+
+    vm.warp(effectiveAt + 365 days);
+    uint256 expectedIndex = _emulateYieldIndex(
+      _emulateYieldIndex(checkpointIndex, 1000, effectiveAt - checkpointTime),
+      1500,
+      365 days
+    );
+    assertEq(sgho.convertToAssets(RAY), expectedIndex, 'Source index off spec');
+    assertEq(l2.convertToAssets(RAY), expectedIndex, 'L2 index off spec');
+  }
+
+  function _coldStartFrom(sGho source) internal returns (sGho l2, sGhoSteward l2Steward) {
+    l2 = _deploySGho(
+      source.yieldIndex().toUint120(),
+      source.lastUpdate().toUint40(),
+      source.targetRate()
+    );
+    l2Steward = new sGhoSteward(governance, riskCouncil, address(l2));
+    l2.grantRole(l2.YIELD_MANAGER_ROLE(), address(l2Steward));
   }
 }

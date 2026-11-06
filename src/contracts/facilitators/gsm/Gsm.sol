@@ -423,7 +423,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address originator,
     uint256 minAmount,
     address receiver
-  ) internal returns (uint256, uint256) {
+  ) internal virtual returns (uint256, uint256) {
     (
       uint256 assetAmount,
       uint256 ghoSold,
@@ -468,7 +468,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address originator,
     uint256 maxAmount,
     address receiver
-  ) internal returns (uint256, uint256) {
+  ) internal virtual returns (uint256, uint256) {
     (
       uint256 assetAmount,
       uint256 ghoBought,

@@ -1256,6 +1256,42 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     vm.prank(originator);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
   }
+
+  function testCanSwapIgnoresCallerPermissions() public {
+    assertTrue(GSM.canSwap(), 'Unexpected canSwap for the test contract');
+    vm.prank(unauthorizedAddr);
+    assertTrue(GSM.canSwap(), 'Unexpected canSwap for the unauthorized address');
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_BUY_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        unauthorizedAddr,
+        GSM_SELL_ASSET_ROLE
+      )
+    );
+    vm.prank(unauthorizedAddr);
+    GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
+
+    GSM.grantRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
+    GSM.grantRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
+    vm.prank(unauthorizedAddr);
+    assertTrue(GSM.canSwap(), 'Unexpected canSwap after granting roles');
+
+    vm.prank(address(GHO_GSM_SWAP_FREEZER));
+    GSM.setSwapFreeze(true);
+    vm.prank(unauthorizedAddr);
+    assertFalse(GSM.canSwap(), 'Unexpected canSwap for authorized caller while frozen');
+  }
 }
 
 contract TestPermissionedGsmAccess is TestPermissionedGsmAccessBase {

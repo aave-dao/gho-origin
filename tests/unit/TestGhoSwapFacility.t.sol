@@ -40,7 +40,7 @@ contract TestGhoSwapFacility is Test {
 
   function test_assetForGho_scalesDecimals() public {
     facility.setFeeTier(PUBLIC, 100, 0);
-    uint256 out = _swapAsset(ALICE, PUBLIC, 100e6);
+    uint256 out = _swapAsset(ALICE, 100e6);
 
     assertEq(out, 99e18);
     assertEq(facility.accruedFees(), 1e18);
@@ -51,9 +51,9 @@ contract TestGhoSwapFacility is Test {
 
   function test_ghoForAsset() public {
     facility.setFeeTier(PUBLIC, 0, 50);
-    _swapAsset(ALICE, PUBLIC, 100e6);
+    _swapAsset(ALICE, 100e6);
 
-    uint256 out = _swapGho(BOB, PUBLIC, 50e18);
+    uint256 out = _swapGho(BOB, 50e18);
 
     assertEq(out, 49.75e6);
     assertEq(usdx.balanceOf(BOB), 49.75e6);
@@ -62,8 +62,8 @@ contract TestGhoSwapFacility is Test {
   }
 
   function test_ghoForAsset_dustStaysAsSurplus() public {
-    _swapAsset(ALICE, PUBLIC, 10e6);
-    uint256 out = _swapGho(BOB, PUBLIC, 1e18 + 5e11); // 1.0000005 GHO
+    _swapAsset(ALICE, 10e6);
+    uint256 out = _swapGho(BOB, 1e18 + 5e11); // 1.0000005 GHO
 
     assertEq(out, 1e6);
     assertEq(facility.getSurplus(PUBLIC), 5e11);
@@ -71,7 +71,7 @@ contract TestGhoSwapFacility is Test {
   }
 
   function test_skim_noYield_isNoop() public {
-    _swapAsset(ALICE, PUBLIC, 100e6);
+    _swapAsset(ALICE, 100e6);
     usdx.mint(address(facility), 5e6); // a donation is not part of any pool
     assertEq(facility.skim(PUBLIC), 0);
     assertEq(facility.getSurplus(PUBLIC), 0);
@@ -80,9 +80,9 @@ contract TestGhoSwapFacility is Test {
   function test_fullDrain() public {
     facility.setPoolCap(PUBLIC, 100e18);
     reserve.setLimit(address(facility), 100e18);
-    _swapAsset(ALICE, PUBLIC, 100e6);
+    _swapAsset(ALICE, 100e6);
 
-    uint256 out = _swapGho(BOB, PUBLIC, 100e18);
+    uint256 out = _swapGho(BOB, 100e18);
 
     assertEq(out, 100e6);
     assertEq(facility.getPool(PUBLIC).balance, 0);
@@ -92,21 +92,16 @@ contract TestGhoSwapFacility is Test {
 
   function test_privatePool_andMakePublic() public {
     facility.setPoolCap(ACTOR, 100e18);
-    usdx.mint(ALICE, 1e6);
-    vm.startPrank(ALICE);
-    usdx.approve(address(facility), 1e6);
-    vm.expectRevert(
-      abi.encodeWithSelector(IGhoSwapFacility.PoolAccessDenied.selector, ACTOR, ALICE)
-    );
-    facility.swap(ACTOR, address(usdx), 1e6, 0, ALICE);
-    vm.stopPrank();
+    _swapAsset(ACTOR, 40e6);
+    assertEq(facility.getPool(ACTOR).balance, 40e6);
+    assertEq(facility.getPool(PUBLIC).balance, 0);
 
-    _swapAsset(ACTOR, ACTOR, 40e6);
     facility.makePublic(ACTOR);
+    assertEq(facility.poolOf(ACTOR), PUBLIC);
     assertEq(facility.getPool(PUBLIC).balance, 40e6);
     assertEq(facility.getPool(PUBLIC).used, 40e18);
 
-    assertEq(_swapGho(BOB, PUBLIC, 40e18), 40e6);
+    assertEq(_swapGho(BOB, 40e18), 40e6);
   }
 
   function test_eighteenDecimalAsset() public {
@@ -136,9 +131,9 @@ contract TestGhoSwapFacility is Test {
 
   function testFuzz_roundTrip(uint256 amount) public {
     amount = bound(amount, 1, 1_000e6);
-    _swapAsset(ALICE, PUBLIC, amount);
+    _swapAsset(ALICE, amount);
     uint256 used = facility.getPool(PUBLIC).used;
-    assertEq(_swapGho(BOB, PUBLIC, used), amount);
+    assertEq(_swapGho(BOB, used), amount);
     assertEq(facility.getPool(PUBLIC).used, 0);
     assertEq(facility.getPool(PUBLIC).balance, 0);
   }
@@ -169,19 +164,19 @@ contract TestGhoSwapFacility is Test {
       );
   }
 
-  function _swapAsset(address user, address pool, uint256 amount) internal returns (uint256 out) {
+  function _swapAsset(address user, uint256 amount) internal returns (uint256 out) {
     usdx.mint(user, amount);
     vm.startPrank(user);
     usdx.approve(address(facility), amount);
-    out = facility.swap(pool, address(usdx), amount, 0, user);
+    out = facility.swap(address(usdx), amount, 0, user);
     vm.stopPrank();
   }
 
-  function _swapGho(address user, address pool, uint256 amount) internal returns (uint256 out) {
+  function _swapGho(address user, uint256 amount) internal returns (uint256 out) {
     gho.mint(user, amount);
     vm.startPrank(user);
     gho.approve(address(facility), amount);
-    out = facility.swap(pool, address(gho), amount, 0, user);
+    out = facility.swap(address(gho), amount, 0, user);
     vm.stopPrank();
   }
 }

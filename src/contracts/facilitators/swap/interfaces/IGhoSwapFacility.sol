@@ -4,8 +4,8 @@ pragma solidity ^0.8.27;
 /// @title IGhoSwapFacility
 /// @notice Swaps GHO against an asset token. GHO comes from a `GhoReserve`.
 /// @dev Liquidity is split into pools, all stored in one mapping keyed by address. The public pool is
-/// the `address(0)` key and anyone can swap against it. Any other
-/// key is a private pool that only that address can swap against. Each pool keeps exactly enough
+/// the `address(0)` key. Any other key with `isPrivate` set is a private pool. `swap` routes by caller:
+/// an account with a private pool trades against it, every other account against the public pool. Each pool keeps exactly enough
 /// asset to back the GHO it drew; any surplus (yield, for a yield-bearing asset) is sent to the
 /// treasury in the asset itself ("skimmed").
 interface IGhoSwapFacility {
@@ -13,10 +13,12 @@ interface IGhoSwapFacility {
   /// @param balance Amount of the asset held for the pool.
   /// @param used GHO drawn from the reserve for the pool (gross of fees).
   /// @param cap Maximum value of `used`. Swaps that would push `used` above it revert.
+  /// @param isPrivate Set for a private pool. Packed in the same slot as `cap`.
   struct Pool {
     uint128 balance;
     uint128 used;
     uint128 cap;
+    bool isPrivate;
   }
 
   /// @notice Fees charged to an account, in basis points of the amount sent in.
@@ -35,7 +37,6 @@ interface IGhoSwapFacility {
   error InvalidToken(address token);
   error UnsupportedDecimals(uint8 decimals);
   error ReserveTokenMismatch(address reserveToken);
-  error PoolAccessDenied(address pool, address caller);
   error PoolCapExceeded(address pool, uint256 used, uint256 cap);
   error InsufficientLiquidity(address pool);
   error SlippageExceeded(uint256 amountOut, uint256 minAmountOut);
@@ -70,14 +71,13 @@ interface IGhoSwapFacility {
 
   /// @notice Swaps `amountIn` of `tokenIn` (GHO or the asset) for the other token.
   /// @dev Skims the pool first, so the pool never holds more value than the GHO it owes.
-  /// @param pool `address(0)` for the public pool, or the caller's address for its private pool.
+  /// @dev Trades against the caller's private pool if it has one, otherwise the public pool.
   /// @param tokenIn GHO or the asset.
   /// @param amountIn Exact amount of `tokenIn` pulled from the caller, fee included.
   /// @param minAmountOut Minimum amount of the other token to receive.
   /// @param receiver Recipient of the output token.
   /// @return amountOut Amount of the other token sent to `receiver`.
   function swap(
-    address pool,
     address tokenIn,
     uint256 amountIn,
     uint256 minAmountOut,
@@ -103,7 +103,11 @@ interface IGhoSwapFacility {
   /// private pool is deleted. Both pools are skimmed first.
   function makePublic(address pool) external;
 
+  /// @notice Sets the cap of `pool`. For a non-zero key this opens the private pool if needed.
   function setPoolCap(address pool, uint128 cap) external;
+
+  /// @notice Pool `account` trades against: its own if it has a private pool, otherwise `PUBLIC_POOL`.
+  function poolOf(address account) external view returns (address);
 
   /// @notice Sets the fee tier of `account`. `address(0)` is the market tier, paid by accounts without one.
   function setFeeTier(address account, uint16 assetInBps, uint16 ghoInBps) external;

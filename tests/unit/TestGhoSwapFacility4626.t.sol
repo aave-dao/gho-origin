@@ -73,7 +73,7 @@ contract TestGhoSwapFacility4626 is Test {
     facility.setFeeTier(PUBLIC, 100, 0); // 1% market fee
     uint256 shares = _shares(ALICE, 100e6);
 
-    uint256 out = _swapShares(ALICE, PUBLIC, shares);
+    uint256 out = _swapShares(ALICE, shares);
 
     assertEq(out, 99e18);
     assertEq(gho.balanceOf(ALICE), 99e18);
@@ -85,10 +85,10 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_swapGhoForShares() public {
     facility.setFeeTier(PUBLIC, 0, 50); // 0.5% fee on GHO in
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 100e6));
+    _swapShares(ALICE, _shares(ALICE, 100e6));
 
     gho.mint(BOB, 50e18);
-    uint256 out = _swapGho(BOB, PUBLIC, 50e18);
+    uint256 out = _swapGho(BOB, 50e18);
 
     assertEq(out, vault.convertToShares(49.75e6));
     assertEq(vault.balanceOf(BOB), out);
@@ -99,7 +99,7 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_swap_revertsOnInvalidToken() public {
     vm.expectRevert(abi.encodeWithSelector(IGhoSwapFacility.InvalidToken.selector, address(usdx)));
-    facility.swap(PUBLIC, address(usdx), 1, 0, ALICE);
+    facility.swap(address(usdx), 1, 0, ALICE);
   }
 
   function test_swap_revertsOnSlippage() public {
@@ -109,7 +109,7 @@ contract TestGhoSwapFacility4626 is Test {
     vm.expectRevert(
       abi.encodeWithSelector(IGhoSwapFacility.SlippageExceeded.selector, 100e18, 101e18)
     );
-    facility.swap(PUBLIC, address(vault), shares, 101e18, ALICE);
+    facility.swap(address(vault), shares, 101e18, ALICE);
     vm.stopPrank();
   }
 
@@ -121,19 +121,19 @@ contract TestGhoSwapFacility4626 is Test {
     vm.expectRevert(
       abi.encodeWithSelector(IGhoSwapFacility.PoolCapExceeded.selector, PUBLIC, 100e18, 50e18)
     );
-    facility.swap(PUBLIC, address(vault), shares, 0, ALICE);
+    facility.swap(address(vault), shares, 0, ALICE);
     vm.stopPrank();
   }
 
   function test_swap_revertsWhenGhoInExceedsLiquidity() public {
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 10e6));
+    _swapShares(ALICE, _shares(ALICE, 10e6));
     gho.mint(BOB, 20e18);
     vm.startPrank(BOB);
     gho.approve(address(facility), 20e18);
     vm.expectRevert(
       abi.encodeWithSelector(IGhoSwapFacility.InsufficientLiquidity.selector, PUBLIC)
     );
-    facility.swap(PUBLIC, address(gho), 20e18, 0, BOB);
+    facility.swap(address(gho), 20e18, 0, BOB);
     vm.stopPrank();
   }
 
@@ -141,24 +141,24 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_swap_permissionlessWithoutAccessManagerConfig() public {
     // no role was ever assigned to `swap`
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 1e6));
-    _swapShares(BOB, PUBLIC, _shares(BOB, 1e6));
+    _swapShares(ALICE, _shares(ALICE, 1e6));
+    _swapShares(BOB, _shares(BOB, 1e6));
     assertEq(facility.getPool(PUBLIC).used, 2e18);
   }
 
   function test_setPaused_blocksSwapsOnly() public {
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 10e6));
+    _swapShares(ALICE, _shares(ALICE, 10e6));
     _yield(1e6);
     facility.setPaused(true);
     assertTrue(facility.paused());
 
     vm.prank(ALICE);
     vm.expectRevert(IGhoSwapFacility.SwapsPaused.selector);
-    facility.swap(PUBLIC, address(vault), 1, 0, ALICE);
+    facility.swap(address(vault), 1, 0, ALICE);
     assertGt(facility.skim(PUBLIC), 0);
 
     facility.setPaused(false);
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 1e6));
+    _swapShares(ALICE, _shares(ALICE, 1e6));
   }
 
   function test_adminFunctions_restricted() public {
@@ -186,31 +186,49 @@ contract TestGhoSwapFacility4626 is Test {
 
   // ---------------------------------------------------------------- private pools
 
-  function test_privatePool_onlyOwnerCanSwap() public {
+  function test_swap_routesByCaller() public {
+    assertEq(facility.poolOf(ACTOR), PUBLIC);
     facility.setPoolCap(ACTOR, 100e18);
-    uint256 shares = _shares(ALICE, 10e6);
-    vm.startPrank(ALICE);
-    vault.approve(address(facility), shares);
-    vm.expectRevert(
-      abi.encodeWithSelector(IGhoSwapFacility.PoolAccessDenied.selector, ACTOR, ALICE)
-    );
-    facility.swap(ACTOR, address(vault), shares, 0, ALICE);
-    vm.stopPrank();
+    assertEq(facility.poolOf(ACTOR), ACTOR);
+    assertTrue(facility.getPool(ACTOR).isPrivate);
 
-    _swapShares(ACTOR, ACTOR, _shares(ACTOR, 10e6));
+    _swapShares(ACTOR, _shares(ACTOR, 10e6));
+    _swapShares(ALICE, _shares(ALICE, 3e6));
     assertEq(facility.getPool(ACTOR).used, 10e18);
-    assertEq(facility.getPool(PUBLIC).used, 0);
+    assertEq(facility.getPool(PUBLIC).used, 3e18);
   }
 
-  function test_privatePool_ownerCanAlsoUsePublicPool() public {
-    _swapShares(ACTOR, PUBLIC, _shares(ACTOR, 10e6));
-    assertEq(facility.getPool(PUBLIC).used, 10e18);
+  function test_privatePool_liquidityIsIsolated() public {
+    facility.setPoolCap(ACTOR, 100e18);
+    _swapShares(ACTOR, _shares(ACTOR, 10e6));
+
+    // BOB is routed to the empty public pool and cannot reach the actor's shares
+    gho.mint(BOB, 5e18);
+    vm.startPrank(BOB);
+    gho.approve(address(facility), 5e18);
+    vm.expectRevert(
+      abi.encodeWithSelector(IGhoSwapFacility.InsufficientLiquidity.selector, PUBLIC)
+    );
+    facility.swap(address(gho), 5e18, 0, BOB);
+    vm.stopPrank();
+  }
+
+  function test_privatePool_zeroCapStaysPrivate() public {
+    facility.setPoolCap(ACTOR, 100e18);
+    _swapShares(ACTOR, _shares(ACTOR, 10e6));
+    facility.setPoolCap(ACTOR, 0);
+    assertEq(facility.poolOf(ACTOR), ACTOR);
+
+    // the actor can still unwind its own pool
+    gho.mint(ACTOR, 10e18);
+    _swapGho(ACTOR, 10e18);
+    assertEq(facility.getPool(ACTOR).used, 0);
   }
 
   function test_makePublic_mergesPool() public {
     facility.setPoolCap(ACTOR, 100e18);
-    _swapShares(ACTOR, ACTOR, _shares(ACTOR, 40e6));
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 10e6));
+    _swapShares(ACTOR, _shares(ACTOR, 40e6));
+    _swapShares(ALICE, _shares(ALICE, 10e6));
 
     facility.makePublic(ACTOR);
 
@@ -220,16 +238,20 @@ contract TestGhoSwapFacility4626 is Test {
     assertEq(facility.getPool(ACTOR).used, 0);
     assertEq(facility.getPool(ACTOR).cap, 0);
     assertEq(facility.getPool(ACTOR).balance, 0);
+    assertFalse(facility.getPool(ACTOR).isPrivate);
+    assertEq(facility.poolOf(ACTOR), PUBLIC);
 
     // anyone can now take the liquidity the actor provided
     gho.mint(BOB, 45e18);
-    _swapGho(BOB, PUBLIC, 45e18);
+    _swapGho(BOB, 45e18);
     assertEq(facility.getPool(PUBLIC).used, 5e18);
   }
 
-  function test_makePublic_revertsForPublicPool() public {
+  function test_makePublic_revertsWithoutPrivatePool() public {
     vm.expectRevert(IGhoSwapFacility.NotPrivatePool.selector);
     facility.makePublic(PUBLIC);
+    vm.expectRevert(IGhoSwapFacility.NotPrivatePool.selector);
+    facility.makePublic(BOB);
   }
 
   // ---------------------------------------------------------------- fee tiers
@@ -253,7 +275,7 @@ contract TestGhoSwapFacility4626 is Test {
     facility.setFeeTier(ACTOR, 20, 20);
     facility.setPoolCap(ACTOR, 100e18);
 
-    uint256 out = _swapShares(ACTOR, ACTOR, _shares(ACTOR, 100e6));
+    uint256 out = _swapShares(ACTOR, _shares(ACTOR, 100e6));
     assertEq(out, 99.8e18);
   }
 
@@ -264,7 +286,7 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_claimFees() public {
     facility.setFeeTier(PUBLIC, 100, 0);
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 100e6));
+    _swapShares(ALICE, _shares(ALICE, 100e6));
     assertEq(facility.claimFees(), 1e18);
     assertEq(gho.balanceOf(TREASURY), 1e18);
     assertEq(facility.accruedFees(), 0);
@@ -274,7 +296,7 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_skim_sendsYieldToTreasuryAsShares() public {
     uint256 shares = _shares(ALICE, 100e6);
-    _swapShares(ALICE, PUBLIC, shares);
+    _swapShares(ALICE, shares);
     _yield(20e6); // +20%
 
     uint256 skimmed = facility.skim(PUBLIC);
@@ -292,11 +314,11 @@ contract TestGhoSwapFacility4626 is Test {
     facility.setPoolCap(PUBLIC, 100e18);
     reserve.setLimit(address(facility), 100e18);
     uint256 shares = _shares(ALICE, 100e6);
-    _swapShares(ALICE, PUBLIC, shares);
+    _swapShares(ALICE, shares);
     _yield(20e6);
 
     gho.mint(BOB, 100e18);
-    uint256 out = _swapGho(BOB, PUBLIC, 100e18);
+    uint256 out = _swapGho(BOB, 100e18);
 
     assertEq(facility.getPool(PUBLIC).used, 0);
     assertEq(reserve.getUsed(address(facility)), 0);
@@ -307,19 +329,19 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_sell_unaffectedBySkim_nearCap() public {
     facility.setPoolCap(PUBLIC, 100e18);
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 60e6));
+    _swapShares(ALICE, _shares(ALICE, 60e6));
     _yield(15e6); // +25%
 
     // selling up to the cap still works: skimming yield uses no reserve headroom
     uint256 shares = _shares(BOB, 40e6); // 32 shares at 1.25, worth 40 GHO
-    _swapShares(BOB, PUBLIC, shares);
+    _swapShares(BOB, shares);
     assertApproxEqAbs(facility.getPool(PUBLIC).used, 100e18, 1e12);
   }
 
   // ---------------------------------------------------------------- loss handling
 
   function test_repay_coversDeficit() public {
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 100e6));
+    _swapShares(ALICE, _shares(ALICE, 100e6));
     _loss(10e6); // -10%
 
     assertApproxEqAbs(facility.getSurplus(PUBLIC), -10e18, 1e12);
@@ -337,7 +359,7 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_seize_thenRepayClearsDebt() public {
     uint256 shares = _shares(ALICE, 100e6);
-    _swapShares(ALICE, PUBLIC, shares);
+    _swapShares(ALICE, shares);
 
     assertEq(facility.seize(PUBLIC, TREASURY), shares);
     assertEq(vault.balanceOf(TREASURY), shares);
@@ -375,7 +397,7 @@ contract TestGhoSwapFacility4626 is Test {
 
   function test_storage_isNamespaced() public {
     facility.setFeeTier(PUBLIC, 1, 2);
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 10e6));
+    _swapShares(ALICE, _shares(ALICE, 10e6));
 
     // treasury is the first field of the namespaced struct
     assertEq(address(uint160(uint256(vm.load(address(facility), STORAGE_LOCATION)))), TREASURY);
@@ -388,8 +410,8 @@ contract TestGhoSwapFacility4626 is Test {
   function test_upgrade_preservesState() public {
     facility.setFeeTier(ACTOR, 5, 7);
     facility.setPoolCap(ACTOR, 50e18);
-    _swapShares(ACTOR, ACTOR, _shares(ACTOR, 20e6));
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 30e6));
+    _swapShares(ACTOR, _shares(ACTOR, 20e6));
+    _swapShares(ALICE, _shares(ALICE, 30e6));
     IGhoSwapFacility.Pool memory pubBefore = facility.getPool(PUBLIC);
     IGhoSwapFacility.Pool memory actorBefore = facility.getPool(ACTOR);
     uint256 feesBefore = facility.accruedFees();
@@ -416,7 +438,7 @@ contract TestGhoSwapFacility4626 is Test {
     assertEq(facility.authority(), address(manager));
     assertEq(facility.getFeeTier(ACTOR).ghoInBps, 7);
 
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, 1e6));
+    _swapShares(ALICE, _shares(ALICE, 1e6));
   }
 
   // ---------------------------------------------------------------- fuzz
@@ -427,12 +449,12 @@ contract TestGhoSwapFacility4626 is Test {
     facility.setPoolCap(PUBLIC, uint128(deposit) * 1e12);
     reserve.setLimit(address(facility), uint128(deposit) * 1e12);
 
-    _swapShares(ALICE, PUBLIC, _shares(ALICE, deposit));
+    _swapShares(ALICE, _shares(ALICE, deposit));
     _yield(yieldAmount);
 
     uint256 used = facility.getPool(PUBLIC).used;
     gho.mint(BOB, used);
-    _swapGho(BOB, PUBLIC, used);
+    _swapGho(BOB, used);
 
     assertEq(facility.getPool(PUBLIC).used, 0);
     assertEq(reserve.getUsed(address(facility)), 0);
@@ -448,18 +470,18 @@ contract TestGhoSwapFacility4626 is Test {
     vm.stopPrank();
   }
 
-  function _swapShares(address user, address pool, uint256 shares) internal returns (uint256) {
+  function _swapShares(address user, uint256 shares) internal returns (uint256) {
     vm.startPrank(user);
     vault.approve(address(facility), shares);
-    uint256 out = facility.swap(pool, address(vault), shares, 0, user);
+    uint256 out = facility.swap(address(vault), shares, 0, user);
     vm.stopPrank();
     return out;
   }
 
-  function _swapGho(address user, address pool, uint256 amount) internal returns (uint256) {
+  function _swapGho(address user, uint256 amount) internal returns (uint256) {
     vm.startPrank(user);
     gho.approve(address(facility), amount);
-    uint256 out = facility.swap(pool, address(gho), amount, 0, user);
+    uint256 out = facility.swap(address(gho), amount, 0, user);
     vm.stopPrank();
     return out;
   }

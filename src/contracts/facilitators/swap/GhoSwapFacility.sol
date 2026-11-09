@@ -96,7 +96,6 @@ contract GhoSwapFacility is
 
   /// @inheritdoc IGhoSwapFacility
   function swap(
-    address pool,
     address tokenIn,
     uint256 amountIn,
     uint256 minAmountOut,
@@ -104,11 +103,15 @@ contract GhoSwapFacility is
   ) external nonReentrant returns (uint256 amountOut) {
     GhoSwapFacilityStorage storage $ = _getStorage();
     if ($.paused) revert SwapsPaused();
-    if (pool != PUBLIC_POOL && pool != msg.sender) revert PoolAccessDenied(pool, msg.sender);
     if (receiver == address(0)) revert ZeroAddress();
     if (amountIn == 0) revert ZeroAmount();
 
+    address pool = msg.sender;
     Pool storage p = $.pools[pool];
+    if (!p.isPrivate) {
+      pool = PUBLIC_POOL;
+      p = $.pools[pool];
+    }
     _skim(pool, p);
 
     uint256 fee;
@@ -194,9 +197,9 @@ contract GhoSwapFacility is
 
   /// @inheritdoc IGhoSwapFacility
   function makePublic(address pool) external restricted nonReentrant {
-    if (pool == PUBLIC_POOL) revert NotPrivatePool();
     GhoSwapFacilityStorage storage $ = _getStorage();
     Pool storage priv = $.pools[pool];
+    if (!priv.isPrivate) revert NotPrivatePool();
     Pool storage pub = $.pools[PUBLIC_POOL];
     _skim(pool, priv);
     _skim(PUBLIC_POOL, pub);
@@ -214,7 +217,9 @@ contract GhoSwapFacility is
 
   /// @inheritdoc IGhoSwapFacility
   function setPoolCap(address pool, uint128 cap) external restricted {
-    _getStorage().pools[pool].cap = cap;
+    Pool storage p = _getStorage().pools[pool];
+    p.cap = cap;
+    if (pool != PUBLIC_POOL) p.isPrivate = true;
     emit PoolCapSet(pool, cap);
   }
 
@@ -272,6 +277,11 @@ contract GhoSwapFacility is
     GhoSwapFacilityStorage storage $ = _getStorage();
     tier = $.feeTiers[account];
     if (!tier.isSet) tier = $.feeTiers[PUBLIC_POOL];
+  }
+
+  /// @inheritdoc IGhoSwapFacility
+  function poolOf(address account) external view returns (address) {
+    return _getStorage().pools[account].isPrivate ? account : PUBLIC_POOL;
   }
 
   /// @inheritdoc IGhoSwapFacility

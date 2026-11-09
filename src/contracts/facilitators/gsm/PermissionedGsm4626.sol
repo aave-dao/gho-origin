@@ -10,6 +10,7 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
  * @author Aave
  * @notice GHO Stability Module for ERC4626 vault shares with access restrictions on buy/sell
  * facilities between GHO and the ERC4626 vault shares
+ * @dev A user's authorization to buy/sell can be verified using `AccessControl` `hasRole` function, with the corresponding `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE` roles
  * @dev To be covered by a proxy contract.
  */
 contract PermissionedGsm4626 is Gsm4626, IPermissionedGsm {

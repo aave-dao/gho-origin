@@ -9,6 +9,7 @@ import {IPermissionedGsm} from 'src/contracts/facilitators/gsm/interfaces/IPermi
  * @author Aave
  * @notice GHO Stability Module with access restrictions on buy/sell facilities between GHO and the
  * underlying asset
+ * @dev A user's authorization to buy/sell can be verified using `AccessControl` `hasRole` function, with the corresponding `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE` roles
  * @dev To be covered by a proxy contract.
  */
 contract PermissionedGsm is Gsm, IPermissionedGsm {

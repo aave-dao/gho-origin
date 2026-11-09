@@ -107,8 +107,8 @@ contract GhoSwapFacility is
     if (amountIn == 0) revert ZeroAmount();
 
     address pool = poolOf(msg.sender);
+    _skim(pool);
     Pool storage p = $.pools[pool];
-    _skim(pool, p);
 
     uint256 fee;
     if (tokenIn == ASSET) {
@@ -147,7 +147,7 @@ contract GhoSwapFacility is
 
   /// @inheritdoc IGhoSwapFacility
   function skim(address pool) external nonReentrant returns (uint256) {
-    return _skim(pool, _getStorage().pools[pool]);
+    return _skim(pool);
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -197,8 +197,8 @@ contract GhoSwapFacility is
     Pool storage priv = $.pools[pool];
     if (!priv.isPrivate) revert NotPrivatePool();
     Pool storage pub = $.pools[PUBLIC_POOL];
-    _skim(pool, priv);
-    _skim(PUBLIC_POOL, pub);
+    _skim(pool);
+    _skim(PUBLIC_POOL);
 
     Pool memory moved = priv;
     delete $.pools[pool];
@@ -302,12 +302,14 @@ contract GhoSwapFacility is
   }
 
   /// @dev Sends the asset above what backs `p.used` to the treasury. Rounds in favor of the pool.
-  function _skim(address pool, Pool storage p) internal returns (uint256 excess) {
+  function _skim(address pool) internal returns (uint256 excess) {
+    GhoSwapFacilityStorage storage $ = _getStorage();
+    Pool storage p = $.pools[pool];
     uint256 keep = _backing(p.used);
     if (p.balance <= keep) return 0;
     excess = p.balance - keep;
     p.balance = keep.toUint128();
-    IERC20(ASSET).safeTransfer(_getStorage().treasury, excess);
+    IERC20(ASSET).safeTransfer($.treasury, excess);
     emit Skimmed(pool, excess);
   }
 

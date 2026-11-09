@@ -22,16 +22,19 @@ contract GhoSwapFacility4626 is GhoSwapFacility {
     return IERC20Metadata(IERC4626(vault).asset()).decimals();
   }
 
+  /// @dev Shares -> underlying (rounded down) -> GHO via the base decimal scaling.
   function _toGho(uint256 shares) internal view override returns (uint256) {
-    return IERC4626(ASSET).convertToAssets(shares) * SCALE;
+    return super._toGho(IERC4626(ASSET).convertToAssets(shares));
   }
 
+  /// @dev GHO -> underlying via the base decimal scaling -> shares (rounded down).
   function _fromGho(uint256 ghoAmount) internal view override returns (uint256) {
-    return IERC4626(ASSET).convertToShares(ghoAmount / SCALE);
+    return IERC4626(ASSET).convertToShares(super._fromGho(ghoAmount));
   }
 
-  /// @dev `previewWithdraw` rounds up, so the pool always keeps enough shares.
+  /// @dev GHO -> underlying (rounded up by the base) -> shares, rounded up by `previewWithdraw`, so
+  /// the pool always keeps enough shares.
   function _backing(uint256 ghoAmount) internal view override returns (uint256) {
-    return IERC4626(ASSET).previewWithdraw(Math.ceilDiv(ghoAmount, SCALE));
+    return IERC4626(ASSET).previewWithdraw(super._backing(ghoAmount));
   }
 }

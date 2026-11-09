@@ -5,7 +5,10 @@ import {Test} from 'forge-std/Test.sol';
 import {AccessManager} from 'openzeppelin-contracts/contracts/access/manager/AccessManager.sol';
 import {IAccessManaged} from 'openzeppelin-contracts/contracts/access/manager/IAccessManaged.sol';
 import {TestnetERC20} from 'aave-v3-origin/contracts/mocks/testnet-helpers/TestnetERC20.sol';
-import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import {ProxyAdmin} from 'openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol';
+import {ERC1967Utils} from 'openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol';
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
 import {GhoReserve} from 'src/contracts/facilitators/gsm/GhoReserve.sol';
 import {GhoSwapFacility} from 'src/contracts/facilitators/swap/GhoSwapFacility.sol';
 import {IGhoSwapFacility} from 'src/contracts/facilitators/swap/interfaces/IGhoSwapFacility.sol';
@@ -19,12 +22,14 @@ contract TestGhoSwapFacility is Test {
   address constant ALICE = address(0xA11CE);
   address constant BOB = address(0xB0B);
   address constant ACTOR = address(0xAC70);
+  address constant PROXY_ADMIN_OWNER = address(0xAD);
 
   AccessManager manager;
   TestnetERC20 gho;
   TestnetERC20 usdx;
   MockERC4626 vault;
   GhoReserve reserve;
+  GhoSwapFacility facilityImpl;
   GhoSwapFacility facility;
   address PUBLIC;
 
@@ -45,12 +50,15 @@ contract TestGhoSwapFacility is Test {
     );
     gho.mint(address(reserve), RESERVE_LIMIT);
 
-    facility = new GhoSwapFacility(
-      address(manager),
-      address(gho),
-      address(vault),
-      address(reserve),
-      TREASURY
+    facilityImpl = new GhoSwapFacility(address(gho), address(vault), address(reserve));
+    facility = GhoSwapFacility(
+      address(
+        new TransparentUpgradeableProxy(
+          address(facilityImpl),
+          PROXY_ADMIN_OWNER,
+          abi.encodeCall(GhoSwapFacility.initialize, (address(manager), TREASURY))
+        )
+      )
     );
     reserve.addEntity(address(facility));
     reserve.setLimit(address(facility), RESERVE_LIMIT);
@@ -343,6 +351,70 @@ contract TestGhoSwapFacility is Test {
     facility.repay(PUBLIC, 100e18);
     assertEq(facility.getPool(PUBLIC).used, 0);
     assertEq(reserve.getUsed(address(facility)), 0);
+  }
+
+  // ---------------------------------------------------------------- upgradeability
+
+  bytes32 constant STORAGE_LOCATION =
+    keccak256(abi.encode(uint256(keccak256('aave.storage.GhoSwapFacility')) - 1)) &
+      ~bytes32(uint256(0xff));
+
+  function test_implementation_cannotBeInitialized() public {
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    facilityImpl.initialize(address(manager), TREASURY);
+  }
+
+  function test_proxy_cannotBeReinitialized() public {
+    vm.expectRevert(Initializable.InvalidInitialization.selector);
+    facility.initialize(address(manager), ALICE);
+  }
+
+  function test_initialize_setsState() public view {
+    assertEq(facility.authority(), address(manager));
+    assertEq(facility.treasury(), TREASURY);
+    assertEq(gho.allowance(address(facility), address(reserve)), type(uint256).max);
+  }
+
+  function test_storage_isNamespaced() public {
+    facility.setFeeTier(PUBLIC, 1, 2);
+    _swapShares(ALICE, PUBLIC, _shares(ALICE, 10e6));
+
+    // treasury is the first field of the namespaced struct
+    assertEq(address(uint160(uint256(vm.load(address(facility), STORAGE_LOCATION)))), TREASURY);
+    // nothing is written to the linear layout
+    for (uint256 i; i < 10; ++i) {
+      assertEq(vm.load(address(facility), bytes32(i)), bytes32(0));
+    }
+  }
+
+  function test_upgrade_preservesState() public {
+    facility.setFeeTier(ACTOR, 5, 7);
+    facility.setPoolCap(ACTOR, 50e18);
+    _swapShares(ACTOR, ACTOR, _shares(ACTOR, 20e6));
+    _swapShares(ALICE, PUBLIC, _shares(ALICE, 30e6));
+    IGhoSwapFacility.Pool memory pubBefore = facility.getPool(PUBLIC);
+    IGhoSwapFacility.Pool memory actorBefore = facility.getPool(ACTOR);
+    uint256 feesBefore = facility.accruedFees();
+
+    GhoSwapFacility newImpl = new GhoSwapFacility(address(gho), address(vault), address(reserve));
+    ProxyAdmin admin = ProxyAdmin(
+      address(uint160(uint256(vm.load(address(facility), ERC1967Utils.ADMIN_SLOT))))
+    );
+    vm.prank(PROXY_ADMIN_OWNER);
+    admin.upgradeAndCall(ITransparentUpgradeableProxy(address(facility)), address(newImpl), '');
+
+    assertEq(
+      address(uint160(uint256(vm.load(address(facility), ERC1967Utils.IMPLEMENTATION_SLOT)))),
+      address(newImpl)
+    );
+    assertEq(abi.encode(facility.getPool(PUBLIC)), abi.encode(pubBefore));
+    assertEq(abi.encode(facility.getPool(ACTOR)), abi.encode(actorBefore));
+    assertEq(facility.accruedFees(), feesBefore);
+    assertEq(facility.treasury(), TREASURY);
+    assertEq(facility.authority(), address(manager));
+    assertEq(facility.getFeeTier(ACTOR).ghoInBps, 7);
+
+    _swapShares(ALICE, PUBLIC, _shares(ALICE, 1e6));
   }
 
   // ---------------------------------------------------------------- fuzz

@@ -59,6 +59,11 @@ interface IGhoSwapFacility {
   event TreasurySet(address indexed treasury);
   event FeesClaimed(address indexed treasury, uint256 amount);
 
+  /// @notice Initializes the proxy.
+  /// @param authority The AccessManager that governs restricted functions.
+  /// @param treasury Recipient of skimmed yield and swap fees.
+  function initialize(address authority, address treasury) external;
+
   /// @notice Swaps `amountIn` of `tokenIn` (GHO or vault shares) for the other token.
   /// @dev Skims the pool's yield first, so the pool never holds more value than the GHO it owes.
   /// @param pool `address(0)` for the public pool, or the caller's address for its private pool.

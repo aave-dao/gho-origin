@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {AccessManaged} from 'openzeppelin-contracts/contracts/access/manager/AccessManaged.sol';
-import {ReentrancyGuard} from 'openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol';
+import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
+import {AccessManagedUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/manager/AccessManagedUpgradeable.sol';
+import {ReentrancyGuardUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol';
 import {SafeERC20} from 'openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol';
 import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
@@ -24,7 +25,17 @@ import {IGhoSwapFacility} from 'src/contracts/facilitators/swap/interfaces/IGhoS
 /// Permissions go through an OpenZeppelin AccessManager. `swap` is `restricted`: make it public with
 /// `setTargetFunctionRole(facility, [swap], PUBLIC_ROLE)`, or gate it behind a role. To freeze swaps,
 /// point `swap` at a role nobody holds. `skim`, `repay` and `claimFees` are permissionless.
-contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
+///
+/// Upgradeability: deploy behind a proxy and call `initialize`. Mutable state lives in an ERC-7201
+/// namespaced struct, as do the OpenZeppelin parents, so implementations can add fields at the end of
+/// `GhoSwapFacilityStorage` without slot collisions. `GHO`, `VAULT` and `RESERVE` are immutables of the
+/// implementation: a new implementation must be deployed with the same values.
+contract GhoSwapFacility is
+  IGhoSwapFacility,
+  Initializable,
+  AccessManagedUpgradeable,
+  ReentrancyGuardUpgradeable
+{
   using SafeERC20 for IERC20;
   using SafeCast for uint256;
 
@@ -45,22 +56,20 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
   /// @dev 10 ** (18 - vault asset decimals): converts vault assets to GHO units.
   uint256 internal immutable SCALE;
 
-  /// @inheritdoc IGhoSwapFacility
-  address public treasury;
+  /// @custom:storage-location erc7201:aave.storage.GhoSwapFacility
+  struct GhoSwapFacilityStorage {
+    address treasury;
+    uint256 accruedFees;
+    mapping(address pool => Pool) pools;
+    mapping(address account => FeeTier) feeTiers;
+  }
 
-  /// @inheritdoc IGhoSwapFacility
-  uint256 public accruedFees;
+  // keccak256(abi.encode(uint256(keccak256("aave.storage.GhoSwapFacility")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant STORAGE_LOCATION =
+    0xb0080694905adb0789279695150c0aca9abdb23a81cdfdff45895a20089e0500;
 
-  mapping(address pool => Pool) internal _pools;
-  mapping(address account => FeeTier) internal _feeTiers;
-
-  constructor(
-    address authority,
-    address gho,
-    address vault,
-    address reserve,
-    address treasury_
-  ) AccessManaged(authority) {
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor(address gho, address vault, address reserve) {
     if (gho == address(0) || vault == address(0) || reserve == address(0)) revert ZeroAddress();
     address reserveToken = IGhoReserve(reserve).GHO_TOKEN();
     if (reserveToken != gho) revert ReserveTokenMismatch(reserveToken);
@@ -72,8 +81,16 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
     RESERVE = reserve;
     SCALE = 10 ** (18 - assetDecimals);
 
+    _disableInitializers();
+  }
+
+  /// @inheritdoc IGhoSwapFacility
+  function initialize(address authority, address treasury_) external initializer {
+    if (authority == address(0)) revert ZeroAddress();
+    __AccessManaged_init(authority);
+    __ReentrancyGuard_init();
     _setTreasury(treasury_);
-    IERC20(gho).forceApprove(reserve, type(uint256).max);
+    IERC20(GHO).forceApprove(RESERVE, type(uint256).max);
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -88,7 +105,8 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
     if (receiver == address(0)) revert ZeroAddress();
     if (amountIn == 0) revert ZeroAmount();
 
-    Pool storage p = _pools[pool];
+    GhoSwapFacilityStorage storage $ = _getStorage();
+    Pool storage p = $.pools[pool];
     _skim(pool, p);
 
     uint256 fee;
@@ -101,7 +119,7 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
       p.used = newUsed.toUint128();
       p.shares += amountIn.toUint128();
-      accruedFees += fee;
+      $.accruedFees += fee;
 
       IERC20(VAULT).safeTransferFrom(msg.sender, address(this), amountIn);
       IGhoReserve(RESERVE).use(gross);
@@ -114,7 +132,7 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
       p.shares -= amountOut.toUint128();
       p.used -= net.toUint128();
-      accruedFees += fee;
+      $.accruedFees += fee;
 
       IERC20(GHO).safeTransferFrom(msg.sender, address(this), amountIn);
       IGhoReserve(RESERVE).restore(net);
@@ -128,12 +146,12 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
   /// @inheritdoc IGhoSwapFacility
   function skim(address pool) external nonReentrant returns (uint256) {
-    return _skim(pool, _pools[pool]);
+    return _skim(pool, _getStorage().pools[pool]);
   }
 
   /// @inheritdoc IGhoSwapFacility
   function repay(address pool, uint256 amount) external nonReentrant returns (uint256) {
-    Pool storage p = _pools[pool];
+    Pool storage p = _getStorage().pools[pool];
     uint256 value = _sharesToGho(p.shares);
     if (value >= p.used) revert NoDeficit(pool);
 
@@ -149,11 +167,12 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
   /// @inheritdoc IGhoSwapFacility
   function claimFees() external nonReentrant returns (uint256 amount) {
-    amount = accruedFees;
+    GhoSwapFacilityStorage storage $ = _getStorage();
+    amount = $.accruedFees;
     if (amount == 0) return 0;
-    accruedFees = 0;
-    IERC20(GHO).safeTransfer(treasury, amount);
-    emit FeesClaimed(treasury, amount);
+    $.accruedFees = 0;
+    IERC20(GHO).safeTransfer($.treasury, amount);
+    emit FeesClaimed($.treasury, amount);
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -162,7 +181,7 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
     address to
   ) external restricted nonReentrant returns (uint256 shares) {
     if (to == address(0)) revert ZeroAddress();
-    Pool storage p = _pools[pool];
+    Pool storage p = _getStorage().pools[pool];
     shares = p.shares;
     p.shares = 0;
     p.cap = 0;
@@ -174,13 +193,14 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
   /// @inheritdoc IGhoSwapFacility
   function makePublic(address pool) external restricted nonReentrant {
     if (pool == PUBLIC_POOL) revert NotPrivatePool();
-    Pool storage priv = _pools[pool];
-    Pool storage pub = _pools[PUBLIC_POOL];
+    GhoSwapFacilityStorage storage $ = _getStorage();
+    Pool storage priv = $.pools[pool];
+    Pool storage pub = $.pools[PUBLIC_POOL];
     _skim(pool, priv);
     _skim(PUBLIC_POOL, pub);
 
     Pool memory moved = priv;
-    delete _pools[pool];
+    delete $.pools[pool];
     pub.shares += moved.shares;
     pub.used += moved.used;
     pub.cap += moved.cap;
@@ -192,7 +212,7 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
   /// @inheritdoc IGhoSwapFacility
   function setPoolCap(address pool, uint128 cap) external restricted {
-    _pools[pool].cap = cap;
+    _getStorage().pools[pool].cap = cap;
     emit PoolCapSet(pool, cap);
   }
 
@@ -200,13 +220,17 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
   function setFeeTier(address account, uint16 sharesInBps, uint16 ghoInBps) external restricted {
     if (sharesInBps > BPS) revert InvalidFee(sharesInBps);
     if (ghoInBps > BPS) revert InvalidFee(ghoInBps);
-    _feeTiers[account] = FeeTier({sharesInBps: sharesInBps, ghoInBps: ghoInBps, isSet: true});
+    _getStorage().feeTiers[account] = FeeTier({
+      sharesInBps: sharesInBps,
+      ghoInBps: ghoInBps,
+      isSet: true
+    });
     emit FeeTierSet(account, sharesInBps, ghoInBps);
   }
 
   /// @inheritdoc IGhoSwapFacility
   function clearFeeTier(address account) external restricted {
-    delete _feeTiers[account];
+    delete _getStorage().feeTiers[account];
     emit FeeTierCleared(account);
   }
 
@@ -232,18 +256,29 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
   /// @inheritdoc IGhoSwapFacility
   function getFeeTier(address account) public view returns (FeeTier memory tier) {
-    tier = _feeTiers[account];
-    if (!tier.isSet) tier = _feeTiers[PUBLIC_POOL];
+    GhoSwapFacilityStorage storage $ = _getStorage();
+    tier = $.feeTiers[account];
+    if (!tier.isSet) tier = $.feeTiers[PUBLIC_POOL];
   }
 
   /// @inheritdoc IGhoSwapFacility
   function getPool(address pool) external view returns (Pool memory) {
-    return _pools[pool];
+    return _getStorage().pools[pool];
+  }
+
+  /// @inheritdoc IGhoSwapFacility
+  function treasury() external view returns (address) {
+    return _getStorage().treasury;
+  }
+
+  /// @inheritdoc IGhoSwapFacility
+  function accruedFees() external view returns (uint256) {
+    return _getStorage().accruedFees;
   }
 
   /// @inheritdoc IGhoSwapFacility
   function getSurplus(address pool) external view returns (int256) {
-    Pool memory p = _pools[pool];
+    Pool memory p = _getStorage().pools[pool];
     return SafeCast.toInt256(_sharesToGho(p.shares)) - SafeCast.toInt256(p.used);
   }
 
@@ -253,7 +288,7 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
     if (p.shares <= keep) return 0;
     excess = p.shares - keep;
     p.shares = keep.toUint128();
-    IERC20(VAULT).safeTransfer(treasury, excess);
+    IERC20(VAULT).safeTransfer(_getStorage().treasury, excess);
     emit YieldSkimmed(pool, excess);
   }
 
@@ -292,7 +327,13 @@ contract GhoSwapFacility is IGhoSwapFacility, AccessManaged, ReentrancyGuard {
 
   function _setTreasury(address treasury_) internal {
     if (treasury_ == address(0)) revert ZeroAddress();
-    treasury = treasury_;
+    _getStorage().treasury = treasury_;
     emit TreasurySet(treasury_);
+  }
+
+  function _getStorage() private pure returns (GhoSwapFacilityStorage storage $) {
+    assembly {
+      $.slot := STORAGE_LOCATION
+    }
   }
 }

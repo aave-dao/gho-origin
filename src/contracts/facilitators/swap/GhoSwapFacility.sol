@@ -106,12 +106,8 @@ contract GhoSwapFacility is
     if (receiver == address(0)) revert ZeroAddress();
     if (amountIn == 0) revert ZeroAmount();
 
-    address pool = msg.sender;
+    address pool = poolOf(msg.sender);
     Pool storage p = $.pools[pool];
-    if (!p.isPrivate) {
-      pool = PUBLIC_POOL;
-      p = $.pools[pool];
-    }
     _skim(pool, p);
 
     uint256 fee;
@@ -280,7 +276,7 @@ contract GhoSwapFacility is
   }
 
   /// @inheritdoc IGhoSwapFacility
-  function poolOf(address account) external view returns (address) {
+  function poolOf(address account) public view returns (address) {
     return _getStorage().pools[account].isPrivate ? account : PUBLIC_POOL;
   }
 

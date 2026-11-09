@@ -9,18 +9,18 @@ import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {IERC20Metadata} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
-import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IGhoReserve} from 'src/contracts/facilitators/gsm/interfaces/IGhoReserve.sol';
 import {IGhoSwapFacility} from 'src/contracts/facilitators/swap/interfaces/IGhoSwapFacility.sol';
 
 /// @title GhoSwapFacility
 /// @author Aave Labs
-/// @notice Swaps GHO 1:1 against the asset of an ERC4626 vault. GHO comes from a `GhoReserve`.
-/// @dev Value model: one unit of the vault asset is worth one GHO (decimals adjusted), and shares are
-/// valued with `convertToAssets`. Each pool keeps exactly enough shares to back the GHO it drew
-/// (`used`); anything above that is yield and is sent to the treasury as shares before every swap.
-/// Because the skim never mints GHO, it does not depend on the reserve limit, and a swap of GHO for
-/// shares can always restore up to `used`.
+/// @notice Swaps GHO against an ERC20 asset. GHO comes from a `GhoReserve`.
+/// @dev Value model: one unit of the asset is worth one GHO, adjusted for decimals. Derived contracts
+/// change it by overriding `_toGho`, `_fromGho`, `_backing` and `_pricingDecimals` (see
+/// `GhoSwapFacility4626`). Each pool keeps exactly enough asset to back the GHO it drew (`used`);
+/// anything above that is surplus (yield, for a yield-bearing asset) and is sent to the treasury in the
+/// asset before every swap. Because the skim never mints GHO, it does not depend on the reserve limit,
+/// and a swap of GHO for the asset can always restore up to `used`.
 ///
 /// Permissions go through an OpenZeppelin AccessManager. `swap` is `restricted`: make it public with
 /// `setTargetFunctionRole(facility, [swap], PUBLIC_ROLE)`, or gate it behind a role. To freeze swaps,
@@ -28,7 +28,7 @@ import {IGhoSwapFacility} from 'src/contracts/facilitators/swap/interfaces/IGhoS
 ///
 /// Upgradeability: deploy behind a proxy and call `initialize`. Mutable state lives in an ERC-7201
 /// namespaced struct, as do the OpenZeppelin parents, so implementations can add fields at the end of
-/// `GhoSwapFacilityStorage` without slot collisions. `GHO`, `VAULT` and `RESERVE` are immutables of the
+/// `GhoSwapFacilityStorage` without slot collisions. `GHO`, `ASSET` and `RESERVE` are immutables of the
 /// implementation: a new implementation must be deployed with the same values.
 contract GhoSwapFacility is
   IGhoSwapFacility,
@@ -48,12 +48,12 @@ contract GhoSwapFacility is
   address public immutable GHO;
 
   /// @inheritdoc IGhoSwapFacility
-  address public immutable VAULT;
+  address public immutable ASSET;
 
   /// @inheritdoc IGhoSwapFacility
   address public immutable RESERVE;
 
-  /// @dev 10 ** (18 - vault asset decimals): converts vault assets to GHO units.
+  /// @dev 10 ** (18 - pricing decimals): converts priced units to GHO units.
   uint256 internal immutable SCALE;
 
   /// @custom:storage-location erc7201:aave.storage.GhoSwapFacility
@@ -69,17 +69,17 @@ contract GhoSwapFacility is
     0xb0080694905adb0789279695150c0aca9abdb23a81cdfdff45895a20089e0500;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor(address gho, address vault, address reserve) {
-    if (gho == address(0) || vault == address(0) || reserve == address(0)) revert ZeroAddress();
+  constructor(address gho, address asset, address reserve) {
+    if (gho == address(0) || asset == address(0) || reserve == address(0)) revert ZeroAddress();
     address reserveToken = IGhoReserve(reserve).GHO_TOKEN();
     if (reserveToken != gho) revert ReserveTokenMismatch(reserveToken);
-    uint8 assetDecimals = IERC20Metadata(IERC4626(vault).asset()).decimals();
-    if (assetDecimals > 18) revert UnsupportedDecimals(assetDecimals);
+    uint8 decimals = _pricingDecimals(asset);
+    if (decimals > 18) revert UnsupportedDecimals(decimals);
 
     GHO = gho;
-    VAULT = vault;
+    ASSET = asset;
     RESERVE = reserve;
-    SCALE = 10 ** (18 - assetDecimals);
+    SCALE = 10 ** (18 - decimals);
 
     _disableInitializers();
   }
@@ -110,33 +110,33 @@ contract GhoSwapFacility is
     _skim(pool, p);
 
     uint256 fee;
-    if (tokenIn == VAULT) {
+    if (tokenIn == ASSET) {
       uint256 gross;
-      (amountOut, fee, gross) = _quoteSharesIn(msg.sender, amountIn);
+      (amountOut, fee, gross) = _quoteAssetIn(msg.sender, amountIn);
       uint256 newUsed = p.used + gross;
       if (newUsed > p.cap) revert PoolCapExceeded(pool, newUsed, p.cap);
       _checkOut(amountOut, minAmountOut);
 
       p.used = newUsed.toUint128();
-      p.shares += amountIn.toUint128();
+      p.balance += amountIn.toUint128();
       $.accruedFees += fee;
 
-      IERC20(VAULT).safeTransferFrom(msg.sender, address(this), amountIn);
+      IERC20(ASSET).safeTransferFrom(msg.sender, address(this), amountIn);
       IGhoReserve(RESERVE).use(gross);
       IERC20(GHO).safeTransfer(receiver, amountOut);
     } else if (tokenIn == GHO) {
       uint256 net;
       (amountOut, fee, net) = _quoteGhoIn(msg.sender, amountIn);
-      if (amountOut > p.shares || net > p.used) revert InsufficientLiquidity(pool);
+      if (amountOut > p.balance || net > p.used) revert InsufficientLiquidity(pool);
       _checkOut(amountOut, minAmountOut);
 
-      p.shares -= amountOut.toUint128();
+      p.balance -= amountOut.toUint128();
       p.used -= net.toUint128();
       $.accruedFees += fee;
 
       IERC20(GHO).safeTransferFrom(msg.sender, address(this), amountIn);
       IGhoReserve(RESERVE).restore(net);
-      IERC20(VAULT).safeTransfer(receiver, amountOut);
+      IERC20(ASSET).safeTransfer(receiver, amountOut);
     } else {
       revert InvalidToken(tokenIn);
     }
@@ -152,7 +152,7 @@ contract GhoSwapFacility is
   /// @inheritdoc IGhoSwapFacility
   function repay(address pool, uint256 amount) external nonReentrant returns (uint256) {
     Pool storage p = _getStorage().pools[pool];
-    uint256 value = _sharesToGho(p.shares);
+    uint256 value = _toGho(p.balance);
     if (value >= p.used) revert NoDeficit(pool);
 
     uint256 repaid = Math.min(amount, p.used - value);
@@ -179,15 +179,15 @@ contract GhoSwapFacility is
   function seize(
     address pool,
     address to
-  ) external restricted nonReentrant returns (uint256 shares) {
+  ) external restricted nonReentrant returns (uint256 amount) {
     if (to == address(0)) revert ZeroAddress();
     Pool storage p = _getStorage().pools[pool];
-    shares = p.shares;
-    p.shares = 0;
+    amount = p.balance;
+    p.balance = 0;
     p.cap = 0;
-    IERC20(VAULT).safeTransfer(to, shares);
+    IERC20(ASSET).safeTransfer(to, amount);
     emit PoolCapSet(pool, 0);
-    emit PoolSeized(pool, to, shares, p.used);
+    emit PoolSeized(pool, to, amount, p.used);
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -201,11 +201,11 @@ contract GhoSwapFacility is
 
     Pool memory moved = priv;
     delete $.pools[pool];
-    pub.shares += moved.shares;
+    pub.balance += moved.balance;
     pub.used += moved.used;
     pub.cap += moved.cap;
 
-    emit PoolMadePublic(pool, moved.shares, moved.used, moved.cap);
+    emit PoolMadePublic(pool, moved.balance, moved.used, moved.cap);
     emit PoolCapSet(pool, 0);
     emit PoolCapSet(PUBLIC_POOL, pub.cap);
   }
@@ -217,15 +217,15 @@ contract GhoSwapFacility is
   }
 
   /// @inheritdoc IGhoSwapFacility
-  function setFeeTier(address account, uint16 sharesInBps, uint16 ghoInBps) external restricted {
-    if (sharesInBps > BPS) revert InvalidFee(sharesInBps);
+  function setFeeTier(address account, uint16 assetInBps, uint16 ghoInBps) external restricted {
+    if (assetInBps > BPS) revert InvalidFee(assetInBps);
     if (ghoInBps > BPS) revert InvalidFee(ghoInBps);
     _getStorage().feeTiers[account] = FeeTier({
-      sharesInBps: sharesInBps,
+      assetInBps: assetInBps,
       ghoInBps: ghoInBps,
       isSet: true
     });
-    emit FeeTierSet(account, sharesInBps, ghoInBps);
+    emit FeeTierSet(account, assetInBps, ghoInBps);
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -245,8 +245,8 @@ contract GhoSwapFacility is
     address tokenIn,
     uint256 amountIn
   ) external view returns (uint256 amountOut, uint256 fee) {
-    if (tokenIn == VAULT) {
-      (amountOut, fee, ) = _quoteSharesIn(account, amountIn);
+    if (tokenIn == ASSET) {
+      (amountOut, fee, ) = _quoteAssetIn(account, amountIn);
     } else if (tokenIn == GHO) {
       (amountOut, fee, ) = _quoteGhoIn(account, amountIn);
     } else {
@@ -279,32 +279,32 @@ contract GhoSwapFacility is
   /// @inheritdoc IGhoSwapFacility
   function getSurplus(address pool) external view returns (int256) {
     Pool memory p = _getStorage().pools[pool];
-    return SafeCast.toInt256(_sharesToGho(p.shares)) - SafeCast.toInt256(p.used);
+    return SafeCast.toInt256(_toGho(p.balance)) - SafeCast.toInt256(p.used);
   }
 
-  /// @dev Sends the shares above what backs `p.used` to the treasury. Rounds in favor of the pool.
+  /// @dev Sends the asset above what backs `p.used` to the treasury. Rounds in favor of the pool.
   function _skim(address pool, Pool storage p) internal returns (uint256 excess) {
-    uint256 keep = IERC4626(VAULT).previewWithdraw(Math.ceilDiv(p.used, SCALE));
-    if (p.shares <= keep) return 0;
-    excess = p.shares - keep;
-    p.shares = keep.toUint128();
-    IERC20(VAULT).safeTransfer(_getStorage().treasury, excess);
-    emit YieldSkimmed(pool, excess);
+    uint256 keep = _backing(p.used);
+    if (p.balance <= keep) return 0;
+    excess = p.balance - keep;
+    p.balance = keep.toUint128();
+    IERC20(ASSET).safeTransfer(_getStorage().treasury, excess);
+    emit Skimmed(pool, excess);
   }
 
   /// @return amountOut GHO sent out.
   /// @return fee GHO fee.
   /// @return gross GHO drawn from the reserve (amountOut + fee).
-  function _quoteSharesIn(
+  function _quoteAssetIn(
     address account,
-    uint256 shares
+    uint256 amount
   ) internal view returns (uint256 amountOut, uint256 fee, uint256 gross) {
-    gross = _sharesToGho(shares);
-    fee = Math.mulDiv(gross, getFeeTier(account).sharesInBps, BPS, Math.Rounding.Ceil);
+    gross = _toGho(amount);
+    fee = Math.mulDiv(gross, getFeeTier(account).assetInBps, BPS, Math.Rounding.Ceil);
     amountOut = gross - fee;
   }
 
-  /// @return amountOut Shares sent out.
+  /// @return amountOut Asset sent out.
   /// @return fee GHO fee.
   /// @return net GHO restored to the reserve (amountIn - fee).
   function _quoteGhoIn(
@@ -313,11 +313,27 @@ contract GhoSwapFacility is
   ) internal view returns (uint256 amountOut, uint256 fee, uint256 net) {
     fee = Math.mulDiv(ghoIn, getFeeTier(account).ghoInBps, BPS, Math.Rounding.Ceil);
     net = ghoIn - fee;
-    amountOut = IERC4626(VAULT).convertToShares(net / SCALE);
+    amountOut = _fromGho(net);
   }
 
-  function _sharesToGho(uint256 shares) internal view returns (uint256) {
-    return IERC4626(VAULT).convertToAssets(shares) * SCALE;
+  /// @dev Decimals of the unit the asset is priced in. Called once, from the constructor.
+  function _pricingDecimals(address asset) internal view virtual returns (uint8) {
+    return IERC20Metadata(asset).decimals();
+  }
+
+  /// @dev GHO value of `amount` of asset, rounded down.
+  function _toGho(uint256 amount) internal view virtual returns (uint256) {
+    return amount * SCALE;
+  }
+
+  /// @dev Asset bought by `ghoAmount` GHO, rounded down.
+  function _fromGho(uint256 ghoAmount) internal view virtual returns (uint256) {
+    return ghoAmount / SCALE;
+  }
+
+  /// @dev Asset needed to back `ghoAmount` GHO, rounded up.
+  function _backing(uint256 ghoAmount) internal view virtual returns (uint256) {
+    return Math.ceilDiv(ghoAmount, SCALE);
   }
 
   function _checkOut(uint256 amountOut, uint256 minAmountOut) internal pure {

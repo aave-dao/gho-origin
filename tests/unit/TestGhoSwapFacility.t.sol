@@ -39,7 +39,7 @@ contract TestGhoSwapFacility is Test {
   }
 
   function test_assetForGho_scalesDecimals() public {
-    facility.setFeeTier(PUBLIC, 100, 0);
+    facility.setPoolFees(PUBLIC, 100, 0);
     uint256 out = _swapAsset(ALICE, 100e6);
 
     assertEq(out, 99e18);
@@ -50,7 +50,7 @@ contract TestGhoSwapFacility is Test {
   }
 
   function test_ghoForAsset() public {
-    facility.setFeeTier(PUBLIC, 0, 50);
+    facility.setPoolFees(PUBLIC, 0, 50);
     _swapAsset(ALICE, 100e6);
 
     uint256 out = _swapGho(BOB, 50e18);

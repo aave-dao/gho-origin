@@ -4,8 +4,10 @@ pragma solidity ^0.8.27;
 /// @title IGhoSwapFacility
 /// @notice Swaps GHO against an asset token. GHO comes from a `GhoReserve`.
 /// @dev Liquidity is split into pools, all stored in one mapping keyed by address. The public pool is
-/// the `address(0)` key. Any other key with `isPrivate` set is a private pool. `swap` routes by caller:
-/// an account with a private pool trades against it, every other account against the public pool. Each pool keeps exactly enough
+/// the `address(0)` key; every other key is the private pool of that address. `swap` routes by caller:
+/// an account whose pool has a non-zero cap trades against it, every other account against the public
+/// pool. Fees are set per pool, so the public pool's fees are the market fees and a private pool's
+/// fees are its owner's. Each pool keeps exactly enough
 /// asset to back the GHO it drew; any surplus (yield, for a yield-bearing asset) is sent to the
 /// treasury in the asset itself ("skimmed").
 interface IGhoSwapFacility {
@@ -13,22 +15,15 @@ interface IGhoSwapFacility {
   /// @param balance Amount of the asset held for the pool.
   /// @param used GHO drawn from the reserve for the pool (gross of fees).
   /// @param cap Maximum value of `used`. Swaps that would push `used` above it revert.
-  /// @param isPrivate Set for a private pool. Packed in the same slot as `cap`.
+  /// For a private pool, a non-zero cap is also what routes its owner to it.
+  /// @param assetInBps Fee on swaps of the asset for GHO, in basis points of the amount in.
+  /// @param ghoInBps Fee on swaps of GHO for the asset, in basis points of the amount in.
   struct Pool {
     uint128 balance;
     uint128 used;
     uint128 cap;
-    bool isPrivate;
-  }
-
-  /// @notice Fees charged to an account, in basis points of the amount sent in.
-  /// @param assetInBps Fee when the account swaps the asset for GHO.
-  /// @param ghoInBps Fee when the account swaps GHO for the asset.
-  /// @param isSet Whether the tier is configured. Accounts without a tier pay the market tier.
-  struct FeeTier {
     uint16 assetInBps;
     uint16 ghoInBps;
-    bool isSet;
   }
 
   error ZeroAddress();
@@ -58,8 +53,7 @@ interface IGhoSwapFacility {
   event PoolSeized(address indexed pool, address indexed to, uint256 amount, uint256 debt);
   event PoolMadePublic(address indexed pool, uint256 balance, uint256 used, uint256 cap);
   event PoolCapSet(address indexed pool, uint256 cap);
-  event FeeTierSet(address indexed account, uint16 assetInBps, uint16 ghoInBps);
-  event FeeTierCleared(address indexed account);
+  event PoolFeesSet(address indexed pool, uint16 assetInBps, uint16 ghoInBps);
   event TreasurySet(address indexed treasury);
   event FeesClaimed(address indexed treasury, uint256 amount);
   event PausedSet(bool paused);
@@ -99,21 +93,19 @@ interface IGhoSwapFacility {
   /// @notice Moves the whole balance of `pool` to `to` and sets its cap to zero. The pool keeps its debt.
   function seize(address pool, address to) external returns (uint256 amount);
 
-  /// @notice Merges a private pool into the public pool: balance, debt and cap move over, and the
-  /// private pool is deleted. Both pools are skimmed first.
+  /// @notice Merges a private pool into the public pool: balance, debt and cap move over, the private
+  /// pool's fees are dropped, and the private pool is deleted. Both pools are skimmed first.
   function makePublic(address pool) external;
 
-  /// @notice Sets the cap of `pool`. For a non-zero key this opens the private pool if needed.
+  /// @notice Sets the cap of `pool`. A non-zero cap on a private pool routes its owner to it; a zero
+  /// cap routes the owner back to the public pool and leaves the private balance until `makePublic`
+  /// or `seize`.
   function setPoolCap(address pool, uint128 cap) external;
 
-  /// @notice Pool `account` trades against: its own if it has a private pool, otherwise `PUBLIC_POOL`.
+  function setPoolFees(address pool, uint16 assetInBps, uint16 ghoInBps) external;
+
+  /// @notice Pool `account` trades against: its own if its cap is non-zero, otherwise `PUBLIC_POOL`.
   function poolOf(address account) external view returns (address);
-
-  /// @notice Sets the fee tier of `account`. `address(0)` is the market tier, paid by accounts without one.
-  function setFeeTier(address account, uint16 assetInBps, uint16 ghoInBps) external;
-
-  /// @notice Removes the fee tier of `account`, which then pays the market tier.
-  function clearFeeTier(address account) external;
 
   function setTreasury(address treasury) external;
 
@@ -122,15 +114,13 @@ interface IGhoSwapFacility {
 
   function paused() external view returns (bool);
 
-  /// @notice Amount out and fee for `account` swapping `amountIn` of `tokenIn`, ignoring pool liquidity and caps.
+  /// @notice Amount out and fee for `account` swapping `amountIn` of `tokenIn` in the pool it is
+  /// routed to, ignoring liquidity and caps.
   function quote(
     address account,
     address tokenIn,
     uint256 amountIn
   ) external view returns (uint256 amountOut, uint256 fee);
-
-  /// @notice Fee tier applied to `account`: its own if set, otherwise the market tier.
-  function getFeeTier(address account) external view returns (FeeTier memory);
 
   function getPool(address pool) external view returns (Pool memory);
 

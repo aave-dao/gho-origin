@@ -70,7 +70,7 @@ contract TestGhoSwapFacility4626 is Test {
   // ---------------------------------------------------------------- swaps
 
   function test_swapSharesForGho() public {
-    facility.setFeeTier(PUBLIC, 100, 0); // 1% market fee
+    facility.setPoolFees(PUBLIC, 100, 0); // 1% market fee
     uint256 shares = _shares(ALICE, 100e6);
 
     uint256 out = _swapShares(ALICE, shares);
@@ -84,7 +84,7 @@ contract TestGhoSwapFacility4626 is Test {
   }
 
   function test_swapGhoForShares() public {
-    facility.setFeeTier(PUBLIC, 0, 50); // 0.5% fee on GHO in
+    facility.setPoolFees(PUBLIC, 0, 50); // 0.5% fee on GHO in
     _swapShares(ALICE, _shares(ALICE, 100e6));
 
     gho.mint(BOB, 50e18);
@@ -170,9 +170,7 @@ contract TestGhoSwapFacility4626 is Test {
     vm.expectRevert(err);
     facility.setPoolCap(PUBLIC, 1);
     vm.expectRevert(err);
-    facility.setFeeTier(ALICE, 0, 0);
-    vm.expectRevert(err);
-    facility.clearFeeTier(ALICE);
+    facility.setPoolFees(ALICE, 0, 0);
     vm.expectRevert(err);
     facility.setTreasury(ALICE);
     vm.expectRevert(err);
@@ -190,7 +188,6 @@ contract TestGhoSwapFacility4626 is Test {
     assertEq(facility.poolOf(ACTOR), PUBLIC);
     facility.setPoolCap(ACTOR, 100e18);
     assertEq(facility.poolOf(ACTOR), ACTOR);
-    assertTrue(facility.getPool(ACTOR).isPrivate);
 
     _swapShares(ACTOR, _shares(ACTOR, 10e6));
     _swapShares(ALICE, _shares(ALICE, 3e6));
@@ -213,16 +210,18 @@ contract TestGhoSwapFacility4626 is Test {
     vm.stopPrank();
   }
 
-  function test_privatePool_zeroCapStaysPrivate() public {
+  function test_privatePool_zeroCapRoutesToPublic() public {
     facility.setPoolCap(ACTOR, 100e18);
     _swapShares(ACTOR, _shares(ACTOR, 10e6));
     facility.setPoolCap(ACTOR, 0);
-    assertEq(facility.poolOf(ACTOR), ACTOR);
+    assertEq(facility.poolOf(ACTOR), PUBLIC);
 
-    // the actor can still unwind its own pool
+    // the private balance stays put until it is merged into the public pool
+    assertEq(facility.getPool(ACTOR).used, 10e18);
+    facility.makePublic(ACTOR);
     gho.mint(ACTOR, 10e18);
     _swapGho(ACTOR, 10e18);
-    assertEq(facility.getPool(ACTOR).used, 0);
+    assertEq(facility.getPool(PUBLIC).used, 0);
   }
 
   function test_makePublic_mergesPool() public {
@@ -238,7 +237,6 @@ contract TestGhoSwapFacility4626 is Test {
     assertEq(facility.getPool(ACTOR).used, 0);
     assertEq(facility.getPool(ACTOR).cap, 0);
     assertEq(facility.getPool(ACTOR).balance, 0);
-    assertFalse(facility.getPool(ACTOR).isPrivate);
     assertEq(facility.poolOf(ACTOR), PUBLIC);
 
     // anyone can now take the liquidity the actor provided
@@ -247,45 +245,37 @@ contract TestGhoSwapFacility4626 is Test {
     assertEq(facility.getPool(PUBLIC).used, 5e18);
   }
 
-  function test_makePublic_revertsWithoutPrivatePool() public {
+  function test_makePublic_revertsForPublicPool() public {
     vm.expectRevert(IGhoSwapFacility.NotPrivatePool.selector);
     facility.makePublic(PUBLIC);
-    vm.expectRevert(IGhoSwapFacility.NotPrivatePool.selector);
-    facility.makePublic(BOB);
   }
 
-  // ---------------------------------------------------------------- fee tiers
+  // ---------------------------------------------------------------- fees
 
-  function test_feeTier_actorOverridesMarket() public {
-    facility.setFeeTier(PUBLIC, 100, 100);
-    facility.setFeeTier(ACTOR, 0, 10);
+  function test_fees_followThePool() public {
+    facility.setPoolFees(PUBLIC, 100, 100);
+    facility.setPoolFees(ACTOR, 0, 10);
+    uint256 shares = vault.convertToShares(100e6);
 
-    (uint256 marketOut, ) = facility.quote(ALICE, address(vault), vault.convertToShares(100e6));
-    (uint256 actorOut, ) = facility.quote(ACTOR, address(vault), vault.convertToShares(100e6));
-    assertEq(marketOut, 99e18);
-    assertEq(actorOut, 100e18);
+    (uint256 out, ) = facility.quote(ACTOR, address(vault), shares);
+    assertEq(out, 99e18, 'no private pool yet: market fees');
 
-    facility.clearFeeTier(ACTOR);
-    (actorOut, ) = facility.quote(ACTOR, address(vault), vault.convertToShares(100e6));
-    assertEq(actorOut, 99e18);
-  }
-
-  function test_feeTier_appliesInPrivatePool() public {
-    facility.setFeeTier(PUBLIC, 100, 100);
-    facility.setFeeTier(ACTOR, 20, 20);
     facility.setPoolCap(ACTOR, 100e18);
+    (out, ) = facility.quote(ACTOR, address(vault), shares);
+    assertEq(out, 100e18, 'private pool: its own fees');
+    (out, ) = facility.quote(ALICE, address(vault), shares);
+    assertEq(out, 99e18);
 
-    uint256 out = _swapShares(ACTOR, _shares(ACTOR, 100e6));
-    assertEq(out, 99.8e18);
+    assertEq(_swapShares(ACTOR, _shares(ACTOR, 100e6)), 100e18);
   }
 
-  function test_setFeeTier_revertsAbove100Percent() public {
+  function test_setPoolFees_revertsAbove100Percent() public {
     vm.expectRevert(abi.encodeWithSelector(IGhoSwapFacility.InvalidFee.selector, 10_001));
-    facility.setFeeTier(PUBLIC, 10_001, 0);
+    facility.setPoolFees(PUBLIC, 10_001, 0);
   }
 
   function test_claimFees() public {
-    facility.setFeeTier(PUBLIC, 100, 0);
+    facility.setPoolFees(PUBLIC, 100, 0);
     _swapShares(ALICE, _shares(ALICE, 100e6));
     assertEq(facility.claimFees(), 1e18);
     assertEq(gho.balanceOf(TREASURY), 1e18);
@@ -396,7 +386,7 @@ contract TestGhoSwapFacility4626 is Test {
   }
 
   function test_storage_isNamespaced() public {
-    facility.setFeeTier(PUBLIC, 1, 2);
+    facility.setPoolFees(PUBLIC, 1, 2);
     _swapShares(ALICE, _shares(ALICE, 10e6));
 
     // treasury is the first field of the namespaced struct
@@ -408,7 +398,7 @@ contract TestGhoSwapFacility4626 is Test {
   }
 
   function test_upgrade_preservesState() public {
-    facility.setFeeTier(ACTOR, 5, 7);
+    facility.setPoolFees(ACTOR, 5, 7);
     facility.setPoolCap(ACTOR, 50e18);
     _swapShares(ACTOR, _shares(ACTOR, 20e6));
     _swapShares(ALICE, _shares(ALICE, 30e6));
@@ -436,7 +426,7 @@ contract TestGhoSwapFacility4626 is Test {
     assertEq(facility.accruedFees(), feesBefore);
     assertEq(facility.treasury(), TREASURY);
     assertEq(facility.authority(), address(manager));
-    assertEq(facility.getFeeTier(ACTOR).ghoInBps, 7);
+    assertEq(facility.getPool(ACTOR).ghoInBps, 7);
 
     _swapShares(ALICE, _shares(ALICE, 1e6));
   }

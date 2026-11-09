@@ -62,7 +62,6 @@ contract GhoSwapFacility is
     bool paused;
     uint256 accruedFees;
     mapping(address pool => Pool) pools;
-    mapping(address account => FeeTier) feeTiers;
   }
 
   // keccak256(abi.encode(uint256(keccak256("aave.storage.GhoSwapFacility")) - 1)) & ~bytes32(uint256(0xff))
@@ -113,7 +112,7 @@ contract GhoSwapFacility is
     uint256 fee;
     if (tokenIn == ASSET) {
       uint256 gross;
-      (amountOut, fee, gross) = _quoteAssetIn(msg.sender, amountIn);
+      (amountOut, fee, gross) = _quoteAssetIn(p.assetInBps, amountIn);
       uint256 newUsed = p.used + gross;
       if (newUsed > p.cap) revert PoolCapExceeded(pool, newUsed, p.cap);
       _checkOut(amountOut, minAmountOut);
@@ -127,7 +126,7 @@ contract GhoSwapFacility is
       IERC20(GHO).safeTransfer(receiver, amountOut);
     } else if (tokenIn == GHO) {
       uint256 net;
-      (amountOut, fee, net) = _quoteGhoIn(msg.sender, amountIn);
+      (amountOut, fee, net) = _quoteGhoIn(p.ghoInBps, amountIn);
       if (amountOut > p.balance || net > p.used) revert InsufficientLiquidity(pool);
       _checkOut(amountOut, minAmountOut);
 
@@ -193,9 +192,9 @@ contract GhoSwapFacility is
 
   /// @inheritdoc IGhoSwapFacility
   function makePublic(address pool) external restricted nonReentrant {
+    if (pool == PUBLIC_POOL) revert NotPrivatePool();
     GhoSwapFacilityStorage storage $ = _getStorage();
     Pool storage priv = $.pools[pool];
-    if (!priv.isPrivate) revert NotPrivatePool();
     Pool storage pub = $.pools[PUBLIC_POOL];
     _skim(pool);
     _skim(PUBLIC_POOL);
@@ -213,28 +212,18 @@ contract GhoSwapFacility is
 
   /// @inheritdoc IGhoSwapFacility
   function setPoolCap(address pool, uint128 cap) external restricted {
-    Pool storage p = _getStorage().pools[pool];
-    p.cap = cap;
-    if (pool != PUBLIC_POOL) p.isPrivate = true;
+    _getStorage().pools[pool].cap = cap;
     emit PoolCapSet(pool, cap);
   }
 
   /// @inheritdoc IGhoSwapFacility
-  function setFeeTier(address account, uint16 assetInBps, uint16 ghoInBps) external restricted {
+  function setPoolFees(address pool, uint16 assetInBps, uint16 ghoInBps) external restricted {
     if (assetInBps > BPS) revert InvalidFee(assetInBps);
     if (ghoInBps > BPS) revert InvalidFee(ghoInBps);
-    _getStorage().feeTiers[account] = FeeTier({
-      assetInBps: assetInBps,
-      ghoInBps: ghoInBps,
-      isSet: true
-    });
-    emit FeeTierSet(account, assetInBps, ghoInBps);
-  }
-
-  /// @inheritdoc IGhoSwapFacility
-  function clearFeeTier(address account) external restricted {
-    delete _getStorage().feeTiers[account];
-    emit FeeTierCleared(account);
+    Pool storage p = _getStorage().pools[pool];
+    p.assetInBps = assetInBps;
+    p.ghoInBps = ghoInBps;
+    emit PoolFeesSet(pool, assetInBps, ghoInBps);
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -259,25 +248,19 @@ contract GhoSwapFacility is
     address tokenIn,
     uint256 amountIn
   ) external view returns (uint256 amountOut, uint256 fee) {
+    Pool storage p = _getStorage().pools[poolOf(account)];
     if (tokenIn == ASSET) {
-      (amountOut, fee, ) = _quoteAssetIn(account, amountIn);
+      (amountOut, fee, ) = _quoteAssetIn(p.assetInBps, amountIn);
     } else if (tokenIn == GHO) {
-      (amountOut, fee, ) = _quoteGhoIn(account, amountIn);
+      (amountOut, fee, ) = _quoteGhoIn(p.ghoInBps, amountIn);
     } else {
       revert InvalidToken(tokenIn);
     }
   }
 
   /// @inheritdoc IGhoSwapFacility
-  function getFeeTier(address account) public view returns (FeeTier memory tier) {
-    GhoSwapFacilityStorage storage $ = _getStorage();
-    tier = $.feeTiers[account];
-    if (!tier.isSet) tier = $.feeTiers[PUBLIC_POOL];
-  }
-
-  /// @inheritdoc IGhoSwapFacility
   function poolOf(address account) public view returns (address) {
-    return _getStorage().pools[account].isPrivate ? account : PUBLIC_POOL;
+    return _getStorage().pools[account].cap != 0 ? account : PUBLIC_POOL;
   }
 
   /// @inheritdoc IGhoSwapFacility
@@ -317,11 +300,11 @@ contract GhoSwapFacility is
   /// @return fee GHO fee.
   /// @return gross GHO drawn from the reserve (amountOut + fee).
   function _quoteAssetIn(
-    address account,
+    uint256 feeBps,
     uint256 amount
   ) internal view returns (uint256 amountOut, uint256 fee, uint256 gross) {
     gross = _toGho(amount);
-    fee = Math.mulDiv(gross, getFeeTier(account).assetInBps, BPS, Math.Rounding.Ceil);
+    fee = Math.mulDiv(gross, feeBps, BPS, Math.Rounding.Ceil);
     amountOut = gross - fee;
   }
 
@@ -329,10 +312,10 @@ contract GhoSwapFacility is
   /// @return fee GHO fee.
   /// @return net GHO restored to the reserve (amountIn - fee).
   function _quoteGhoIn(
-    address account,
+    uint256 feeBps,
     uint256 ghoIn
   ) internal view returns (uint256 amountOut, uint256 fee, uint256 net) {
-    fee = Math.mulDiv(ghoIn, getFeeTier(account).ghoInBps, BPS, Math.Rounding.Ceil);
+    fee = Math.mulDiv(ghoIn, feeBps, BPS, Math.Rounding.Ceil);
     net = ghoIn - fee;
     amountOut = _fromGho(net);
   }

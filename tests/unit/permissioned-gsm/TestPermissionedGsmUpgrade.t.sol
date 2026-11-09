@@ -50,6 +50,16 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
       IPermissionedGsm(address(GSM)).getIsSellAccessOpen(),
       'Unexpected sell access status'
     );
+    assertEq(
+      GSM.getRoleAdmin(GSM_BUY_ASSET_ROLE),
+      DEFAULT_ADMIN_ROLE,
+      'Unexpected BUY_ASSET_ROLE admin'
+    );
+    assertEq(
+      GSM.getRoleAdmin(GSM_SELL_ASSET_ROLE),
+      DEFAULT_ADMIN_ROLE,
+      'Unexpected SELL_ASSET_ROLE admin'
+    );
 
     vm.expectRevert(
       abi.encodeWithSelector(
@@ -105,6 +115,16 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
     IPermissionedGsm(address(GSM)).getIsBuyAccessOpen();
     vm.expectRevert(bytes(''));
     IPermissionedGsm(address(GSM)).getIsSellAccessOpen();
+    assertEq(
+      GSM.getRoleAdmin(GSM_BUY_ASSET_ROLE),
+      DEFAULT_ADMIN_ROLE,
+      'Unexpected BUY_ASSET_ROLE admin'
+    );
+    assertEq(
+      GSM.getRoleAdmin(GSM_SELL_ASSET_ROLE),
+      DEFAULT_ADMIN_ROLE,
+      'Unexpected SELL_ASSET_ROLE admin'
+    );
 
     vm.prank(ALICE);
     (uint256 assetAmount, ) = GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
@@ -117,6 +137,7 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
 
     vm.prank(SHORT_EXECUTOR);
     AdminUpgradeabilityProxy(payable(address(GSM))).upgradeTo(permissionedImpl);
+    GSM.grantRole(GSM_SWAP_ACCESS_MANAGER_ROLE, address(this));
     IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
 
     vm.prank(SHORT_EXECUTOR);

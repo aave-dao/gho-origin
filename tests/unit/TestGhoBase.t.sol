@@ -398,12 +398,14 @@ contract TestGhoBase is
   }
 
   /**
-   * @dev Grants the `BUY_ASSET_ROLE` and `SELL_ASSET_ROLE` to the addresses the GSM test suites
-   * originate swaps from
+   * @dev Grants the `SWAP_ACCESS_MANAGER_ROLE` to `admin`, which then grants the `BUY_ASSET_ROLE`
+   * and `SELL_ASSET_ROLE` to the addresses the GSM test suites originate swaps from
    * @param gsm The permissioned GSM to grant the roles on
    * @param admin The address holding the default admin role on `gsm`
    */
   function _grantSwapRoles(Gsm gsm, address admin) internal {
+    vm.prank(admin);
+    gsm.grantRole(GSM_SWAP_ACCESS_MANAGER_ROLE, admin);
     address[6] memory swappers = [
       address(this),
       ALICE,

@@ -16,7 +16,6 @@ import {IGhoSwapFacility} from 'src/contracts/facilitators/swap/interfaces/IGhoS
 import {MockERC4626} from '../mocks/MockERC4626.sol';
 
 contract TestGhoSwapFacility4626 is Test {
-  uint64 constant FROZEN_ROLE = 42;
   uint128 constant RESERVE_LIMIT = 1_000_000e18;
 
   address constant TREASURY = address(0x7EA5);
@@ -64,7 +63,6 @@ contract TestGhoSwapFacility4626 is Test {
     reserve.addEntity(address(facility));
     reserve.setLimit(address(facility), RESERVE_LIMIT);
 
-    _setSwapRole(manager.PUBLIC_ROLE());
     PUBLIC = facility.PUBLIC_POOL();
     facility.setPoolCap(PUBLIC, 1_000e18);
   }
@@ -141,29 +139,26 @@ contract TestGhoSwapFacility4626 is Test {
 
   // ---------------------------------------------------------------- access
 
-  function test_swap_frozenThroughAccessManager() public {
-    _setSwapRole(FROZEN_ROLE);
-    vm.prank(ALICE);
-    vm.expectRevert(
-      abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, ALICE)
-    );
-    facility.swap(PUBLIC, address(vault), 1, 0, ALICE);
+  function test_swap_permissionlessWithoutAccessManagerConfig() public {
+    // no role was ever assigned to `swap`
+    _swapShares(ALICE, PUBLIC, _shares(ALICE, 1e6));
+    _swapShares(BOB, PUBLIC, _shares(BOB, 1e6));
+    assertEq(facility.getPool(PUBLIC).used, 2e18);
   }
 
-  function test_swap_permissionedThroughAccessManager() public {
-    uint64 swapperRole = 7;
-    _setSwapRole(swapperRole);
-    manager.grantRole(swapperRole, ALICE, 0);
-    facility.setPoolCap(PUBLIC, 1_000e18);
+  function test_setPaused_blocksSwapsOnly() public {
+    _swapShares(ALICE, PUBLIC, _shares(ALICE, 10e6));
+    _yield(1e6);
+    facility.setPaused(true);
+    assertTrue(facility.paused());
 
+    vm.prank(ALICE);
+    vm.expectRevert(IGhoSwapFacility.SwapsPaused.selector);
+    facility.swap(PUBLIC, address(vault), 1, 0, ALICE);
+    assertGt(facility.skim(PUBLIC), 0);
+
+    facility.setPaused(false);
     _swapShares(ALICE, PUBLIC, _shares(ALICE, 1e6));
-
-    uint256 shares = _shares(BOB, 1e6);
-    vm.startPrank(BOB);
-    vault.approve(address(facility), shares);
-    vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, BOB));
-    facility.swap(PUBLIC, address(vault), shares, 0, BOB);
-    vm.stopPrank();
   }
 
   function test_adminFunctions_restricted() public {
@@ -184,6 +179,8 @@ contract TestGhoSwapFacility4626 is Test {
     facility.seize(PUBLIC, ALICE);
     vm.expectRevert(err);
     facility.makePublic(ACTOR);
+    vm.expectRevert(err);
+    facility.setPaused(true);
     vm.stopPrank();
   }
 
@@ -442,12 +439,6 @@ contract TestGhoSwapFacility4626 is Test {
   }
 
   // ---------------------------------------------------------------- helpers
-
-  function _setSwapRole(uint64 role) internal {
-    bytes4[] memory selectors = new bytes4[](1);
-    selectors[0] = GhoSwapFacility.swap.selector;
-    manager.setTargetFunctionRole(address(facility), selectors, role);
-  }
 
   function _shares(address user, uint256 assets) internal returns (uint256 shares) {
     usdx.mint(user, assets);

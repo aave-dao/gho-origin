@@ -22,9 +22,9 @@ import {IGhoSwapFacility} from 'src/contracts/facilitators/swap/interfaces/IGhoS
 /// asset before every swap. Because the skim never mints GHO, it does not depend on the reserve limit,
 /// and a swap of GHO for the asset can always restore up to `used`.
 ///
-/// Permissions go through an OpenZeppelin AccessManager. `swap` is `restricted`: make it public with
-/// `setTargetFunctionRole(facility, [swap], PUBLIC_ROLE)`, or gate it behind a role. To freeze swaps,
-/// point `swap` at a role nobody holds. `skim`, `repay` and `claimFees` are permissionless.
+/// `swap`, `skim`, `repay` and `claimFees` are permissionless: anyone can trade on the public pool, and
+/// only its owner on a private pool. Admin functions, including `setPaused`, go through an
+/// OpenZeppelin AccessManager.
 ///
 /// Upgradeability: deploy behind a proxy and call `initialize`. Mutable state lives in an ERC-7201
 /// namespaced struct, as do the OpenZeppelin parents, so implementations can add fields at the end of
@@ -59,6 +59,7 @@ contract GhoSwapFacility is
   /// @custom:storage-location erc7201:aave.storage.GhoSwapFacility
   struct GhoSwapFacilityStorage {
     address treasury;
+    bool paused;
     uint256 accruedFees;
     mapping(address pool => Pool) pools;
     mapping(address account => FeeTier) feeTiers;
@@ -100,12 +101,13 @@ contract GhoSwapFacility is
     uint256 amountIn,
     uint256 minAmountOut,
     address receiver
-  ) external restricted nonReentrant returns (uint256 amountOut) {
+  ) external nonReentrant returns (uint256 amountOut) {
+    GhoSwapFacilityStorage storage $ = _getStorage();
+    if ($.paused) revert SwapsPaused();
     if (pool != PUBLIC_POOL && pool != msg.sender) revert PoolAccessDenied(pool, msg.sender);
     if (receiver == address(0)) revert ZeroAddress();
     if (amountIn == 0) revert ZeroAmount();
 
-    GhoSwapFacilityStorage storage $ = _getStorage();
     Pool storage p = $.pools[pool];
     _skim(pool, p);
 
@@ -237,6 +239,17 @@ contract GhoSwapFacility is
   /// @inheritdoc IGhoSwapFacility
   function setTreasury(address treasury_) external restricted {
     _setTreasury(treasury_);
+  }
+
+  /// @inheritdoc IGhoSwapFacility
+  function setPaused(bool paused_) external restricted {
+    _getStorage().paused = paused_;
+    emit PausedSet(paused_);
+  }
+
+  /// @inheritdoc IGhoSwapFacility
+  function paused() external view returns (bool) {
+    return _getStorage().paused;
   }
 
   /// @inheritdoc IGhoSwapFacility

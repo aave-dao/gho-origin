@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 /// @title IGhoSwapFacility
 /// @notice Swaps GHO against an asset token. GHO comes from a `GhoReserve`.
 /// @dev Liquidity is split into pools, all stored in one mapping keyed by address. The public pool is
-/// the `address(0)` key and is open to every caller the AccessManager allows to call `swap`. Any other
+/// the `address(0)` key and anyone can swap against it. Any other
 /// key is a private pool that only that address can swap against. Each pool keeps exactly enough
 /// asset to back the GHO it drew; any surplus (yield, for a yield-bearing asset) is sent to the
 /// treasury in the asset itself ("skimmed").
@@ -41,6 +41,7 @@ interface IGhoSwapFacility {
   error SlippageExceeded(uint256 amountOut, uint256 minAmountOut);
   error NoDeficit(address pool);
   error NotPrivatePool();
+  error SwapsPaused();
 
   event Swap(
     address indexed pool,
@@ -60,6 +61,7 @@ interface IGhoSwapFacility {
   event FeeTierCleared(address indexed account);
   event TreasurySet(address indexed treasury);
   event FeesClaimed(address indexed treasury, uint256 amount);
+  event PausedSet(bool paused);
 
   /// @notice Initializes the proxy.
   /// @param authority The AccessManager that governs restricted functions.
@@ -110,6 +112,11 @@ interface IGhoSwapFacility {
   function clearFeeTier(address account) external;
 
   function setTreasury(address treasury) external;
+
+  /// @notice Pauses or resumes `swap`. Skimming, repaying and claiming fees keep working.
+  function setPaused(bool paused) external;
+
+  function paused() external view returns (bool);
 
   /// @notice Amount out and fee for `account` swapping `amountIn` of `tokenIn`, ignoring pool liquidity and caps.
   function quote(

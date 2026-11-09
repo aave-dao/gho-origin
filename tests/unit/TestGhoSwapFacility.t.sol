@@ -33,9 +33,6 @@ contract TestGhoSwapFacility is Test {
 
     reserve.addEntity(address(facility));
     reserve.setLimit(address(facility), RESERVE_LIMIT);
-    bytes4[] memory selectors = new bytes4[](1);
-    selectors[0] = GhoSwapFacility.swap.selector;
-    manager.setTargetFunctionRole(address(facility), selectors, manager.PUBLIC_ROLE());
 
     PUBLIC = facility.PUBLIC_POOL();
     facility.setPoolCap(PUBLIC, 1_000e18);

@@ -48,7 +48,9 @@ interface IGhoAaveSteward {
    * @notice Updates the GHO borrow cap, only if:
    * - respects `MINIMUM_DELAY`, the minimum time delay between updates
    * - the update changes up to 100% upwards or downwards
+   * - the new borrow cap is not 0 (0 means no cap on Aave V3)
    * @dev Only callable by Risk Council
+   * @dev Moving the borrow cap from 0 to a non-zero value is not possible through the steward, it must be done via AIP
    * @param newBorrowCap The new borrow cap (in whole tokens)
    */
   function updateGhoBorrowCap(uint256 newBorrowCap) external;
@@ -57,7 +59,9 @@ interface IGhoAaveSteward {
    * @notice Updates the GHO supply cap, only if:
    * - respects `MINIMUM_DELAY`, the minimum time delay between updates
    * - the update changes up to 100% upwards or downwards
+   * - the new supply cap is not 0 (0 means no cap on Aave V3)
    * @dev Only callable by Risk Council
+   * @dev Moving the supply cap from 0 to a non-zero value is not possible through the steward, it must be done via AIP
    * @param newSupplyCap The new supply cap (in whole tokens)
    */
   function updateGhoSupplyCap(uint256 newSupplyCap) external;

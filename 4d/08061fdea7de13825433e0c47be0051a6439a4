@@ -1,0 +1,31 @@
+src/contracts/facilitators/gsm/Gsm4626.sol
+  s_43f248484d44bb::t_538e1e45426380 108,113
+src/contracts/facilitators/gsm/PermissionedGsm.sol
+  s_43f248484d44bb::t_e5a7d7a7b36c71 1-50
+src/contracts/facilitators/gsm/PermissionedGsm4626.sol
+  s_43f248484d44bb::t_99a3575dc4bf02 1-51
+tests/helpers/Constants.sol
+  s_43f248484d44bb::t_a7b6c585860062 28
+tests/unit/TestGhoBase.t.sol
+  s_43f248484d44bb::t_cc62310a062cdb 74-75,343-345,357-361,369-371,383-415
+tests/unit/permissioned-gsm/TestPermissionedGsmAccess.t.sol
+  s_43f248484d44bb::t_7e1718c1e0a9b8 1-223
+tests/unit/permissioned-gsm/TestPermissionedGsmSuites.t.sol
+  s_43f248484d44bb::t_474f3d72505ffd 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d08061fdea7de13825433e0c47be0051a6439a4",
+  "prompts": {},
+  "sessions": {
+    "s_43f248484d44bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "064744d0-9f3f-434e-ae7b-7ac8ba306d58",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "AlbertoCentonze <11707683+AlbertoCentonze@users.noreply.github.com>"
+    }
+  }
+}

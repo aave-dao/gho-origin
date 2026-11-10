@@ -1,0 +1,23 @@
+certora/steward/specs/GhoAaveSteward.spec
+  s_e4f1ca58dda417::t_ae3aca3afd2260 135-146,172-183
+src/contracts/misc/interfaces/IGhoAaveSteward.sol
+  s_e4f1ca58dda417::t_9867d7187a1a88 51,53,62,64
+tests/unit/TestGhoAaveSteward.t.sol
+  s_e4f1ca58dda417::t_a5d850e6c42ee6 163,165-182,263,265-282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "478f29d0a8249a6fe3ecf12f1d0f6249251ce2ac",
+  "prompts": {},
+  "sessions": {
+    "s_e4f1ca58dda417": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7959a3c5-d3eb-4fcf-88ba-c2f6e29104ef",
+        "model": "unknown"
+      },
+      "human_author": "Louis <louis@aave.com>"
+    }
+  }
+}

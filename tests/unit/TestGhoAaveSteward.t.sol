@@ -166,7 +166,6 @@ contract TestGhoAaveSteward is TestGhoBase {
   }
 
   function testRevertUpdateGhoBorrowCapToZero(uint256 oldBorrowCap) public {
-    // a cap of 0 means "no cap" on Aave V3, so the steward must never set it
     oldBorrowCap = bound(oldBorrowCap, 1, ReserveConfiguration.MAX_VALID_BORROW_CAP);
     _setGhoBorrowCapViaConfigurator(oldBorrowCap);
     vm.prank(RISK_COUNCIL);
@@ -174,8 +173,17 @@ contract TestGhoAaveSteward is TestGhoBase {
     GHO_AAVE_STEWARD.updateGhoBorrowCap(0);
   }
 
+  function testRevertUpdateGhoBorrowCapToZeroSymbolic(uint256 oldBorrowCap) public {
+    oldBorrowCap = bound(oldBorrowCap, 1, ReserveConfiguration.MAX_VALID_BORROW_CAP);
+    vm.setArbitraryStorage(address(GHO_AAVE_STEWARD));
+    vm.warp(uint256(type(uint40).max) + GHO_AAVE_STEWARD.MINIMUM_DELAY() + 1);
+    _setGhoBorrowCapViaConfigurator(oldBorrowCap);
+    vm.expectRevert('INVALID_BORROW_CAP_UPDATE');
+    vm.prank(RISK_COUNCIL);
+    GHO_AAVE_STEWARD.updateGhoBorrowCap(0);
+  }
+
   function testRevertUpdateGhoBorrowCapFromZero() public {
-    // moving the cap from 0 (no cap) to a non-zero value must be done via AIP
     _setGhoBorrowCapViaConfigurator(0);
     vm.prank(RISK_COUNCIL);
     vm.expectRevert('INVALID_BORROW_CAP_UPDATE');
@@ -266,7 +274,6 @@ contract TestGhoAaveSteward is TestGhoBase {
   }
 
   function testRevertUpdateGhoSupplyCapToZero(uint256 oldSupplyCap) public {
-    // a cap of 0 means "no cap" on Aave V3, so the steward must never set it
     oldSupplyCap = bound(oldSupplyCap, 1, ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
     _setGhoSupplyCapViaConfigurator(oldSupplyCap);
     vm.prank(RISK_COUNCIL);
@@ -274,8 +281,17 @@ contract TestGhoAaveSteward is TestGhoBase {
     GHO_AAVE_STEWARD.updateGhoSupplyCap(0);
   }
 
+  function testRevertUpdateGhoSupplyCapToZeroSymbolic(uint256 oldSupplyCap) public {
+    oldSupplyCap = bound(oldSupplyCap, 1, ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+    vm.setArbitraryStorage(address(GHO_AAVE_STEWARD));
+    vm.warp(uint256(type(uint40).max) + GHO_AAVE_STEWARD.MINIMUM_DELAY() + 1);
+    _setGhoSupplyCapViaConfigurator(oldSupplyCap);
+    vm.prank(RISK_COUNCIL);
+    vm.expectRevert('INVALID_SUPPLY_CAP_UPDATE');
+    GHO_AAVE_STEWARD.updateGhoSupplyCap(0);
+  }
+
   function testRevertUpdateGhoSupplyCapFromZero() public {
-    // moving the cap from 0 (no cap) to a non-zero value must be done via AIP
     _setGhoSupplyCapViaConfigurator(0);
     vm.prank(RISK_COUNCIL);
     vm.expectRevert('INVALID_SUPPLY_CAP_UPDATE');

@@ -30,7 +30,7 @@ jobs:
       - uses: Certora/certora-run-action@b37dc99cef13413f8996b2a137b95e8a25749285 # v2.10.0
         with:
           cli-release: stable
-          cli-version: "8.17.1"
+          cli-version: "8.20.3"
           auto-rerun-timeouts: "true"
           configurations: |-
             certora/gsm/conf/gsm/mulDiv_equivalence.conf

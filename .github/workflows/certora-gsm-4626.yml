@@ -31,7 +31,7 @@ jobs:
         with:
           cli-release: stable
           cli-version: "8.20.2"
-          auto-rerun-timeouts: "false"
+          auto-rerun-timeouts: "true"
           configurations: |-
             certora/gsm/conf/gsm4626/gho-gsm4626-1.conf
             certora/gsm/conf/gsm4626/gho-gsm4626-2.conf --rule accruedFeesLEGhoBalanceOfThis

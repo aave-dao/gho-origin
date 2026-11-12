@@ -1777,6 +1777,47 @@ contract TestGsm4626 is TestGhoBase {
     assertEq(GHO_GSM_4626.canSwap(), false, 'Unexpected swap state post-seize');
   }
 
+  function testCanSwapIgnoresExposureCap() public {
+    _sellAsset(GHO_GSM_4626, USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM_4626.updateExposureCap(uint128(GHO_GSM_4626.getAvailableLiquidity()));
+
+    assertEq(GHO_GSM_4626.getAvailableUnderlyingExposure(), 0, 'Exposure cap not reached');
+    assertTrue(GHO_GSM_4626.canSwap(), 'Unexpected canSwap at exposure cap');
+    vm.expectRevert('EXOGENOUS_ASSET_EXPOSURE_TOO_HIGH');
+    vm.prank(ALICE);
+    GHO_GSM_4626.sellAsset(1, ALICE);
+  }
+
+  function testCanSwapIgnoresGhoReserveLimit() public {
+    _sellAsset(GHO_GSM_4626, USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    _mintVaultAssets(USDX_4626_TOKEN, USDX_TOKEN, ALICE, 1);
+    vm.prank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), 1);
+    assertGt(GHO_GSM_4626.getUsed(), 0, 'GSM has no used GHO');
+    GHO_RESERVE.setLimit(address(GHO_GSM_4626), GHO_GSM_4626.getUsed());
+
+    assertTrue(GHO_GSM_4626.canSwap(), 'Unexpected canSwap at GHO reserve limit');
+    vm.expectRevert('LIMIT_EXCEEDED');
+    vm.prank(ALICE);
+    GHO_GSM_4626.sellAsset(1, ALICE);
+  }
+
+  function testCanSwapIgnoresInsufficientLiquidity() public {
+    uint256 buyFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_BUY_FEE);
+    _sellAsset(GHO_GSM_4626, USDX_4626_TOKEN, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+
+    ghoFaucet(BOB, DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    vm.startPrank(BOB);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    GHO_GSM_4626.buyAsset(GHO_GSM_4626.getAvailableLiquidity(), BOB);
+
+    assertEq(GHO_GSM_4626.getAvailableLiquidity(), 0, 'Liquidity not exhausted');
+    assertTrue(GHO_GSM_4626.canSwap(), 'Unexpected canSwap without liquidity');
+    vm.expectRevert('INSUFFICIENT_AVAILABLE_EXOGENOUS_ASSET_LIQUIDITY');
+    GHO_GSM_4626.buyAsset(1, BOB);
+    vm.stopPrank();
+  }
+
   function testUpdateExposureCapBelowCurrentExposure() public {
     assertEq(GHO_GSM_4626.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure cap');
 

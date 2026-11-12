@@ -116,7 +116,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address ghoTreasury,
     uint128 exposureCap,
     address ghoReserve
-  ) external initializer {
+  ) public virtual initializer {
     require(admin != address(0), 'ZERO_ADDRESS_NOT_VALID');
     _grantRole(DEFAULT_ADMIN_ROLE, admin);
     _grantRole(CONFIGURATOR_ROLE, admin);
@@ -423,7 +423,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address originator,
     uint256 minAmount,
     address receiver
-  ) internal returns (uint256, uint256) {
+  ) internal virtual returns (uint256, uint256) {
     (
       uint256 assetAmount,
       uint256 ghoSold,
@@ -468,7 +468,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address originator,
     uint256 maxAmount,
     address receiver
-  ) internal returns (uint256, uint256) {
+  ) internal virtual returns (uint256, uint256) {
     (
       uint256 assetAmount,
       uint256 ghoBought,

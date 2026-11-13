@@ -17,17 +17,42 @@ interface IsGho {
   error ZeroAddressNotAllowed();
 
   /**
-   * @dev Emitted when the target rate is updated.
-   * @param newRate The new target rate.
+   * @notice Thrown if a target rate update is scheduled with an effective timestamp in the past.
    */
-  event TargetRateUpdated(uint256 newRate);
+  error EffectiveTimestampInPast();
+
+  /**
+   * @notice Thrown if the yield index is synced with a checkpoint timestamp in the future.
+   */
+  error SyncTimestampInFuture();
+
+  /**
+   * @notice Thrown if the yield index is synced with a value below its RAY genesis value.
+   */
+  error YieldIndexTooLow();
+
+  /**
+   * @dev Emitted when a target rate update is set or scheduled.
+   * @param newRate The new target rate.
+   * @param effectiveAt The timestamp at which the new rate takes effect.
+   */
+  event TargetRateUpdated(uint256 newRate, uint256 effectiveAt);
 
   /**
    * @dev Emitted when the timestamp and yield index are updated.
-   * @param timestamp The timestamp of the update.
+   * @param timestamp The timestamp of the checkpoint, which can precede the block timestamp when
+   * a scheduled rate change is applied lazily.
    * @param currentRate The current yield index.
    */
   event ExchangeRateUpdated(uint256 timestamp, uint256 currentRate);
+
+  /**
+   * @dev Emitted when the yield index checkpoint is overwritten via `syncYieldIndex`.
+   * @param newYieldIndex The new yield index.
+   * @param newLastUpdate The new checkpoint timestamp.
+   * @param newTargetRate The new target rate.
+   */
+  event YieldIndexSynced(uint256 newYieldIndex, uint256 newLastUpdate, uint256 newTargetRate);
 
   /**
    * @dev Emitted when the supply cap is updated.
@@ -77,12 +102,38 @@ interface IsGho {
   function unpause() external;
 
   /**
-   * @notice Sets the target rate for yield generation.
+   * @notice Schedules a target rate update that takes effect at `effectiveAt`.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * The new rate must not exceed `MAX_SAFE_RATE` (5000 basis points).
+   * @dev The index is checkpointed at `effectiveAt`, not at execution time, so scheduling the same
+   * rate with the same `effectiveAt` on every chain keeps the yield indexes identical. Views
+   * resolve a due update immediately; the next rate update, deposit or withdrawal persists it.
+   * @dev A pending update that is not yet effective is overwritten. Across chains, the overwrite
+   * must execute either before the pending `effectiveAt` on every chain or after it on every
+   * chain. A straddle desyncs the indexes and needs `syncYieldIndex` to reconcile.
+   * @dev `effectiveAt == block.timestamp` applies the update now, at the chain-local time. Only
+   * suitable for single-chain deployments.
    * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
+   * @param effectiveAt The timestamp at which the new rate takes effect (must not be in the past).
    */
-  function setTargetRate(uint16 newRate) external;
+  function setTargetRate(uint16 newRate, uint40 effectiveAt) external;
+
+  /**
+   * @notice Overwrites the yield index checkpoint and target rate, discarding any scheduled rate change.
+   * @dev This function can only be called by an address with the DEFAULT_ADMIN role.
+   * @dev Brings a deployment in sync with the other chains, after a cold start or a rate update
+   * that missed this chain. Pass `yieldIndex()`, `lastUpdate()` and `targetRate()` read from an
+   * in-sync deployment, then re-schedule any pending update.
+   * @dev Can decrease the yield index and thereby the asset value of existing shares.
+   * @param newYieldIndex The new yield index (RAY scale, at least RAY).
+   * @param newLastUpdate The new checkpoint timestamp (must not be in the future).
+   * @param newTargetRate The new target rate in basis points (e.g., 1000 for 10%).
+   */
+  function syncYieldIndex(
+    uint120 newYieldIndex,
+    uint40 newLastUpdate,
+    uint16 newTargetRate
+  ) external;
 
   /**
    * @notice Sets the supply cap for the vault.
@@ -128,6 +179,7 @@ interface IsGho {
 
   /**
    * @notice Returns the timestamp of the last time the yield index was updated.
+   * @dev Reflects a scheduled rate change once it is effective, even before it is persisted.
    * @return The Unix timestamp of the last update.
    */
   function lastUpdate() external view returns (uint256);
@@ -142,14 +194,24 @@ interface IsGho {
   /**
    * @notice Returns the current target annual percentage rate (APR) for yield generation.
    * @dev The rate is expressed in basis points (1% = 100).
+   * @dev Reflects a scheduled rate change once it is effective, even before it is persisted.
    * @return The target rate in basis points.
    */
   function targetRate() external view returns (uint16);
 
   /**
-   * @notice Returns the current yield index, representing the accumulated yield.
+   * @notice Returns the last checkpointed yield index.
    * @dev This index is used to calculate the value of sGHO in terms of GHO. Index scale is in RAY.
-   * @return The current yield index.
+   * @dev Reflects a scheduled rate change once it is effective, even before it is persisted.
+   * @return The last checkpointed yield index.
    */
   function yieldIndex() external view returns (uint256);
+
+  /**
+   * @notice Returns the scheduled target rate update, if any.
+   * @dev Returns zeros if there is no scheduled update or if it is already effective.
+   * @return newRate The scheduled target rate in basis points.
+   * @return effectiveAt The timestamp at which the scheduled rate takes effect.
+   */
+  function pendingTargetRate() external view returns (uint16 newRate, uint40 effectiveAt);
 }

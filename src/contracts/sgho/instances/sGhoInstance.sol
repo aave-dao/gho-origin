@@ -18,15 +18,30 @@ contract sGhoInstance is sGho {
 
   /**
    * @notice Initializes the sGHO vault.
+   * @dev On a new chain, passing the checkpoint of a live deployment cold starts the vault with
+   * its yield index in sync; a genesis deployment starts at (RAY, current timestamp, 0).
    * @param gho Address of the underlying GHO token.
    * @param initialSupplyCap The supply cap for the vault, in whole GHO units.
    * @param owner The address that will be granted the DEFAULT_ADMIN_ROLE.
+   * @param initialYieldIndex The initial yield index (RAY scale, at least RAY).
+   * @param initialLastUpdate The initial checkpoint timestamp (must not be in the future).
+   * @param initialTargetRate The initial target rate in basis points.
    */
   function initialize(
     address gho,
     uint40 initialSupplyCap,
-    address owner
+    address owner,
+    uint120 initialYieldIndex,
+    uint40 initialLastUpdate,
+    uint16 initialTargetRate
   ) external reinitializer(SGHO_REVISION) {
-    __sGho_init(gho, initialSupplyCap, owner);
+    __sGho_init({
+      gho: gho,
+      initialSupplyCap: initialSupplyCap,
+      owner: owner,
+      initialYieldIndex: initialYieldIndex,
+      initialLastUpdate: initialLastUpdate,
+      initialTargetRate: initialTargetRate
+    });
   }
 }

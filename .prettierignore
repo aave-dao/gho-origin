@@ -5,3 +5,4 @@ node_modules
 src/contracts/dependencies
 src/contracts/gho/dependencies
 forge-clones
+snapshots

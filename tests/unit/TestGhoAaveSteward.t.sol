@@ -160,9 +160,34 @@ contract TestGhoAaveSteward is TestGhoBase {
     uint256 oldBorrowCap = 1e6;
     _setGhoBorrowCapViaConfigurator(oldBorrowCap);
     vm.prank(RISK_COUNCIL);
-    GHO_AAVE_STEWARD.updateGhoBorrowCap(0);
+    GHO_AAVE_STEWARD.updateGhoBorrowCap(1);
     uint256 currentBorrowCap = _getGhoBorrowCap();
-    assertEq(currentBorrowCap, 0);
+    assertEq(currentBorrowCap, 1);
+  }
+
+  function testRevertUpdateGhoBorrowCapToZero(uint256 oldBorrowCap) public {
+    oldBorrowCap = bound(oldBorrowCap, 1, ReserveConfiguration.MAX_VALID_BORROW_CAP);
+    _setGhoBorrowCapViaConfigurator(oldBorrowCap);
+    vm.prank(RISK_COUNCIL);
+    vm.expectRevert('INVALID_BORROW_CAP_UPDATE');
+    GHO_AAVE_STEWARD.updateGhoBorrowCap(0);
+  }
+
+  function testRevertUpdateGhoBorrowCapToZeroSymbolic(uint256 oldBorrowCap) public {
+    oldBorrowCap = bound(oldBorrowCap, 1, ReserveConfiguration.MAX_VALID_BORROW_CAP);
+    vm.setArbitraryStorage(address(GHO_AAVE_STEWARD));
+    vm.warp(uint256(type(uint40).max) + GHO_AAVE_STEWARD.MINIMUM_DELAY() + 1);
+    _setGhoBorrowCapViaConfigurator(oldBorrowCap);
+    vm.expectRevert('INVALID_BORROW_CAP_UPDATE');
+    vm.prank(RISK_COUNCIL);
+    GHO_AAVE_STEWARD.updateGhoBorrowCap(0);
+  }
+
+  function testRevertUpdateGhoBorrowCapFromZero() public {
+    _setGhoBorrowCapViaConfigurator(0);
+    vm.prank(RISK_COUNCIL);
+    vm.expectRevert('INVALID_BORROW_CAP_UPDATE');
+    GHO_AAVE_STEWARD.updateGhoBorrowCap(1e6);
   }
 
   function testUpdateGhoBorrowCapTimelock() public {
@@ -243,9 +268,34 @@ contract TestGhoAaveSteward is TestGhoBase {
     uint256 oldSupplyCap = 1e6;
     _setGhoSupplyCapViaConfigurator(oldSupplyCap);
     vm.prank(RISK_COUNCIL);
-    GHO_AAVE_STEWARD.updateGhoSupplyCap(0);
+    GHO_AAVE_STEWARD.updateGhoSupplyCap(1);
     uint256 currentSupplyCap = _getGhoSupplyCap();
-    assertEq(currentSupplyCap, 0);
+    assertEq(currentSupplyCap, 1);
+  }
+
+  function testRevertUpdateGhoSupplyCapToZero(uint256 oldSupplyCap) public {
+    oldSupplyCap = bound(oldSupplyCap, 1, ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+    _setGhoSupplyCapViaConfigurator(oldSupplyCap);
+    vm.prank(RISK_COUNCIL);
+    vm.expectRevert('INVALID_SUPPLY_CAP_UPDATE');
+    GHO_AAVE_STEWARD.updateGhoSupplyCap(0);
+  }
+
+  function testRevertUpdateGhoSupplyCapToZeroSymbolic(uint256 oldSupplyCap) public {
+    oldSupplyCap = bound(oldSupplyCap, 1, ReserveConfiguration.MAX_VALID_SUPPLY_CAP);
+    vm.setArbitraryStorage(address(GHO_AAVE_STEWARD));
+    vm.warp(uint256(type(uint40).max) + GHO_AAVE_STEWARD.MINIMUM_DELAY() + 1);
+    _setGhoSupplyCapViaConfigurator(oldSupplyCap);
+    vm.prank(RISK_COUNCIL);
+    vm.expectRevert('INVALID_SUPPLY_CAP_UPDATE');
+    GHO_AAVE_STEWARD.updateGhoSupplyCap(0);
+  }
+
+  function testRevertUpdateGhoSupplyCapFromZero() public {
+    _setGhoSupplyCapViaConfigurator(0);
+    vm.prank(RISK_COUNCIL);
+    vm.expectRevert('INVALID_SUPPLY_CAP_UPDATE');
+    GHO_AAVE_STEWARD.updateGhoSupplyCap(1e6);
   }
 
   function testUpdateGhoSupplyCapTimelock() public {

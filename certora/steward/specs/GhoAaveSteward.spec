@@ -132,6 +132,18 @@ rule updateGhoBorrowCap_timelock() {
 
     assert to_mathint(e.block.timestamp) > ghoBorrowCapLastUpdate_before + MINIMUM_DELAY();
 }
+// A cap of 0 means "no cap" on Aave V3: the steward must never set it, nor move it away from it
+rule updateGhoBorrowCap_never_to_zero() {
+    env e;  uint256 newBorrowCap;
+    updateGhoBorrowCap(e,newBorrowCap);
+    assert BORROW_CAP != 0;
+}
+rule updateGhoBorrowCap_reverts_from_zero() {
+    env e;  uint256 newBorrowCap;
+    require BORROW_CAP == 0;
+    updateGhoBorrowCap@withrevert(e,newBorrowCap);
+    assert lastReverted;
+}
 
 
 // FUNCTION: updateGhoSupplyCap
@@ -156,6 +168,18 @@ rule updateGhoSupplyCap_timelock() {
     updateGhoSupplyCap(e,newSupplyCap);
 
     assert to_mathint(e.block.timestamp) > ghoSupplyCapLastUpdate_before + MINIMUM_DELAY();
+}
+// A cap of 0 means "no cap" on Aave V3: the steward must never set it, nor move it away from it
+rule updateGhoSupplyCap_never_to_zero() {
+    env e;  uint256 newSupplyCap;
+    updateGhoSupplyCap(e,newSupplyCap);
+    assert SUPPLY_CAP != 0;
+}
+rule updateGhoSupplyCap_reverts_from_zero() {
+    env e;  uint256 newSupplyCap;
+    require SUPPLY_CAP == 0;
+    updateGhoSupplyCap@withrevert(e,newSupplyCap);
+    assert lastReverted;
 }
 
 

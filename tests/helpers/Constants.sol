@@ -57,6 +57,7 @@ contract Constants {
   uint128 constant DEFAULT_GSM_USDX_EXPOSURE = 100_000_000e6; // 6 decimals for USDX
   uint128 constant DEFAULT_GSM_USDX_AMOUNT = 100e6; // 6 decimals for USDX
   uint128 constant DEFAULT_GSM_GHO_AMOUNT = 100e18;
+  uint256 constant DEFAULT_SGHO_SUPPLY_CAP = 100_000_000e18;
 
   // Gho Stewards
   uint32 constant GHO_BORROW_RATE_CHANGE_MAX = 0.05e4;

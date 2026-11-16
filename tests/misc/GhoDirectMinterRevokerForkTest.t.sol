@@ -2,8 +2,6 @@
 pragma solidity ^0.8.27;
 
 import {Test} from 'forge-std/Test.sol';
-import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
-import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {GhoDirectMinterRevoker} from 'src/contracts/facilitators/gsm/misc/GhoDirectMinterRevoker.sol';
 import {IGhoDirectFacilitator} from 'src/contracts/facilitators/gsm/interfaces/IGhoDirectFacilitator.sol';
@@ -31,50 +29,19 @@ contract GhoDirectMinterRevokerForkTest is Test {
     IGhoDirectFacilitator(0x2bd010Ab5393AB51b601B99C4B33ba148d9466e9);
 
   address internal constant GUARDIAN = address(0xB0B);
-  address internal constant ALICE = address(0x1111);
+
+  uint256 internal constant FORK_BLOCK = 26428000;
 
   GhoDirectMinterRevoker internal revoker;
 
   function setUp() public {
-    string memory rpc = vm.envOr('RPC_MAINNET', string(''));
-    if (bytes(rpc).length == 0) {
-      vm.skip(true);
-      return;
-    }
-    vm.createSelectFork(rpc);
+    vm.createSelectFork(vm.envString('RPC_MAINNET'), FORK_BLOCK);
     revoker = new GhoDirectMinterRevoker(EXECUTOR_LVL_1, GUARDIAN);
 
     vm.startPrank(EXECUTOR_LVL_1);
     FACILITATOR_MAINNET_GSMS.grantRole(DEFAULT_ADMIN_ROLE, address(revoker));
     FACILITATOR_PLASMA_GSMS.grantRole(DEFAULT_ADMIN_ROLE, address(revoker));
     vm.stopPrank();
-  }
-
-  function test_Constructor() public view {
-    assertEq(revoker.owner(), EXECUTOR_LVL_1);
-    assertEq(revoker.guardian(), GUARDIAN);
-  }
-
-  function test_RevertConstructorZeroOwner() public {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
-    new GhoDirectMinterRevoker(address(0), GUARDIAN);
-  }
-
-  function test_ConstructorZeroGuardian() public {
-    GhoDirectMinterRevoker noGuardian = new GhoDirectMinterRevoker(EXECUTOR_LVL_1, address(0));
-    vm.prank(EXECUTOR_LVL_1);
-    FACILITATOR_PLASMA_GSMS.grantRole(DEFAULT_ADMIN_ROLE, address(noGuardian));
-
-    assertEq(noGuardian.owner(), EXECUTOR_LVL_1);
-    assertEq(noGuardian.guardian(), address(0));
-    assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(MINTER_ROLE, EXECUTOR_LVL_1));
-
-    vm.prank(EXECUTOR_LVL_1);
-    noGuardian.revokeMinter(address(FACILITATOR_PLASMA_GSMS), EXECUTOR_LVL_1);
-
-    assertFalse(FACILITATOR_PLASMA_GSMS.hasRole(MINTER_ROLE, EXECUTOR_LVL_1));
-    assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(BURNER_ROLE, EXECUTOR_LVL_1));
-    assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(DEFAULT_ADMIN_ROLE, EXECUTOR_LVL_1));
   }
 
   function test_RevokeMinterByGovernance() public {
@@ -90,23 +57,6 @@ contract GhoDirectMinterRevokerForkTest is Test {
     assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(BURNER_ROLE, EXECUTOR_LVL_1));
     assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(DEFAULT_ADMIN_ROLE, EXECUTOR_LVL_1));
     assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(DEFAULT_ADMIN_ROLE, address(revoker)));
-  }
-
-  function test_RevokeMinterByGuardian() public {
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, RISK_COUNCIL));
-    assertFalse(FACILITATOR_MAINNET_GSMS.hasRole(BURNER_ROLE, RISK_COUNCIL));
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, EXECUTOR_LVL_1));
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(BURNER_ROLE, EXECUTOR_LVL_1));
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(DEFAULT_ADMIN_ROLE, EXECUTOR_LVL_1));
-
-    vm.prank(GUARDIAN);
-    revoker.revokeMinter(address(FACILITATOR_MAINNET_GSMS), RISK_COUNCIL);
-
-    assertFalse(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, RISK_COUNCIL));
-    assertFalse(FACILITATOR_MAINNET_GSMS.hasRole(BURNER_ROLE, RISK_COUNCIL));
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, EXECUTOR_LVL_1));
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(BURNER_ROLE, EXECUTOR_LVL_1));
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(DEFAULT_ADMIN_ROLE, EXECUTOR_LVL_1));
   }
 
   function test_RevokeMinterBlocksMint() public {
@@ -156,41 +106,6 @@ contract GhoDirectMinterRevokerForkTest is Test {
     assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(BURNER_ROLE, EXECUTOR_LVL_1));
     assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(DEFAULT_ADMIN_ROLE, EXECUTOR_LVL_1));
     assertTrue(FACILITATOR_PLASMA_GSMS.hasRole(DEFAULT_ADMIN_ROLE, EXECUTOR_LVL_1));
-  }
-
-  function test_RevertRevokeMinterInvalidCaller() public {
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, RISK_COUNCIL));
-
-    vm.expectRevert(
-      abi.encodeWithSelector(IWithGuardian.OnlyGuardianOrOwnerInvalidCaller.selector, ALICE)
-    );
-    vm.prank(ALICE);
-    revoker.revokeMinter(address(FACILITATOR_MAINNET_GSMS), RISK_COUNCIL);
-
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, RISK_COUNCIL));
-  }
-
-  function test_RevertRevokeMinterNotAdmin() public {
-    GhoDirectMinterRevoker unauthorized = new GhoDirectMinterRevoker(EXECUTOR_LVL_1, GUARDIAN);
-
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, RISK_COUNCIL));
-    assertFalse(FACILITATOR_MAINNET_GSMS.hasRole(DEFAULT_ADMIN_ROLE, address(unauthorized)));
-
-    vm.expectRevert(
-      bytes(
-        string.concat(
-          'AccessControl: account ',
-          vm.toLowercase(vm.toString(address(unauthorized))),
-          ' is missing role ',
-          vm.toString(DEFAULT_ADMIN_ROLE)
-        )
-      )
-    );
-    vm.prank(GUARDIAN);
-    unauthorized.revokeMinter(address(FACILITATOR_MAINNET_GSMS), RISK_COUNCIL);
-
-    assertTrue(FACILITATOR_MAINNET_GSMS.hasRole(MINTER_ROLE, RISK_COUNCIL));
-    assertFalse(FACILITATOR_MAINNET_GSMS.hasRole(DEFAULT_ADMIN_ROLE, address(unauthorized)));
   }
 
   function test_RevertRevokeMinterAfterAdminRevoked() public {

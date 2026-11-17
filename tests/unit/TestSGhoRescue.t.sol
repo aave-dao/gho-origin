@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import './TestSGhoBase.t.sol';
+import {AccessControlErrorsLib} from '../helpers/ErrorsLib.sol';
 
 contract TestSGhoRescue is TestSGhoBase {
   // ========================================
@@ -53,13 +54,7 @@ contract TestSGhoRescue is TestSGhoBase {
     TestnetERC20 mockToken = new TestnetERC20('Mock Token', 'MTK', 18, address(this));
 
     vm.startPrank(user1);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        user1,
-        sgho.TOKEN_RESCUER_ROLE()
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(sgho.TOKEN_RESCUER_ROLE(), user1));
     sgho.emergencyTokenTransfer(address(mockToken), user1, 100 ether);
     vm.stopPrank();
   }

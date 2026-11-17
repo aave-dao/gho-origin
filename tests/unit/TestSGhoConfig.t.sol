@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import './TestSGhoBase.t.sol';
+import {AccessControlErrorsLib} from '../helpers/ErrorsLib.sol';
 
 contract TestSGhoConfig is TestSGhoBase {
   // ========================================
@@ -56,13 +57,7 @@ contract TestSGhoConfig is TestSGhoBase {
     uint16 newRate = 2000; // 20% APR
 
     vm.startPrank(user1);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        user1,
-        sgho.YIELD_MANAGER_ROLE()
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(sgho.YIELD_MANAGER_ROLE(), user1));
     sgho.setTargetRate(newRate);
     vm.stopPrank();
   }

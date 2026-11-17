@@ -73,11 +73,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
 
   function testRevertBuyAssetUnauthorized() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -85,11 +81,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
 
   function testRevertSellAssetUnauthorized() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -99,11 +91,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     GSM.grantRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr);
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -113,11 +101,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     GSM.grantRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr);
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -142,13 +126,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     );
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        signer,
-        GSM_BUY_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, signer));
     vm.prank(ALICE);
     GSM.buyAssetWithSig(
       signer,
@@ -178,13 +156,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     );
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        signer,
-        GSM_SELL_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, signer));
     vm.prank(ALICE);
     GSM.sellAssetWithSig(
       signer,
@@ -349,13 +321,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertTrue(GSM.hasRole(GSM_BUY_ASSET_ROLE, ALICE), 'Alice does not hold the BUY_ASSET_ROLE');
     GSM.revokeRole(GSM_BUY_ASSET_ROLE, ALICE);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_BUY_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, ALICE));
     vm.prank(ALICE);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
   }
@@ -443,11 +409,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
 
   function testRevertSetBuyAccessOpenUnauthorized() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SWAP_ACCESS_MANAGER_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SWAP_ACCESS_MANAGER_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     IPermissionedGsm(address(GSM)).setBuyAccessOpen(true);
@@ -455,11 +417,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
 
   function testRevertSetSellAccessOpenUnauthorized() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SWAP_ACCESS_MANAGER_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SWAP_ACCESS_MANAGER_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     IPermissionedGsm(address(GSM)).setSellAccessOpen(true);
@@ -510,11 +468,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertEq(boughtAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected bought asset amount');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -528,11 +482,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertEq(soldAmount, DEFAULT_GSM_USDX_AMOUNT, 'Unexpected sold asset amount');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -545,21 +495,13 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     IPermissionedGsm(address(GSM)).setSellAccessOpen(false);
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -781,10 +723,9 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     for (uint256 i = 0; i < roles.length; i++) {
       address holder = makeAddr(string.concat('roleHolder', vm.toString(i)));
       GSM.grantRole(roles[i], holder);
-      bytes memory err = abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        holder,
-        GSM_SWAP_ACCESS_MANAGER_ROLE
+      bytes memory err = AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(
+        GSM_SWAP_ACCESS_MANAGER_ROLE,
+        holder
       );
 
       vm.expectRevert(err);
@@ -827,11 +768,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertFalse(GSM.hasRole(GSM_BUY_ASSET_ROLE, unauthorizedAddr), 'BUY_ASSET_ROLE not revoked');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
@@ -859,11 +796,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertFalse(GSM.hasRole(GSM_SELL_ASSET_ROLE, unauthorizedAddr), 'SELL_ASSET_ROLE not revoked');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT / 2, unauthorizedAddr);
@@ -883,23 +816,11 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertFalse(GSM.hasRole(GSM_BUY_ASSET_ROLE, ALICE), 'BUY_ASSET_ROLE not revoked');
     assertFalse(GSM.hasRole(GSM_SELL_ASSET_ROLE, ALICE), 'SELL_ASSET_ROLE not revoked');
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_BUY_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, ALICE));
     vm.prank(ALICE);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_SELL_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, ALICE));
     vm.prank(ALICE);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
   }
@@ -926,10 +847,9 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
   function testAdminManagesSwapRolesOnlyWithSwapAccessManagerRole() public {
     assertTrue(GSM.hasRole(DEFAULT_ADMIN_ROLE, address(this)), 'Test is not the admin');
     GSM.revokeRole(GSM_SWAP_ACCESS_MANAGER_ROLE, address(this));
-    bytes memory err = abi.encodeWithSelector(
-      IAccessControl.AccessControlUnauthorizedAccount.selector,
-      address(this),
-      GSM_SWAP_ACCESS_MANAGER_ROLE
+    bytes memory err = AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(
+      GSM_SWAP_ACCESS_MANAGER_ROLE,
+      address(this)
     );
 
     vm.expectRevert(err);
@@ -962,11 +882,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
       GSM_LIQUIDATOR_ROLE,
       GSM_SWAP_ACCESS_MANAGER_ROLE
     ];
-    bytes memory err = abi.encodeWithSelector(
-      IAccessControl.AccessControlUnauthorizedAccount.selector,
-      manager,
-      DEFAULT_ADMIN_ROLE
-    );
+    bytes memory err = AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(DEFAULT_ADMIN_ROLE, manager);
     for (uint256 i = 0; i < roles.length; i++) {
       vm.expectRevert(err);
       vm.prank(manager);
@@ -1087,11 +1003,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertTrue(GSM.hasRole(GSM_BUY_ASSET_ROLE, ALICE), 'Alice does not hold the BUY_ASSET_ROLE');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
@@ -1101,11 +1013,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertTrue(GSM.hasRole(GSM_SELL_ASSET_ROLE, ALICE), 'Alice does not hold the SELL_ASSET_ROLE');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
@@ -1116,13 +1024,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     vm.assume(originator != SHORT_EXECUTOR);
     vm.assume(!GSM.hasRole(GSM_BUY_ASSET_ROLE, originator));
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        originator,
-        GSM_BUY_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, originator));
     vm.prank(originator);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
   }
@@ -1132,24 +1034,14 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     vm.assume(originator != SHORT_EXECUTOR);
     vm.assume(!GSM.hasRole(GSM_SELL_ASSET_ROLE, originator));
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        originator,
-        GSM_SELL_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, originator));
     vm.prank(originator);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
   }
 
   function testRevertBuyAssetUnauthorizedBeforeZeroAmount() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(0, unauthorizedAddr);
@@ -1162,11 +1054,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
 
   function testRevertSellAssetUnauthorizedBeforeZeroAmount() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(0, unauthorizedAddr);
@@ -1181,11 +1069,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     uint256 amount = GSM.getAvailableLiquidity() + 1;
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(amount, unauthorizedAddr);
@@ -1200,11 +1084,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     uint256 amount = uint256(GSM.getExposureCap()) + 1;
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(amount, unauthorizedAddr);
@@ -1220,13 +1100,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     vm.prank(originator);
     GHO_TOKEN.approve(address(GSM), type(uint256).max);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        originator,
-        GSM_BUY_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, originator));
     vm.prank(originator);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
 
@@ -1241,13 +1115,7 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     vm.prank(originator);
     UNDERLYING.approve(address(GSM), type(uint256).max);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        originator,
-        GSM_SELL_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, originator));
     vm.prank(originator);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, originator);
 
@@ -1263,21 +1131,13 @@ abstract contract TestPermissionedGsmAccessBase is TestGhoBase {
     assertTrue(GSM.canSwap(), 'Unexpected canSwap for the unauthorized address');
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_BUY_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);
 
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        unauthorizedAddr,
-        GSM_SELL_ASSET_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, unauthorizedAddr)
     );
     vm.prank(unauthorizedAddr);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, unauthorizedAddr);

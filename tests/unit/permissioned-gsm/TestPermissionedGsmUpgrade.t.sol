@@ -61,23 +61,11 @@ abstract contract TestPermissionedGsmUpgradeBase is TestGhoBase {
       'Unexpected SELL_ASSET_ROLE admin'
     );
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_SELL_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SELL_ASSET_ROLE, ALICE));
     vm.prank(ALICE);
     GSM.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_BUY_ASSET_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_BUY_ASSET_ROLE, ALICE));
     vm.prank(ALICE);
     GSM.buyAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
   }

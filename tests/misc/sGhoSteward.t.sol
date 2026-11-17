@@ -5,10 +5,10 @@ import {console} from 'forge-std/console.sol';
 import {TestSGhoBase} from '../unit/TestSGhoBase.t.sol';
 
 import {AccessControl} from 'openzeppelin-contracts/contracts/access/AccessControl.sol';
-import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 
 import {sGho, IsGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoSteward, IsGhoSteward} from 'src/contracts/misc/sGhoSteward.sol';
+import {AccessControlErrorsLib} from '../helpers/ErrorsLib.sol';
 
 contract sGhoStewardTest is TestSGhoBase {
   sGhoSteward public steward;
@@ -431,11 +431,6 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {
-    return
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        account,
-        role
-      );
+    return AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(role, account);
   }
 }

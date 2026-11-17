@@ -187,13 +187,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertAddEntityNoRole() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        ENTITY_MANAGER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(ENTITY_MANAGER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.addEntity(ALICE);
   }
@@ -257,13 +251,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertRemoveEntityNoRole() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        ENTITY_MANAGER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(ENTITY_MANAGER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.removeEntity(ALICE);
   }
@@ -295,13 +283,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertSetLimitNoRole() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        LIMIT_MANAGER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(LIMIT_MANAGER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.setLimit(ALICE, 1_000_000 ether);
   }
@@ -325,13 +307,7 @@ contract TestGhoReserve is TestGhoBase {
     address facilitator = makeAddr('facilitator');
     uint256 amount = 1_000 ether;
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        TRANSFER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(TRANSFER_ROLE, ALICE));
     vm.prank(ALICE);
     reserve.transfer(facilitator, amount);
   }
@@ -449,13 +425,7 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testGrantRoleRevertsWithCustomError() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        DEFAULT_ADMIN_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(DEFAULT_ADMIN_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_RESERVE.grantRole(ENTITY_MANAGER_ROLE, ALICE);
   }

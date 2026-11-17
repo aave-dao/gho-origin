@@ -46,13 +46,7 @@ contract TestGhoDirectFacilitator is TestGhoBase {
     GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 amount = 50_000_000 ether;
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        MINTER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(MINTER_ROLE, ALICE));
     vm.prank(ALICE);
     facilitator.mint(address(this), amount);
   }
@@ -149,13 +143,7 @@ contract TestGhoDirectFacilitator is TestGhoBase {
     GhoDirectFacilitator facilitator = _deployFacilitator();
     uint256 amount = 50_000_000 ether;
 
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        BURNER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(BURNER_ROLE, ALICE));
     vm.prank(ALICE);
     facilitator.burn(amount);
   }

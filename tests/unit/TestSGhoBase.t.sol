@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 
 import {stdStorage, StdStorage} from 'forge-std/Test.sol';
 import {TestnetProcedures, TestnetERC20} from 'lib/aave-v3-origin/tests/utils/TestnetProcedures.sol';
-import {IAccessControl} from 'openzeppelin-contracts/contracts/access/IAccessControl.sol';
 import {AccessControlUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol';
 import {ECDSA} from 'openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol';
 import {ERC20PermitUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol';

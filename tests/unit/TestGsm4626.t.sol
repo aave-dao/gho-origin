@@ -607,13 +607,7 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertFreezeNotAuthorized() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_SWAP_FREEZER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SWAP_FREEZER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_GSM_4626.setSwapFreeze(true);
   }
@@ -636,13 +630,7 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertUnfreezeNotAuthorized() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_SWAP_FREEZER_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_SWAP_FREEZER_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_GSM_4626.setSwapFreeze(false);
   }
@@ -672,13 +660,7 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testRevertUpdateConfiguratorNotAuthorized() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        DEFAULT_ADMIN_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(DEFAULT_ADMIN_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_GSM_4626.grantRole(GSM_CONFIGURATOR_ROLE, ALICE);
   }
@@ -720,29 +702,11 @@ contract TestGsm4626 is TestGhoBase {
 
   function testRevertConfiguratorUpdateMethodsNotAuthorized() public {
     vm.startPrank(ALICE);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        DEFAULT_ADMIN_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(DEFAULT_ADMIN_ROLE, ALICE));
     GHO_GSM_4626.grantRole(GSM_LIQUIDATOR_ROLE, ALICE);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        DEFAULT_ADMIN_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(DEFAULT_ADMIN_ROLE, ALICE));
     GHO_GSM_4626.grantRole(GSM_SWAP_FREEZER_ROLE, ALICE);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_CONFIGURATOR_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_CONFIGURATOR_ROLE, ALICE));
     GHO_GSM_4626.updateExposureCap(0);
     vm.stopPrank();
   }
@@ -761,13 +725,7 @@ contract TestGsm4626 is TestGhoBase {
   }
 
   function testUnauthorizedUpdateGhoTreasuryRevert() public {
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_CONFIGURATOR_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_CONFIGURATOR_ROLE, ALICE));
     vm.prank(ALICE);
     GHO_GSM_4626.updateGhoTreasury(ALICE);
   }
@@ -940,11 +898,7 @@ contract TestGsm4626 is TestGhoBase {
 
   function testRevertSeizeWithoutAuthorization() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        address(this),
-        GSM_LIQUIDATOR_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_LIQUIDATOR_ROLE, address(this))
     );
     GHO_GSM_4626.seize();
   }
@@ -1041,11 +995,7 @@ contract TestGsm4626 is TestGhoBase {
 
   function testRevertBurnAfterSeizeUnauthorized() public {
     vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        address(this),
-        GSM_LIQUIDATOR_ROLE
-      )
+      AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_LIQUIDATOR_ROLE, address(this))
     );
     GHO_GSM_4626.burnAfterSeize(1);
   }
@@ -1210,21 +1160,9 @@ contract TestGsm4626 is TestGhoBase {
 
   function testRevertBackWithNotAuthorized() public {
     vm.startPrank(ALICE);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_CONFIGURATOR_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_CONFIGURATOR_ROLE, ALICE));
     GHO_GSM_4626.backWithGho(0);
-    vm.expectRevert(
-      abi.encodeWithSelector(
-        IAccessControl.AccessControlUnauthorizedAccount.selector,
-        ALICE,
-        GSM_CONFIGURATOR_ROLE
-      )
-    );
+    vm.expectRevert(AccessControlErrorsLib.UNAUTHORIZED_ACCOUNT(GSM_CONFIGURATOR_ROLE, ALICE));
     GHO_GSM_4626.backWithUnderlying(0);
     vm.stopPrank();
   }

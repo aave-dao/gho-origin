@@ -1101,4 +1101,56 @@ contract TestGsm4626Edge is TestGhoBase {
     assertEq(GHO_GSM_4626.getAccruedFees(), 40_000e18, 'Unexpected booked yield');
     assertEq(GHO_GSM_4626.getAvailableLiquidity(), 0, 'Unexpected final liquidity');
   }
+
+  /// @dev Any non-zero limit eventually books all the yield, so the position can always be fully
+  /// unwound by buying in chunks that fit within `used`. Only a zero limit leaves shares stuck.
+  function testFuzzUnwindWithNonZeroLimit(uint256 shares, uint256 yieldBps, uint256 limit) public {
+    shares = bound(shares, 1e6, 10_000_000e6);
+    yieldBps = bound(yieldBps, 1, 10_000);
+    GHO_GSM_4626.updateFeeStrategy(address(0));
+
+    _mintVaultShares(USDX_4626_TOKEN, USDX_TOKEN, ALICE, shares);
+    vm.startPrank(ALICE);
+    USDX_4626_TOKEN.approve(address(GHO_GSM_4626), shares);
+    GHO_GSM_4626.sellAsset(shares, ALICE);
+    vm.stopPrank();
+    uint256 used = GHO_RESERVE.getUsed(address(GHO_GSM_4626));
+
+    _changeExchangeRate(USDX_4626_TOKEN, USDX_TOKEN, (shares * yieldBps) / 10_000, true);
+    uint256 yield = USDX_4626_TOKEN.previewRedeem(shares) * 1e12 - used;
+
+    // lower bound keeps the number of chunks small, the limit may still be cut below `used`
+    limit = bound(limit, yield / 8 + 1, used + yield * 2);
+    GHO_RESERVE.setLimit(address(GHO_GSM_4626), limit);
+
+    ghoFaucet(ALICE, used + yield);
+    vm.prank(ALICE);
+    GHO_TOKEN.approve(address(GHO_GSM_4626), type(uint256).max);
+
+    uint256 treasuryBefore = GHO_TOKEN.balanceOf(TREASURY);
+    uint256 buys;
+    for (; buys < 16 && GHO_GSM_4626.getAvailableLiquidity() > 0; buys++) {
+      // books as much yield as the remaining headroom allows
+      GHO_GSM_4626.distributeFeesToTreasury();
+      (uint256 chunk, , , ) = GHO_GSM_4626.getAssetAmountForBuyAsset(
+        GHO_RESERVE.getUsed(address(GHO_GSM_4626))
+      );
+      // only the last share wei can be left, as its rounded-up price may exceed `used`
+      if (chunk == 0) break;
+      uint256 remaining = GHO_GSM_4626.getAvailableLiquidity();
+      vm.prank(ALICE);
+      GHO_GSM_4626.buyAsset(chunk < remaining ? chunk : remaining, ALICE);
+    }
+
+    assertLe(GHO_GSM_4626.getAvailableLiquidity(), 1, 'Unexpected stuck shares');
+    assertLe(GHO_RESERVE.getUsed(address(GHO_GSM_4626)), 1e12, 'Unexpected final used');
+    GHO_GSM_4626.distributeFeesToTreasury();
+    // each buy rounds its price up by at most 1 USDX wei (1e12 GHO wei)
+    assertApproxEqAbs(
+      GHO_TOKEN.balanceOf(TREASURY) - treasuryBefore,
+      yield,
+      (buys + 1) * 1e12,
+      'Unexpected booked yield'
+    );
+  }
 }

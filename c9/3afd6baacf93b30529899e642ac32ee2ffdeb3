@@ -1,0 +1,21 @@
+tests/unit/TestGsm4626Edge.t.sol
+  s_02666adea2c855::t_7168748d1b6e36 1104-1116
+  s_02666adea2c855::t_b2df981d185e6d 1117-1154
+  s_02666adea2c855::t_1a5851f14f6c76 1155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c93afd6baacf93b30529899e642ac32ee2ffdeb3",
+  "prompts": {},
+  "sessions": {
+    "s_02666adea2c855": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21884073-7b54-4798-b69b-5e1146a2c07a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "DhairyaSethi <55102840+DhairyaSethi@users.noreply.github.com>"
+    }
+  }
+}

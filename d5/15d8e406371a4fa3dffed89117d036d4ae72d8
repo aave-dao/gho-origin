@@ -1,0 +1,19 @@
+src/contracts/facilitators/swap/GhoSwapFacility.sol
+  s_17029bfe05461f::t_19b1b7d455ed88 109,279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d515d8e406371a4fa3dffed89117d036d4ae72d8",
+  "prompts": {},
+  "sessions": {
+    "s_17029bfe05461f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0c83181-d0fd-4112-b961-e37c93c63a76",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "AlbertoCentonze <11707683+AlbertoCentonze@users.noreply.github.com>"
+    }
+  }
+}

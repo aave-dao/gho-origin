@@ -1,0 +1,28 @@
+src/contracts/facilitators/swap/interfaces/IGhoSwapFacility.sol
+  s_17029bfe05461f::t_cc7e65f7347901 1-5,9-40,42-54,56-91,96-133
+  s_17029bfe05461f::t_c089530a23326f 6-8,41,55,92-95
+tests/unit/TestGhoSwapFacility.t.sol
+  s_17029bfe05461f::t_a27a331922cb8a 8,37-45
+  s_17029bfe05461f::t_27145b26f6207e 1-7,9-36,46-125,129-137,141-307,309-407
+  s_17029bfe05461f::t_13a54f21a25845 126-128,138-140
+  s_17029bfe05461f::t_207ae4f84a3144 308
+src/contracts/facilitators/swap/GhoSwapFacility.sol
+  s_17029bfe05461f::t_e8a72e96995b5a 1-159,164-298
+  s_17029bfe05461f::t_13a54f21a25845 160-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf154ae04c4335119b6546008ca915c3228a6e23",
+  "prompts": {},
+  "sessions": {
+    "s_17029bfe05461f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0c83181-d0fd-4112-b961-e37c93c63a76",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "AlbertoCentonze <11707683+AlbertoCentonze@users.noreply.github.com>"
+    }
+  }
+}

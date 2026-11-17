@@ -1,0 +1,19 @@
+src/contracts/misc/interfaces/IGhoRouter.sol
+  s_3ac7e60bd238cf::t_fa961cdeb3d2c4 111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0082416aa67326fd3dd916091886a2939bc78fcf",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

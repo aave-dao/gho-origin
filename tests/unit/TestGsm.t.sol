@@ -1591,6 +1591,48 @@ contract TestGsm is TestGhoBase {
     assertEq(GHO_GSM.canSwap(), false, 'Unexpected swap state post-seize');
   }
 
+  function testCanSwapIgnoresExposureCap() public {
+    _sellAsset(GHO_GSM, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    GHO_GSM.updateExposureCap(uint128(GHO_GSM.getAvailableLiquidity()));
+
+    assertEq(GHO_GSM.getAvailableUnderlyingExposure(), 0, 'Exposure cap not reached');
+    assertTrue(GHO_GSM.canSwap(), 'Unexpected canSwap at exposure cap');
+    vm.expectRevert('EXOGENOUS_ASSET_EXPOSURE_TOO_HIGH');
+    vm.prank(ALICE);
+    GHO_GSM.sellAsset(1, ALICE);
+  }
+
+  function testCanSwapIgnoresGhoReserveLimit() public {
+    _sellAsset(GHO_GSM, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+    vm.prank(FAUCET);
+    USDX_TOKEN.mint(ALICE, 1);
+    vm.prank(ALICE);
+    USDX_TOKEN.approve(address(GHO_GSM), 1);
+    assertGt(GHO_GSM.getUsed(), 0, 'GSM has no used GHO');
+    GHO_RESERVE.setLimit(address(GHO_GSM), GHO_GSM.getUsed());
+
+    assertTrue(GHO_GSM.canSwap(), 'Unexpected canSwap at GHO reserve limit');
+    vm.expectRevert('LIMIT_EXCEEDED');
+    vm.prank(ALICE);
+    GHO_GSM.sellAsset(1, ALICE);
+  }
+
+  function testCanSwapIgnoresInsufficientLiquidity() public {
+    uint256 buyFee = DEFAULT_GSM_GHO_AMOUNT.percentMul(DEFAULT_GSM_BUY_FEE);
+    _sellAsset(GHO_GSM, USDX_TOKEN, ALICE, DEFAULT_GSM_USDX_AMOUNT);
+
+    ghoFaucet(BOB, DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    vm.startPrank(BOB);
+    GHO_TOKEN.approve(address(GHO_GSM), DEFAULT_GSM_GHO_AMOUNT + buyFee);
+    GHO_GSM.buyAsset(GHO_GSM.getAvailableLiquidity(), BOB);
+
+    assertEq(GHO_GSM.getAvailableLiquidity(), 0, 'Liquidity not exhausted');
+    assertTrue(GHO_GSM.canSwap(), 'Unexpected canSwap without liquidity');
+    vm.expectRevert('INSUFFICIENT_AVAILABLE_EXOGENOUS_ASSET_LIQUIDITY');
+    GHO_GSM.buyAsset(1, BOB);
+    vm.stopPrank();
+  }
+
   function testUpdateExposureCapBelowCurrentExposure() public {
     assertEq(GHO_GSM.getExposureCap(), DEFAULT_GSM_USDX_EXPOSURE, 'Unexpected exposure cap');
 

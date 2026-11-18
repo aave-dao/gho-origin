@@ -106,6 +106,7 @@ contract GhoAaveSteward is Ownable, RiskCouncilControlled, IGhoAaveSteward {
     ).getConfiguration(GHO_TOKEN);
     uint256 currentBorrowCap = configuration.getBorrowCap();
     require(newBorrowCap != currentBorrowCap, 'NO_CHANGE_IN_BORROW_CAP');
+    require(newBorrowCap != 0, 'INVALID_BORROW_CAP_UPDATE'); // 0 is infinite cap
     require(
       _isDifferenceLowerThanMax(currentBorrowCap, newBorrowCap, currentBorrowCap),
       'INVALID_BORROW_CAP_UPDATE'
@@ -126,6 +127,7 @@ contract GhoAaveSteward is Ownable, RiskCouncilControlled, IGhoAaveSteward {
     ).getConfiguration(GHO_TOKEN);
     uint256 currentSupplyCap = configuration.getSupplyCap();
     require(newSupplyCap != currentSupplyCap, 'NO_CHANGE_IN_SUPPLY_CAP');
+    require(newSupplyCap != 0, 'INVALID_SUPPLY_CAP_UPDATE'); // 0 is infinite cap
     require(
       _isDifferenceLowerThanMax(currentSupplyCap, newSupplyCap, currentSupplyCap),
       'INVALID_SUPPLY_CAP_UPDATE'

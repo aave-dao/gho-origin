@@ -48,6 +48,7 @@ interface IGhoAaveSteward {
    * @notice Updates the GHO borrow cap, only if:
    * - respects `MINIMUM_DELAY`, the minimum time delay between updates
    * - the update changes up to 100% upwards or downwards
+   * - the new borrow cap is not 0 (0 means no cap)
    * @dev Only callable by Risk Council
    * @param newBorrowCap The new borrow cap (in whole tokens)
    */
@@ -57,6 +58,7 @@ interface IGhoAaveSteward {
    * @notice Updates the GHO supply cap, only if:
    * - respects `MINIMUM_DELAY`, the minimum time delay between updates
    * - the update changes up to 100% upwards or downwards
+   * - the new supply cap is not 0 (0 means no cap)
    * @dev Only callable by Risk Council
    * @param newSupplyCap The new supply cap (in whole tokens)
    */

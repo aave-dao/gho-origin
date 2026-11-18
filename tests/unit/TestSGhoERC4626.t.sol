@@ -387,50 +387,29 @@ contract TestSGhoERC4626 is TestSGhoBase {
   }
 
   function test_4626_maxTypePreview() external view {
-    // Preview functions should handle max uint256 gracefully and never revert
-    uint256 maxPreviewDeposit = sgho.previewDeposit(type(uint256).max);
-    uint256 maxPreviewMint = sgho.previewMint(type(uint256).max);
-
-    // Preview functions should return the theoretical conversion result regardless of supply cap
-    // They are pure conversion functions that don't enforce limits
-    assertTrue(
-      maxPreviewDeposit > 0,
-      'previewDeposit should return positive value for max uint256'
-    );
-    assertTrue(maxPreviewMint > 0, 'previewMint should return positive value for max uint256');
+    // Conversions use mulDiv (512-bit intermediate), so preview handles max uint256 without reverting
+    assertGt(sgho.previewDeposit(type(uint256).max), 0, 'previewDeposit should handle max uint256');
+    assertGt(sgho.previewMint(type(uint256).max), 0, 'previewMint should handle max uint256');
   }
 
   function test_4626_previewWithdrawMaxType() external {
-    vm.startPrank(user1);
-    uint256 depositAmount = 100 ether;
-    sgho.deposit(depositAmount, user1);
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
 
-    // Preview withdraw with max uint256 should perform conversion calculation
-    // It should return the theoretical shares needed for max uint256 assets
-    uint256 maxPreviewWithdraw = sgho.previewWithdraw(type(uint256).max);
-    assertTrue(
-      maxPreviewWithdraw > 0,
-      'previewWithdraw should return positive value for max uint256'
+    assertGt(
+      sgho.previewWithdraw(type(uint256).max),
+      0,
+      'previewWithdraw should handle max uint256'
     );
-    vm.stopPrank();
   }
 
   function test_4626_previewRedeemMaxType() external {
-    vm.startPrank(user1);
-    uint256 depositAmount = 100 ether;
-    sgho.deposit(depositAmount, user1);
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
 
-    // Preview redeem with max uint256 should perform conversion calculation
-    // It should return the theoretical assets for max uint256 shares
     uint256 maxPreviewRedeem = sgho.previewRedeem(type(uint256).max);
-    assertTrue(maxPreviewRedeem > 0, 'previewRedeem should return positive value for max uint256');
-    // Remove the incorrect assertion - previewRedeem with max uint256 should return a very large number, not the user's shares
-    assertTrue(
-      maxPreviewRedeem > shares,
-      'previewRedeem should return a value greater than user shares for max uint256'
-    );
-    vm.stopPrank();
+    assertGt(maxPreviewRedeem, shares, 'previewRedeem should handle max uint256');
   }
 
   // ========================================

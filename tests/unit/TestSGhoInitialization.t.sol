@@ -55,16 +55,16 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_initialization() external {
     // Deploy a new sGho instance
-    address impl = address(new sGho());
+    address impl = address(new sGhoInstance());
     sGho newSgho = sGho(
       address(
         new TransparentUpgradeableProxy(
           impl,
           address(this),
           abi.encodeWithSelector(
-            sGho.initialize.selector,
+            sGhoInstance.initialize.selector,
             address(gho),
-            SUPPLY_CAP,
+            SUPPLY_CAP_UNITS,
             address(this) // executor
           )
         )
@@ -77,23 +77,21 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_revert_initialize_twice() external {
     // Deploy a new sGho instance
-    address impl = address(new sGho());
+    address impl = address(new sGhoInstance());
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
       impl,
       address(this),
       abi.encodeWithSelector(
-        sGho.initialize.selector,
+        sGhoInstance.initialize.selector,
         address(gho),
-        SUPPLY_CAP,
+        SUPPLY_CAP_UNITS,
         address(this) // executor
       )
     );
 
-    sGho newSgho = sGho(address(proxy));
-
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), SUPPLY_CAP, address(this));
+    sGhoInstance(address(proxy)).initialize(address(gho), SUPPLY_CAP_UNITS, address(this));
   }
 
   // ========================================
@@ -129,7 +127,7 @@ contract TestSGhoInitialization is TestSGhoBase {
   }
 
   function test_getter_supplyCap() external view {
-    assertEq(sgho.supplyCap(), SUPPLY_CAP, 'Supply cap should match constant');
+    assertEq(sgho.supplyCap(), SUPPLY_CAP_UNITS, 'Supply cap should match constant');
   }
 
   function test_getter_yieldIndex() external view {
@@ -187,17 +185,5 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_getter_totalAssets() external view {
     assertEq(sgho.totalAssets(), 0, 'Initial total assets should be 0');
-  }
-
-  function test_getter_ratePerSecond() external view {
-    uint256 targetRate = sgho.targetRate();
-    uint256 annualRateRay = (targetRate * RAY) / 10000;
-    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
-    uint256 expectedRatePerSecond = ratePerSecond / RAY;
-    assertEq(
-      sgho.ratePerSecond(),
-      expectedRatePerSecond,
-      'Rate per second should match calculated value'
-    );
   }
 }

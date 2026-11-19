@@ -8,6 +8,8 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 
+import {sGho} from 'src/contracts/sgho/sGho.sol';
+import {GhoRouter} from 'src/contracts/misc/GhoRouter.sol';
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
 import {MockBadGsm} from '../../mocks/MockBadGsm.sol';
 import {MockBadStata} from '../../mocks/MockBadStata.sol';
@@ -24,10 +26,29 @@ contract TestGhoRouterBase is TestGhoBase {
   address public immutable USER = makeAddr('0xF00DBA11');
   address public immutable RECIPIENT = makeAddr('0xCAFEF00D');
 
+  address public immutable ROUTER_GUARDIAN = makeAddr('ROUTER_GUARDIAN');
+
   uint256 internal buyFee = DEFAULT_GSM_BUY_FEE;
   uint256 internal sellFee = DEFAULT_GSM_SELL_FEE;
 
+  sGho internal SGHO;
+  GhoRouter internal GHO_ROUTER;
+
   function setUp() public virtual {
+    SGHO = sGho(
+      address(
+        new TransparentUpgradeableProxy(
+          address(new sGho()),
+          makeAddr('PROXY_ADMIN_OWNER'),
+          abi.encodeCall(
+            sGho.initialize,
+            (address(GHO_TOKEN), uint160(DEFAULT_SGHO_SUPPLY_CAP), address(this))
+          )
+        )
+      )
+    );
+    GHO_ROUTER = new GhoRouter(address(this), ROUTER_GUARDIAN, address(GHO_TOKEN), address(SGHO));
+
     GHO_ROUTER.allowGsm(address(GHO_GSM_4626));
     GHO_ROUTER.setTokenToStata(address(USDX_TOKEN), address(USDX_4626_TOKEN));
 

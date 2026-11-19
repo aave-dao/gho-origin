@@ -194,7 +194,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
   }
 
   /**
-   * @notice Preview the amount of GHO received for a given input amount
+   * @dev Preview the amount of GHO received for a given input amount
    * @param token Input token address (GSM asset or its underlying)
    * @param gsm Address of the GSM used to perform the swap
    * @param amount Amount of input token to sell
@@ -214,7 +214,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
   }
 
   /**
-   * @notice Preview the amount of sGHO received for a given input amount through a GSM path
+   * @dev Preview the amount of sGHO received for a given input amount through a GSM path
    * @param token Input token address (GSM asset or its underlying)
    * @param gsm Address of the GSM used to perform the swap
    * @param amount Amount of input token to sell

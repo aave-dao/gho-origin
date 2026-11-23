@@ -498,6 +498,51 @@ contract TestSGhoYield is TestSGhoBase {
   // YIELD EDGE CASES & BOUNDARY TESTS
   // ========================================
 
+  function test_yield_rateSetToZeroFreezesIndex() external {
+    // Accrue at the 10% rate from setUp, then stop accrual
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    uint256 shares = sgho.balanceOf(user1);
+
+    vm.warp(block.timestamp + 180 days);
+    vm.prank(yManager);
+    sgho.setTargetRate(0);
+
+    // Setting the rate to 0 checkpoints the yield accrued so far
+    uint256 frozenIndex = _emulateYieldIndex(RAY, 1000, 180 days);
+    assertEq(sgho.yieldIndex(), frozenIndex, 'accrual not checkpointed');
+    uint256 frozenAssets = sgho.previewRedeem(shares);
+
+    // Nothing accrues afterwards
+    vm.warp(block.timestamp + 365 days);
+    assertEq(sgho.convertToAssets(RAY), frozenIndex, 'index moved at rate 0');
+    assertEq(sgho.previewRedeem(shares), frozenAssets, 'value moved at rate 0');
+  }
+
+  function test_yield_longHorizonLiveness() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(MAX_SAFE_RATE);
+    vm.prank(user1);
+    sgho.deposit(10 ether, user1);
+    uint256 shares = sgho.balanceOf(user1);
+
+    // 100 years at the maximum rate without a checkpoint: the polynomial stays far below the
+    // uint120 limit of the index, so conversions keep working
+    vm.warp(block.timestamp + 100 * 365 days);
+    uint256 index = _emulateYieldIndex(RAY, MAX_SAFE_RATE, 100 * 365 days);
+    assertEq(sgho.convertToAssets(RAY), index, 'index mismatch');
+
+    // Fund the accrued yield, then check deposits and redemptions still work
+    deal(address(gho), address(sgho), sgho.totalAssets() + 1 ether, true);
+    vm.prank(user2);
+    sgho.deposit(1 ether, user2);
+    assertGt(sgho.balanceOf(user2), 0, 'deposit minted no shares');
+
+    vm.prank(user1);
+    uint256 assets = sgho.redeem(shares, user1, user1);
+    assertEq(assets, (shares * index) / RAY, 'redeemed assets mismatch');
+  }
+
   function test_yield_zeroTargetRate() external {
     // Set target rate to 0
     vm.startPrank(yManager);

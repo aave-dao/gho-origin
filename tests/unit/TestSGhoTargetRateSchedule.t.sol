@@ -430,7 +430,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.warp(effectiveAt2);
     _assertInSync(chainA, chainB);
 
-    // Third AIP: a same-rate re-schedule also checkpoints (splitting the floored accrual), so it
+    // Third AIP: a same-rate re-schedule also checkpoints (restarting the approximation), so it
     // must be mirrored on every chain like any other update
     uint40 effectiveAt3 = (block.timestamp + 30 days).toUint40();
     vm.prank(yManager);
@@ -599,10 +599,10 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
     // The index never jumps or decreases across the rate switch
     assertGe(indexAtEffective, indexJustBefore, 'Index decreased at the effective timestamp');
-    // At most one second of old-rate accrual, plus one wei of flooring drift
+    // At most one second of old-rate growth on the index just before, plus flooring of both
     assertLe(
       indexAtEffective - indexJustBefore,
-      _emulateYieldIndex(RAY, 1000, 1) - RAY + 1,
+      _emulateYieldIndex(indexJustBefore, 1000, 1) - indexJustBefore + 2,
       'Index jumped at the effective timestamp'
     );
     assertGe(indexAfter, indexAtEffective, 'Index decreased after the effective timestamp');
@@ -617,7 +617,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.prank(yManager);
     sgho.setTargetRate(2000, effectiveAt);
 
-    // 182 days at 10% + 183 days at 20%, linear across the switch
+    // 182 days at 10%, then 183 days at 20% compounding on the checkpointed index
     vm.warp(block.timestamp + 365 days);
     uint256 expectedIndex = _emulateYieldIndex(
       _emulateYieldIndex(RAY, 1000, 182 days),
@@ -627,7 +627,7 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     assertEq(
       sgho.previewRedeem(shares),
       (shares * expectedIndex) / RAY,
-      'Holder value must accrue linearly across the rate switch'
+      'Holder value must compound at each rate across the switch'
     );
   }
 }

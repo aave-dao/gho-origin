@@ -100,7 +100,7 @@ contract TestSGhoInitialization is TestSGhoBase {
   /// @dev Cold start: initializing with a live deployment's checkpoint puts the new vault in
   /// sync from the very first block.
   function test_initialize_coldStartMatchesSourceChain() external {
-    // `sgho` from setUp is the live source: 10% APR running for 100 days
+    // `sgho` from setUp is the live source: 10% annual rate running for 100 days
     vm.warp(block.timestamp + 100 days);
 
     sGho newSgho = _deploySGho(

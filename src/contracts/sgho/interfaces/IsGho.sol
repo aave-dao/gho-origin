@@ -113,7 +113,8 @@ interface IsGho {
    * chain. A straddle desyncs the indexes and needs `syncYieldIndex` to reconcile.
    * @dev `effectiveAt == block.timestamp` applies the update now, at the chain-local time. Only
    * suitable for single-chain deployments.
-   * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
+   * @param newRate The new annual rate in basis points, compounded continuously
+   * (e.g., 1000 for 10%).
    * @param effectiveAt The timestamp at which the new rate takes effect (must not be in the past).
    */
   function setTargetRate(uint16 newRate, uint40 effectiveAt) external;
@@ -145,7 +146,7 @@ interface IsGho {
 
   /**
    * @notice Returns the maximum safe rate for the vault.
-   * @dev Maximum safe annual yield rate in basis points (50%)
+   * @dev Maximum annual rate in basis points, compounded continuously (50%)
    * @return The maximum safe rate.
    */
   function MAX_SAFE_RATE() external view returns (uint16);
@@ -192,8 +193,8 @@ interface IsGho {
   function supplyCap() external view returns (uint256);
 
   /**
-   * @notice Returns the current target annual percentage rate (APR) for yield generation.
-   * @dev The rate is expressed in basis points (1% = 100).
+   * @notice Returns the current target rate for yield generation.
+   * @dev Annual rate in basis points (1% = 100), compounded continuously.
    * @dev Reflects a scheduled rate change once it is effective, even before it is persisted.
    * @return The target rate in basis points.
    */

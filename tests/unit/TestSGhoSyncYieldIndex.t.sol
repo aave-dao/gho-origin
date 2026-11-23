@@ -167,7 +167,8 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     uint256 shares = sgho.balanceOf(user1);
 
     vm.warp(block.timestamp + 365 days);
-    assertEq(sgho.previewRedeem(shares), 110 ether, 'Yield must have accrued');
+    // One year at 10% compounded continuously (exact value of the polynomial, rounded down)
+    assertEq(sgho.previewRedeem(shares), 110516666666666666666, 'Yield must have accrued');
 
     // Reconciliation may legitimately rewind over-accrual, decreasing share value
     sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);

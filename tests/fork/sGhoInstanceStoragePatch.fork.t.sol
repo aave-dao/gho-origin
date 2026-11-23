@@ -7,9 +7,11 @@ import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {ProxyAdmin} from 'openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol';
 import {ITransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Initializable} from 'openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol';
+import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol';
 import {sGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {sGhoInstanceStoragePatch} from 'src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol';
+import {SGhoYieldMath} from 'tests/helpers/SGhoYieldMath.sol';
 
 /// @dev Rate setter of the pre-upgrade implementation, removed from the current interface
 interface IsGhoLegacy {
@@ -134,6 +136,40 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     assertEq(vm.load(PROXY, slot1), bytes32(0), 'old slot 1 not cleared');
   }
 
+  function test_fork_upgrade_preservesDepositLimit() external onlyForked {
+    // The old layout compares an asset-terms cap with totalAssets; the new one scales a whole-GHO cap
+    uint256 maxDepositBefore = sgho.maxDeposit(address(0));
+    assertGt(maxDepositBefore, 0, 'vault should accept deposits');
+
+    _upgrade();
+
+    // Converting to whole GHO can only round the limit down, by less than 1 GHO
+    uint256 maxDepositAfter = sgho.maxDeposit(address(0));
+    assertLe(maxDepositAfter, maxDepositBefore, 'deposit limit increased');
+    assertLt(
+      maxDepositBefore - maxDepositAfter,
+      10 ** sgho.decimals(),
+      'deposit limit lost more than rounding'
+    );
+
+    // The limit is enforced: one wei over reverts, the limit itself goes through
+    address user = makeAddr('capUser');
+    deal(sgho.asset(), user, maxDepositAfter + 1);
+    vm.startPrank(user);
+    IERC20(sgho.asset()).approve(address(sgho), maxDepositAfter + 1);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector,
+        user,
+        maxDepositAfter + 1,
+        maxDepositAfter
+      )
+    );
+    sgho.deposit(maxDepositAfter + 1, user);
+    sgho.deposit(maxDepositAfter, user);
+    vm.stopPrank();
+  }
+
   function test_fork_patch_revertsIfIndexNotCheckpointed() external onlyForked {
     // Move past the last checkpoint so the patch must refuse to migrate
     vm.warp(block.timestamp + 1);
@@ -165,7 +201,7 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     });
   }
 
-  function test_fork_postUpgrade_existingUserAccruesLinearly() external onlyForked {
+  function test_fork_postUpgrade_existingUserAccrues() external onlyForked {
     _upgrade();
 
     uint256 ray = 1e27;
@@ -177,23 +213,20 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     vm.warp(block.timestamp + 365 days);
 
-    // The index grows by exactly `rate` of its checkpointed value over a year
-    assertEq(
-      sgho.convertToAssets(ray),
-      indexBefore + (indexBefore * rate) / 10000,
-      'index not linear'
-    );
+    // The index compounds at `rate` from its checkpointed value
+    uint256 indexAfter = SGhoYieldMath.accrue(indexBefore, rate, 365 days);
+    assertEq(sgho.convertToAssets(ray), indexAfter, 'index not compounded');
 
-    // The existing holder earns `rate` on the GHO value of their position, up to share rounding
+    // The existing holder's position grows by the same factor, up to share rounding
     assertApproxEqAbs(
-      sgho.convertToAssets(shares) - assetsBefore,
-      (assetsBefore * rate) / 10000,
+      sgho.convertToAssets(shares),
+      (assetsBefore * indexAfter) / indexBefore,
       2,
-      'existing user accrual not linear'
+      'existing user accrual mismatch'
     );
   }
 
-  function test_fork_postUpgrade_newUserAccruesLinearly() external onlyForked {
+  function test_fork_postUpgrade_newUserAccrues() external onlyForked {
     _upgrade();
 
     address newUser = makeAddr('newUser');
@@ -210,12 +243,12 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     vm.warp(block.timestamp + 365 days);
 
-    // A position opened after the upgrade earns `rate` on its deposited GHO value
+    // A position opened after the upgrade grows by one year of `rate`, up to share rounding
     assertApproxEqAbs(
-      sgho.convertToAssets(shares) - assetsBefore,
-      (assetsBefore * rate) / 10000,
+      sgho.convertToAssets(shares),
+      (assetsBefore * SGhoYieldMath.accrue(SGhoYieldMath.RAY, rate, 365 days)) / SGhoYieldMath.RAY,
       2,
-      'new user accrual not linear'
+      'new user accrual mismatch'
     );
   }
 

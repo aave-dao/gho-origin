@@ -11,7 +11,7 @@ contract TestSGhoConfig is TestSGhoBase {
   // ========================================
   function test_setTargetRate_event() external {
     vm.startPrank(yManager);
-    uint16 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% annual rate
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.TargetRateUpdated(newRate, block.timestamp);
     sgho.setTargetRate(newRate, block.timestamp.toUint40());
@@ -45,7 +45,7 @@ contract TestSGhoConfig is TestSGhoBase {
   }
 
   function test_setTargetRate() external {
-    uint16 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% annual rate
 
     vm.startPrank(yManager);
     sgho.setTargetRate(newRate, block.timestamp.toUint40());
@@ -55,7 +55,7 @@ contract TestSGhoConfig is TestSGhoBase {
   }
 
   function test_revert_setTargetRate_notYieldManager() external {
-    uint16 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% annual rate
 
     vm.startPrank(user1);
     vm.expectRevert(
@@ -70,7 +70,7 @@ contract TestSGhoConfig is TestSGhoBase {
   }
 
   function test_revert_setTargetRate_rateGreaterThanMaxRate() external {
-    uint16 newRate = 5001; // 50.01% APR
+    uint16 newRate = 5001; // 50.01% annual rate
     vm.startPrank(yManager);
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
     sgho.setTargetRate(newRate, block.timestamp.toUint40());

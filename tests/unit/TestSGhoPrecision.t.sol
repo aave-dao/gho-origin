@@ -8,6 +8,7 @@ import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol'
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {SGhoYieldMath} from '../helpers/SGhoYieldMath.sol';
 
 /**
  * @title sGhoPrecisionTest
@@ -28,7 +29,6 @@ contract TestSGhoPrecision is TestnetProcedures {
 
   // Constants for precision calculations
   uint256 private constant RAY = 1e27;
-  uint256 private constant SECONDS_IN_YEAR = 365 days;
 
   // Contracts
   sGho internal sgho;
@@ -43,8 +43,8 @@ contract TestSGhoPrecision is TestnetProcedures {
   address internal fundsAdmin;
 
   // Test parameters
-  uint16 internal constant TEST_RATE_10_PERCENT = 1000; // 10% APR
-  uint16 internal constant TEST_RATE_50_PERCENT = 5000; // 50% APR
+  uint16 internal constant TEST_RATE_10_PERCENT = 1000; // 10% annual rate
+  uint16 internal constant TEST_RATE_50_PERCENT = 5000; // 50% annual rate
   uint40 internal constant SUPPLY_CAP_UNITS = 1_000_000; // 1M GHO (whole units, no decimals)
 
   function setUp() public {
@@ -128,10 +128,10 @@ contract TestSGhoPrecision is TestnetProcedures {
         vm.prank(yieldManager);
         sgho.setTargetRate(rate, block.timestamp.toUint40());
 
-        // Linear accrual on the checkpointed index: newIndex = initialIndex * (1 + rate * time / year)
+        // Compounded interest on the checkpointed index
         assertEq(
           sgho.yieldIndex(),
-          initialIndex + calculateAccruedRate(initialIndex, rate, timePeriod),
+          SGhoYieldMath.accrue(initialIndex, rate, timePeriod),
           'Yield index accrual mismatch'
         );
       }
@@ -139,7 +139,7 @@ contract TestSGhoPrecision is TestnetProcedures {
   }
 
   function test_yieldIndex_update_precision_multiple_updates() public {
-    uint16 rate = 1000; // 10% APR
+    uint16 rate = 1000; // 10% annual rate
     uint256 totalTime = 86400; // 1 day
     uint256 updateInterval = 3600; // 1 hour
 
@@ -149,12 +149,12 @@ contract TestSGhoPrecision is TestnetProcedures {
     uint256 expectedIndex = sgho.yieldIndex();
     uint256 intervals = totalTime / updateInterval;
 
-    // Checkpoint the index on every interval; each checkpoint starts a new base
+    // Checkpoint the index on every interval
     for (uint256 i = 0; i < intervals; i++) {
       vm.warp(block.timestamp + updateInterval);
       vm.prank(yieldManager);
       sgho.setTargetRate(rate, block.timestamp.toUint40());
-      expectedIndex += calculateAccruedRate(expectedIndex, rate, updateInterval);
+      expectedIndex = SGhoYieldMath.accrue(expectedIndex, rate, updateInterval);
     }
 
     assertEq(
@@ -169,7 +169,7 @@ contract TestSGhoPrecision is TestnetProcedures {
   // ========================================
 
   function test_asset_share_conversion_precision() public {
-    uint16 rate = 1000; // 10% APR
+    uint16 rate = 1000; // 10% annual rate
 
     vm.prank(yieldManager);
     sgho.setTargetRate(rate, block.timestamp.toUint40());
@@ -199,7 +199,7 @@ contract TestSGhoPrecision is TestnetProcedures {
   }
 
   function test_yield_accrual_precision() public {
-    uint16 rate = 1000; // 10% APR
+    uint16 rate = 1000; // 10% annual rate
 
     vm.prank(yieldManager);
     sgho.setTargetRate(rate, block.timestamp.toUint40());
@@ -214,8 +214,8 @@ contract TestSGhoPrecision is TestnetProcedures {
     // Fast forward and check yield accrual
     vm.warp(block.timestamp + 604800); // 1 week
 
-    // Linear growth of the deposited assets over one week, exact to the wei
-    uint256 expectedIndex = RAY + calculateAccruedRate(RAY, rate, 604800);
+    // Compounded growth of the deposited assets over one week, exact to the wei
+    uint256 expectedIndex = SGhoYieldMath.accrue(RAY, rate, 604800);
     assertEq(
       sgho.previewRedeem(shares),
       (depositAmount * expectedIndex) / RAY,
@@ -230,7 +230,7 @@ contract TestSGhoPrecision is TestnetProcedures {
   function test_precision_edge_cases() public {
     // Test very short time periods
     vm.prank(yieldManager);
-    sgho.setTargetRate(5000, block.timestamp.toUint40()); // 50% APR
+    sgho.setTargetRate(5000, block.timestamp.toUint40()); // 50% annual rate
 
     uint256 initialIndex = sgho.yieldIndex();
 
@@ -300,8 +300,7 @@ contract TestSGhoPrecision is TestnetProcedures {
         sgho.setTargetRate(rates[r], block.timestamp.toUint40());
 
         uint256 finalIndex = sgho.yieldIndex();
-        uint256 expectedIndex = initialIndex +
-          calculateAccruedRate(initialIndex, rates[r], periods[p]);
+        uint256 expectedIndex = SGhoYieldMath.accrue(initialIndex, rates[r], periods[p]);
         uint256 precisionLoss = calculatePrecisionLoss(finalIndex, expectedIndex);
 
         emit log_named_uint('Rate (bps)', rates[r]);
@@ -314,8 +313,8 @@ contract TestSGhoPrecision is TestnetProcedures {
     }
   }
 
-  function test_linear_growth_factors_for_python() public {
-    emit log('=== LINEAR GROWTH FACTORS FOR PYTHON ANALYSIS ===');
+  function test_growth_factors_for_python() public {
+    emit log('=== GROWTH FACTORS FOR PYTHON ANALYSIS ===');
 
     uint16[] memory rates = new uint16[](3);
     rates[0] = 1000; // 10%
@@ -331,16 +330,16 @@ contract TestSGhoPrecision is TestnetProcedures {
     periods[5] = 2592000; // 1 month
 
     emit log('// Python script can parse these values:');
-    emit log('// Format: Rate(bps), Period(sec), LinearGrowthFactor');
+    emit log('// Format: Rate(bps), Period(sec), GrowthFactor');
 
     for (uint256 r = 0; r < rates.length; r++) {
       for (uint256 p = 0; p < periods.length; p++) {
-        uint256 linearGrowthFactor = calculateExpectedGrowthFactor(rates[r], periods[p]);
+        uint256 growthFactor = calculateExpectedGrowthFactor(rates[r], periods[p]);
 
         // Output in a format that can be easily parsed by Python
         emit log_named_uint('PYTHON_DATA', rates[r]);
         emit log_named_uint('PYTHON_DATA', periods[p]);
-        emit log_named_uint('PYTHON_DATA', linearGrowthFactor);
+        emit log_named_uint('PYTHON_DATA', growthFactor);
 
         // Also output human-readable format
         string memory rateDesc = rates[r] == 1000 ? '10%' : rates[r] == 2500 ? '25%' : '50%';
@@ -354,44 +353,26 @@ contract TestSGhoPrecision is TestnetProcedures {
           ? '1w'
           : '1M';
 
-        emit log_named_string('Growth Factor', string.concat(rateDesc, ' APR, ', periodDesc));
-        emit log_named_uint('Value', linearGrowthFactor);
+        emit log_named_string(
+          'Growth Factor',
+          string.concat(rateDesc, ' annual rate, ', periodDesc)
+        );
+        emit log_named_uint('Value', growthFactor);
       }
     }
 
-    emit log('=== END LINEAR GROWTH FACTORS ===');
+    emit log('=== END GROWTH FACTORS ===');
   }
 
   // ========================================
   // HELPER FUNCTIONS
   // ========================================
 
-  function calculateExactRatePerSecond(uint16 rateBps) internal pure returns (uint256) {
-    // Exact calculation: (rate_bps / 10000) * RAY / SECONDS_IN_YEAR
-    return (uint256(rateBps) * RAY) / (10000 * SECONDS_IN_YEAR);
-  }
-
   function calculateExpectedGrowthFactor(
     uint16 rateBps,
     uint256 timeSeconds
   ) internal pure returns (uint256) {
-    // Calculate rate per second
-    uint256 ratePerSecond = calculateExactRatePerSecond(rateBps);
-
-    // Calculate accumulated rate
-    uint256 accumulatedRate = ratePerSecond * timeSeconds;
-
-    // Calculate growth factor: RAY + accumulatedRate
-    return RAY + accumulatedRate;
-  }
-
-  /// @dev Spec: yield accrued on `index` over a period, linear at a fixed APR
-  function calculateAccruedRate(
-    uint256 index,
-    uint16 rateBps,
-    uint256 timeSeconds
-  ) internal pure returns (uint256) {
-    return (index * rateBps * timeSeconds) / (10000 * SECONDS_IN_YEAR);
+    return SGhoYieldMath.accrue(RAY, rateBps, timeSeconds);
   }
 
   function calculatePrecisionLoss(

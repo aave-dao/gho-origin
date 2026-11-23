@@ -38,13 +38,14 @@ abstract contract sGho is
 {
   using Math for uint256;
   using SafeCast for uint256;
+  using WadRayMath for uint256;
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGhoStorage {
     // Storage variables - Optimally packed so the hot path only touches the first slot
     uint120 yieldIndex; // 15 bytes - current yield index for share/asset conversion
     uint40 lastUpdate; // 5 bytes - timestamp of the last yield index checkpoint
-    uint16 targetRate; // 2 bytes - target annual yield rate in basis points (e.g., 1000 = 10%)
+    uint16 targetRate; // 2 bytes - annual rate in basis points, compounded continuously
     uint40 supplyCap; // 5 bytes - maximum total assets allowed in the vault, in whole GHO units
     uint40 pendingRateEffectiveAt; // 5 bytes - timestamp of the scheduled rate change (0 = none)
     uint16 pendingTargetRate; // 2 bytes (second slot) - scheduled target rate in basis points
@@ -376,12 +377,12 @@ abstract contract sGho is
     sGhoStorage storage $ = _getSGhoStorage();
     uint40 effectiveAt = $.pendingRateEffectiveAt;
     if (effectiveAt != 0 && block.timestamp >= effectiveAt) {
-      uint120 index = ($.yieldIndex +
-        _accruedYield({
-          index: $.yieldIndex,
-          rate: $.targetRate,
-          timeDelta: effectiveAt - $.lastUpdate
-        })).toUint120();
+      uint120 index = _accrueYieldIndex({
+        index: $.yieldIndex,
+        rate: $.targetRate,
+        fromTimestamp: $.lastUpdate,
+        toTimestamp: effectiveAt
+      });
       return (index, effectiveAt, $.pendingTargetRate, true);
     }
     return ($.yieldIndex, $.lastUpdate, $.targetRate, false);
@@ -389,33 +390,69 @@ abstract contract sGho is
 
   /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
-   * @dev Linear accrual on the checkpointed index: `index * (1 + targetRate * elapsed / year)`.
-   * There is no compounding until the next checkpoint, which starts a new base.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {
     (uint120 index, uint40 timestamp, uint16 rate, ) = _getCheckpoint();
-    if (rate == 0 || block.timestamp == timestamp) return index;
-
     return
-      (index + _accruedYield({index: index, rate: rate, timeDelta: block.timestamp - timestamp}))
-        .toUint120();
+      _accrueYieldIndex({
+        index: index,
+        rate: rate,
+        fromTimestamp: timestamp,
+        toTimestamp: block.timestamp
+      });
   }
 
   /**
-   * @notice Calculates the yield accrued on an index at a fixed APR over a time period, in RAY.
+   * @notice Accrues a yield index over a period at a fixed rate.
+   * @dev Compounds continuously at `rate`, approximating `e^(rate * elapsed / year)` by
+   * `_calculateCompoundedInterest`.
    * @param index The yield index at the start of the period.
-   * @param rate The annual yield rate in basis points.
-   * @param timeDelta The elapsed time in seconds.
-   * @return The accrued yield in RAY.
+   * @param rate The annual rate in basis points, compounded continuously.
+   * @param fromTimestamp The start of the period.
+   * @param toTimestamp The end of the period.
+   * @return The yield index at the end of the period.
    */
-  function _accruedYield(
-    uint256 index,
+  function _accrueYieldIndex(
+    uint120 index,
+    uint16 rate,
+    uint40 fromTimestamp,
+    uint256 toTimestamp
+  ) internal pure returns (uint120) {
+    if (rate == 0) return index;
+
+    uint256 growthFactor = _calculateCompoundedInterest({
+      rate: (uint256(rate) * WadRayMath.RAY) / PercentageMath.PERCENTAGE_FACTOR,
+      lastUpdateTimestamp: fromTimestamp,
+      currentTimestamp: toTimestamp
+    });
+    return uint256(index).mulDiv(growthFactor, WadRayMath.RAY).toUint120();
+  }
+
+  /**
+   * @dev Same as Aave v3 `MathUtils.calculateCompoundedInterest`, but rounds down instead of
+   * half up.
+   * @param rate The annual rate, compounded continuously, in ray.
+   * @param lastUpdateTimestamp The timestamp to accrue from.
+   * @param currentTimestamp The timestamp to accrue to.
+   * @return The growth factor between the two timestamps, in ray.
+   */
+  function _calculateCompoundedInterest(
     uint256 rate,
-    uint256 timeDelta
+    uint40 lastUpdateTimestamp,
+    uint256 currentTimestamp
   ) internal pure returns (uint256) {
-    return
-      (index * rate * timeDelta) / (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
+    uint256 exp = currentTimestamp - uint256(lastUpdateTimestamp);
+
+    if (exp == 0) {
+      return WadRayMath.RAY;
+    }
+
+    unchecked {
+      uint256 x = (rate * exp) / MathUtils.SECONDS_PER_YEAR;
+
+      return WadRayMath.RAY + x + x.rayMulFloor(x / 2 + x.rayMulFloor(x / 6));
+    }
   }
 
   /**

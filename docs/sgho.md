@@ -7,7 +7,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ## Key Features
 
 - **Full EIP-4626 Compliance**: Complete implementation of the ERC-4626 standard for tokenized vaults
-- **Linear Yield Accrual**: Yield accrues at a fixed APR on the value at the last rate change, tracked via a yield index
+- **Continuous Compounding**: Yield compounds continuously at the target rate, tracked via a yield index
 - **Role-Based Access Control**: Granular permissions for yield management and emergency operations
 - **Permit Support**: Gasless deposits using EIP-2612 permits
 - **Supply Cap Management**: Configurable maximum vault capacity, set in whole GHO units (no decimals)
@@ -30,12 +30,12 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### How It Works
 
 1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
-2. **Linear Accrual**: The index grows by `index * targetRate * timeElapsed / year` from its last checkpoint. It is only checkpointed to storage when the rate changes, so there is no compounding within a rate period; each rate change starts a new base. In between, conversions read the live accrued value
+2. **Continuous Compounding**: The index grows to `index * e^(targetRate * timeElapsed / year)` from its last checkpoint, using the Aave v3 approximation `1 + x + x^2 / 2 + x^3 / 6`. It is only checkpointed when a rate change takes effect, as of that change's timestamp, or by `syncYieldIndex`, so user actions and their timing never change it. The approximation falls short of `e^x` by about `x^4 / 24`, so the yield is slightly lower the longer a rate stays unchanged. In between, conversions read the live accrued value
 3. **Share Conversion**: Asset/share conversions use the current yield index
 
 ### Key Parameters
 
-- **Target Rate**: Fixed annual percentage rate (APR) in basis points (max 50% = 5000)
+- **Target Rate**: Annual rate in basis points, compounded continuously (max 50% = 5000)
 - **Yield Index**: Index used for share/asset conversions
 
 ## Multi-Chain Synchronization
@@ -50,7 +50,7 @@ The update is applied lazily. Views resolve it once it is due. The next rate upd
 
 Rules for operators:
 
-- Every scheduled update must be mirrored on all chains, including a same-rate one.
+- Every scheduled update must be mirrored on all chains, including a same-rate one. Each checkpoint restarts the compounding approximation, so a checkpoint on one chain only changes its accrual.
 - A pending update that is not yet effective is overwritten by the next `setTargetRate`. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain. If it straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`.
 - `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
@@ -77,7 +77,7 @@ Syncing rewrites the index directly and can decrease the asset value of existing
 ### Built-in Protections
 
 - **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield.
+- **Rate Limits**: Maximum 50% annual rate, compounded continuously, to prevent excessive yield.
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 
 ### Important Limitations
@@ -106,6 +106,6 @@ sGHO uses high-precision arithmetic to ensure accurate yield calculations and pr
 The following are key considerations for arithmetic precision in math operations:
 
 - **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: The annual rate is applied linearly to the checkpointed index, dividing by seconds-per-year last so a full APR period is exact
+- **Rate Calculations**: The growth factor since the last checkpoint is the same polynomial as Aave v3 `MathUtils.calculateCompoundedInterest`, applied to the checkpointed index
 - **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
-- **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
+- **Accumulated Interest**: Unlike Aave v3, which rounds half up, every operation rounds down, so the index never exceeds the exact polynomial, which itself stays below `e^x`

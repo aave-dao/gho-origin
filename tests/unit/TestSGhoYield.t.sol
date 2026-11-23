@@ -4,6 +4,51 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoYield is TestSGhoBase {
+  // Growth factors `1 + x + x^2 / 2 + x^3 / 6` with `x = rate * years`, computed with exact
+  // decimal arithmetic and rounded down to ray. Independent of the contract and of
+  // `_emulateYieldIndex`.
+  uint256 internal constant GROWTH_10_PERCENT_1_YEAR = 1105166666666666666666666666;
+  uint256 internal constant GROWTH_10_PERCENT_2_YEARS = 1221333333333333333333333333;
+  uint256 internal constant GROWTH_50_PERCENT_1_YEAR = 1645833333333333333333333333;
+  // 1 year at 10%, then 1 year at 20%
+  uint256 internal constant GROWTH_10_THEN_20_PERCENT = 1349776888888888888888888888;
+  // 2 years at 50%, then 1 year at 10%
+  uint256 internal constant GROWTH_50_THEN_10_PERCENT = 2947111111111111111111111111;
+
+  /// @dev Every operation rounds down, so the contract never exceeds the exact polynomial. It stays
+  /// within 8 ray units of it per period (measured); 100 leaves room for products of periods
+  function _assertGrowth(uint256 actual, uint256 exact, string memory err) internal pure {
+    assertLe(actual, exact, err);
+    assertApproxEqAbs(actual, exact, 100, err);
+  }
+
+  /// @dev Value of `assets` after `growth`, allowing 1 wei for the final rounding
+  function _assertAssetsGrown(
+    uint256 actual,
+    uint256 assets,
+    uint256 growth,
+    string memory err
+  ) internal pure {
+    assertApproxEqAbs(actual, (assets * growth) / RAY, 1, err);
+  }
+
+  /**
+   * @dev Upper bound on the extra yield that `checkpoints` intermediate checkpoints add over a
+   * single accrual of `x = rate * elapsed / year`. Checkpointing moves the result towards `e^x`,
+   * which exceeds the approximation by at most `x^4 * e^x / 24`, below `x^4 / 4` for `x < 1.7`.
+   * Each checkpoint also adds up to 9 ray units of rounding on an index below 6.
+   */
+  function _checkpointExcessBound(
+    uint256 singleAccrual,
+    uint256 rate,
+    uint256 elapsed,
+    uint256 checkpoints
+  ) internal pure returns (uint256) {
+    uint256 x = (rate * RAY * elapsed) / (10000 * 365 days);
+    uint256 x4 = (((((x * x) / RAY) * x) / RAY) * x) / RAY;
+    return (singleAccrual * x4) / (4 * RAY) + checkpoints * 6 * 9;
+  }
+
   // ========================================
   // YIELD ACCRUAL & INTEGRATION TESTS
   // ========================================
@@ -48,9 +93,9 @@ contract TestSGhoYield is TestSGhoBase {
   }
 
   function test_yield_10_percent_one_year() external {
-    // Set target rate to 10% APR
+    // Set target rate to 10% annual rate
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR is 1000 bps
+    sgho.setTargetRate(1000); // 10% annual rate is 1000 bps
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -75,64 +120,133 @@ contract TestSGhoYield is TestSGhoBase {
     assertEq(sgho.balanceOf(user2), 0, 'User2 should have no shares after redeeming');
     vm.stopPrank();
 
-    // After exactly 1 year at 10% APR, user1's 100 GHO is worth exactly 110 GHO
-    uint256 expectedTotalAssets = depositAmount + (depositAmount * 1000) / 10000;
-    assertEq(sgho.totalAssets(), expectedTotalAssets, 'Total assets should reflect 10% yield');
-    assertEq(
+    // One year at 10% compounded continuously: 100 GHO grows to about 110.517 GHO
+    _assertAssetsGrown(
+      sgho.totalAssets(),
+      depositAmount,
+      GROWTH_10_PERCENT_1_YEAR,
+      'Total assets should reflect one year at 10%'
+    );
+    _assertAssetsGrown(
       sgho.previewRedeem(sgho.balanceOf(user1)),
-      expectedTotalAssets,
-      'User asset value should reflect 10% yield'
+      depositAmount,
+      GROWTH_10_PERCENT_1_YEAR,
+      'User asset value should reflect one year at 10%'
     );
   }
 
-  function test_yield_checkpointsCompound_withIntermediateRateUpdates(uint16 rate) external {
-    rate = uint16(bound(rate, 100, 5000));
-    vm.startPrank(yManager);
+  function test_yield_checkpointsAddBoundedYield(uint16 rate) external {
+    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    vm.prank(yManager);
     sgho.setTargetRate(rate);
-    vm.stopPrank();
 
-    // User1 deposits 100 GHO
     uint256 depositAmount = 100 ether;
-    vm.startPrank(user1);
+    vm.prank(user1);
     sgho.deposit(depositAmount, user1);
-    uint256 user1Shares = sgho.balanceOf(user1);
-    vm.stopPrank();
+    uint256 startIndex = sgho.yieldIndex();
 
-    // Re-setting the rate daily checkpoints the index; each checkpoint starts a new base
-    uint256 expectedIndex = sgho.yieldIndex();
+    // Re-setting the same rate daily checkpoints the index 365 times
     for (uint256 i = 0; i < 365; i++) {
       vm.warp(block.timestamp + 1 days);
       vm.prank(yManager);
       sgho.setTargetRate(rate);
-      expectedIndex = _emulateYieldIndex(expectedIndex, rate, 1 days);
     }
 
-    uint256 user1FinalAssets = sgho.previewRedeem(user1Shares);
-    assertEq(
-      user1FinalAssets,
-      (user1Shares * expectedIndex) / RAY,
-      'Value must follow the per-checkpoint accrual'
+    // Each checkpoint restarts the approximation, so checkpoints only ever add yield, and at most
+    // the gap between the approximation and `e^x`
+    uint256 singleAccrual = _emulateYieldIndex(startIndex, rate, 365 days);
+    assertGe(sgho.yieldIndex() + 365 * 6 * 9, singleAccrual, 'Checkpoints removed yield');
+    assertLe(
+      sgho.yieldIndex(),
+      singleAccrual + _checkpointExcessBound(singleAccrual, rate, 365 days, 365),
+      'Checkpoints added too much yield'
     );
+  }
 
-    // Daily checkpoints compound daily: strictly more than simple interest, and equal to the
-    // daily compounding formula up to the WAD truncation of `_wadPow` (about 365 wei relative)
-    uint256 simpleInterestAssets = depositAmount + (depositAmount * rate) / 10000;
-    assertGt(user1FinalAssets, simpleInterestAssets, 'Daily checkpoints must compound');
+  function test_yield_checkpointsAddBoundedYield_randomIntervals(
+    uint16 rate,
+    uint256 seed
+  ) external {
+    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    vm.prank(yManager);
+    sgho.setTargetRate(rate);
+    uint256 startIndex = sgho.yieldIndex();
 
-    uint256 WAD = 1e18;
-    uint256 dailyCompoundingTerm = WAD + ((rate * WAD) / 10000) / 365;
-    uint256 compoundedAssets = (depositAmount * _wadPow(dailyCompoundingTerm, 365)) / WAD;
-    assertApproxEqRel(
-      user1FinalAssets,
-      compoundedAssets,
-      1e6, // 1e-12 relative
-      'Daily checkpoints must match daily compounding'
+    // 20 checkpoints at random intervals of up to 60 days, alternating rate re-sets and no-ops
+    uint256 elapsed;
+    for (uint256 i = 0; i < 20; i++) {
+      uint256 interval = bound(uint256(keccak256(abi.encode(seed, i))), 1, 60 days);
+      vm.warp(block.timestamp + interval);
+      elapsed += interval;
+      if (i % 2 == 0) {
+        vm.prank(yManager);
+        sgho.setTargetRate(rate);
+      }
+    }
+    vm.prank(yManager);
+    sgho.setTargetRate(rate);
+
+    uint256 singleAccrual = _emulateYieldIndex(startIndex, rate, elapsed);
+    assertGe(sgho.yieldIndex() + 11 * 6 * 9, singleAccrual, 'Checkpoints removed yield');
+    assertLe(
+      sgho.yieldIndex(),
+      singleAccrual + _checkpointExcessBound(singleAccrual, rate, elapsed, 11),
+      'Checkpoints added too much yield'
     );
   }
 
   // ========================================
-  // LINEAR ACCRUAL TESTS
+  // CONTINUOUS COMPOUNDING TESTS
   // ========================================
+
+  function test_yield_growthRoundsDown_oneYear() external {
+    // One year at the 10% rate from setUp, checkpointed from RAY: the stored index is the growth
+    // factor itself. Exactly 1.1051666...6, where half-up rounding (as in Aave v3) gives ...7
+    vm.warp(block.timestamp + 365 days);
+    vm.prank(yManager);
+    sgho.setTargetRate(1000);
+    assertEq(sgho.yieldIndex(), 1105166666666666666666666666, 'growth not rounded down');
+  }
+
+  function test_yield_growthRoundsDown_oneDay() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(450);
+    assertEq(sgho.yieldIndex(), RAY, 'index moved');
+
+    // One day at 4.5% from RAY, where half-up rounding (as in Aave v3) gives ...977
+    vm.warp(block.timestamp + 1 days);
+    vm.prank(yManager);
+    sgho.setTargetRate(450);
+    assertEq(sgho.yieldIndex(), 1000123295271470141407701976, 'growth not rounded down');
+  }
+
+  function test_yield_growthRoundsDown_innerProduct() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(450);
+
+    // An elapsed time where only the inner `x * x / 6` product decides the last digit: rounding it
+    // half up gives ...778
+    vm.warp(block.timestamp + 36979993);
+    vm.prank(yManager);
+    sgho.setTargetRate(450);
+    assertEq(sgho.yieldIndex(), 1054184987980041905847125777, 'inner product not rounded down');
+  }
+
+  function test_yield_growthMatchesModel_fuzz(uint16 rate, uint32 elapsed) external {
+    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    elapsed = uint32(bound(elapsed, 1, 10 * 365 days));
+    vm.prank(yManager);
+    sgho.setTargetRate(rate);
+    uint256 startIndex = sgho.yieldIndex();
+
+    // Half-up rounding differs from the model for most inputs
+    vm.warp(block.timestamp + elapsed);
+    assertEq(
+      sgho.convertToAssets(RAY),
+      _emulateYieldIndex(startIndex, rate, elapsed),
+      'growth differs from the round-down model'
+    );
+  }
 
   function test_yield_storedIndexUnchangedByOperations() external {
     // Rate is set to 10% in setUp; the index is only checkpointed on rate changes
@@ -159,7 +273,7 @@ contract TestSGhoYield is TestSGhoBase {
     assertGt(sgho.convertToAssets(RAY), storedIndex, 'Live index should reflect accrual');
   }
 
-  function test_yield_exactFixedRateAfterOneYear() external {
+  function test_yield_oneYearAtTenPercent() external {
     // Rate is 10% (set in setUp)
     vm.prank(user1);
     sgho.deposit(100 ether, user1);
@@ -167,7 +281,13 @@ contract TestSGhoYield is TestSGhoBase {
 
     vm.warp(block.timestamp + 365 days);
 
-    assertEq(sgho.previewRedeem(shares), 110 ether, 'One year at 10% should yield exactly 10%');
+    _assertGrowth(sgho.convertToAssets(RAY), GROWTH_10_PERCENT_1_YEAR, 'index after one year');
+    _assertAssetsGrown(
+      sgho.previewRedeem(shares),
+      100 ether,
+      GROWTH_10_PERCENT_1_YEAR,
+      'One year at 10% compounded continuously'
+    );
   }
 
   function test_yield_rateAppliedExactlyDespiteManyActions() external {
@@ -185,25 +305,32 @@ contract TestSGhoYield is TestSGhoBase {
     }
 
     // The applied rate depends only on elapsed time, never on the number of actions
-    assertEq(
+    _assertAssetsGrown(
       sgho.previewRedeem(shares),
-      110 ether,
+      100 ether,
+      GROWTH_10_PERCENT_1_YEAR,
       'Many actions must not affect the applied rate'
     );
   }
 
-  function test_yield_linearOverMultipleYears() external {
+  function test_yield_compoundsOverMultipleYears() external {
     vm.prank(user1);
     sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
 
-    // Two years at 10% APR with no rate change accrues exactly 20%, not 21% (no compounding)
+    // Two years at 10% with no rate change compound to about 22.14%
     vm.warp(block.timestamp + 730 days);
 
-    assertEq(sgho.previewRedeem(shares), 120 ether, 'Two years should yield exactly 20% linearly');
+    _assertGrowth(sgho.convertToAssets(RAY), GROWTH_10_PERCENT_2_YEARS, 'index after two years');
+    _assertAssetsGrown(
+      sgho.previewRedeem(shares),
+      100 ether,
+      GROWTH_10_PERCENT_2_YEARS,
+      'Two years at 10% compounded continuously'
+    );
   }
 
-  function test_yield_compoundsAtRateChange() external {
+  function test_yield_rateChange() external {
     vm.prank(user1);
     sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
@@ -216,34 +343,40 @@ contract TestSGhoYield is TestSGhoBase {
     sgho.setTargetRate(2000);
     vm.warp(block.timestamp + 365 days);
 
-    // The new rate applies to the value at the rate change: 110 * 1.2 = 132, not 100 + 10 + 20
-    assertEq(
+    // The growth of each period multiplies: (1 + 10% / year) ^ year * (1 + 20% / year) ^ year
+    _assertGrowth(sgho.convertToAssets(RAY), GROWTH_10_THEN_20_PERCENT, 'index after rate change');
+    _assertAssetsGrown(
       sgho.previewRedeem(shares),
-      132 ether,
-      'New rate must apply to the checkpointed value'
+      100 ether,
+      GROWTH_10_THEN_20_PERCENT,
+      'Each period must compound at its own rate'
     );
   }
 
-  function test_yield_rateAppliesToValueAtCheckpoint() external {
-    // Bring the index to exactly 2.0: two years at 50% from RAY
+  function test_yield_rateAppliesToValueAtDeposit() external {
+    // Move the index well away from RAY: two years at 50%
     vm.prank(yManager);
     sgho.setTargetRate(5000);
     vm.warp(block.timestamp + 730 days);
     vm.prank(yManager);
     sgho.setTargetRate(1000);
-    assertEq(sgho.yieldIndex(), 2 * RAY, 'index not at 2.0');
 
-    // 100 GHO deposited at index 2.0 buys 50 shares
+    uint256 depositAmount = 100 ether;
     vm.prank(user1);
-    sgho.deposit(100 ether, user1);
+    sgho.deposit(depositAmount, user1);
     uint256 shares = sgho.balanceOf(user1);
-    assertEq(shares, 50 ether, 'shares at index 2.0');
 
     vm.warp(block.timestamp + 365 days);
 
-    // One year at 10% on 100 GHO is 110 GHO, regardless of the index at deposit time
-    assertEq(sgho.convertToAssets(RAY), (22 * RAY) / 10, 'index after one year at 10% from 2.0');
-    assertEq(sgho.previewRedeem(shares), 110 ether, 'APR must apply to the deposited value');
+    // One year at 10% on 100 GHO, regardless of the index at deposit time. Shares round down on
+    // deposit, which costs at most one share, worth about 3 wei at this index
+    _assertGrowth(sgho.convertToAssets(RAY), GROWTH_50_THEN_10_PERCENT, 'index after three years');
+    assertApproxEqAbs(
+      sgho.previewRedeem(shares),
+      (depositAmount * GROWTH_10_PERCENT_1_YEAR) / RAY,
+      4,
+      'Rate must apply to the deposited value'
+    );
   }
 
   function test_yield_rateAppliesToValueAtCheckpoint_fuzz(
@@ -266,12 +399,69 @@ contract TestSGhoYield is TestSGhoBase {
 
     vm.warp(block.timestamp + 365 days);
 
-    // One year later the position earned `rate` on its value at deposit, up to share rounding
+    // One year later the position grew by one year of `rate`, up to share rounding (at most the
+    // growth factor, below 1.65, plus 1 wei)
     assertApproxEqAbs(
       sgho.previewRedeem(shares),
-      assetsAtDeposit + (assetsAtDeposit * rate) / 10000,
-      2,
-      'APR must apply to the value at deposit'
+      (assetsAtDeposit * _emulateYieldIndex(RAY, rate, 365 days)) / RAY,
+      3,
+      'Rate must apply to the value at deposit'
+    );
+  }
+
+  function test_yield_lateDepositorDrift_fuzz(uint32 delay) external {
+    delay = uint32(bound(delay, 1, 10 * 365 days));
+
+    // A depositor right at the rate change, at the 10% rate from setUp
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    uint256 earlyShares = sgho.balanceOf(user1);
+    uint256 earlyAtDeposit = sgho.previewRedeem(earlyShares);
+
+    // A later depositor, with no checkpoint in between
+    vm.warp(block.timestamp + delay);
+    vm.prank(user2);
+    sgho.deposit(100 ether, user2);
+    uint256 lateShares = sgho.balanceOf(user2);
+    uint256 lateAtDeposit = sgho.previewRedeem(lateShares);
+
+    // The early depositor's first year, for comparison
+    uint256 earlyAfterOneYear = (earlyAtDeposit * GROWTH_10_PERCENT_1_YEAR) / RAY;
+
+    vm.warp(block.timestamp + 365 days);
+    uint256 lateAfterOneYear = sgho.previewRedeem(lateShares);
+
+    // The approximation falls further below `e^x` as `x` grows, so the late depositor's year earns
+    // slightly less, never more, up to share rounding (at most the growth factor plus 1 wei)
+    assertLe(
+      lateAfterOneYear * earlyAtDeposit,
+      (earlyAfterOneYear + 3) * lateAtDeposit,
+      'Late depositor earned more'
+    );
+    // Depositing 10 years in, the worst case here, the year still grows by about 9.76% instead
+    // of 10.52%
+    assertGe(lateAfterOneYear, (lateAtDeposit * 1097) / 1000, 'Late depositor drift too large');
+  }
+
+  function test_yield_441bps_paysAtLeast4_5PercentApy_fuzz(uint32 delay) external {
+    delay = uint32(bound(delay, 0, 4 * 365 days));
+    vm.prank(yManager);
+    sgho.setTargetRate(441);
+
+    // Deposit up to 4 years after the rate was set, with no checkpoint in between
+    vm.warp(block.timestamp + delay);
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    uint256 shares = sgho.balanceOf(user1);
+    uint256 assetsAtDeposit = sgho.previewRedeem(shares);
+
+    vm.warp(block.timestamp + 365 days);
+
+    // The worst case, depositing 4 years in, earns about 4.504% over the following year
+    assertGe(
+      sgho.previewRedeem(shares),
+      (assetsAtDeposit * 10450) / 10000,
+      'Year at 441 bps below 4.5%'
     );
   }
 
@@ -386,7 +576,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_accrual_atSupplyCap() external {
     // Set a higher target rate to ensure significant yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(5000); // 50% APR to ensure significant yield
+    sgho.setTargetRate(5000); // 50% annual rate to ensure significant yield
     vm.stopPrank();
 
     // Fill the vault to supply cap
@@ -406,12 +596,12 @@ contract TestSGhoYield is TestSGhoBase {
     sgho.withdraw(1, user1, user1);
     vm.stopPrank();
 
-    // Yield accrues even at supply cap: after a year at 50% the index is exactly 1.5x
+    // Yield accrues even at supply cap: one year at 50% compounded continuously
     assertTrue(
       sgho.totalAssets() > totalAssetsBefore - 1,
       'Yield should accrue even at supply cap'
     );
-    assertEq(sgho.convertToAssets(RAY), (15 * RAY) / 10, 'Index should be exactly 1.5x at 50% APR');
+    _assertGrowth(sgho.convertToAssets(RAY), GROWTH_50_PERCENT_1_YEAR, 'index after a year at 50%');
 
     // User's share value should have increased (accounting for the 1 wei withdrawal)
     vm.startPrank(user1);
@@ -504,18 +694,18 @@ contract TestSGhoYield is TestSGhoBase {
   function test_precision_yieldIndex_realisticValues() external pure {
     // Test with realistic starting values
     uint256 prevYieldIndex = 1e27; // Start from RAY (1e27)
-    uint16 targetRate = 1000; // 10% APR
+    uint16 targetRate = 1000; // 10% annual rate
     uint256 timeSinceLastUpdate = 365 days; // 1 year
     uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, targetRate, timeSinceLastUpdate);
 
-    // After exactly 1 year at 10%, the index is exactly 1.1 * RAY
-    assertEq(newYieldIndex, (RAY * 11) / 10, 'Yield index should be exactly 10% growth');
+    // One year at 10% compounded continuously
+    _assertGrowth(newYieldIndex, GROWTH_10_PERCENT_1_YEAR, 'Yield index after one year at 10%');
   }
 
   function test_precision_yieldIndex_granularTime() external pure {
     // Test with very small time increments
     uint256 prevYieldIndex = 1e27;
-    uint16 targetRate = 1000; // 10% APR
+    uint16 targetRate = 1000; // 10% annual rate
 
     // Test 1 second increment
     uint256 newYieldIndex1s = _emulateYieldIndex(prevYieldIndex, targetRate, 1);
@@ -533,7 +723,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_precision_yieldIndex_cumulativePrecision() external pure {
     // Compare one update over the full period against 30 daily checkpoints
     uint256 prevYieldIndex = RAY;
-    uint16 targetRate = 1000; // 10% APR
+    uint16 targetRate = 1000; // 10% annual rate
 
     uint256 singleUpdate = _emulateYieldIndex(prevYieldIndex, targetRate, 30 days);
 
@@ -542,10 +732,13 @@ contract TestSGhoYield is TestSGhoBase {
       cumulativeIndex = _emulateYieldIndex(cumulativeIndex, targetRate, 1 days);
     }
 
-    // Each checkpoint starts a new base, so more checkpoints compound: the excess is the
-    // second-order term (x^2 / 2 with x = 10% * 30 / 365), about 0.34 bps of the index
-    assertGt(cumulativeIndex, singleUpdate, 'More checkpoints must compound');
-    assertLt(cumulativeIndex - singleUpdate, RAY / 10000, 'Compounding excess above 1 bp');
+    // Checkpoints only add yield, by at most the gap between the approximation and `e^x`
+    assertGe(cumulativeIndex + 30 * 6 * 9, singleUpdate, 'Checkpoints removed yield');
+    assertLe(
+      cumulativeIndex,
+      singleUpdate + _checkpointExcessBound(singleUpdate, targetRate, 30 days, 30),
+      'Checkpoints added too much yield'
+    );
   }
 
   function test_precision_yieldIndex_edgeCases() external pure {
@@ -557,9 +750,9 @@ contract TestSGhoYield is TestSGhoBase {
     uint256 rayYieldIndex = _emulateYieldIndex(RAY, 1000, 1 days);
     assertTrue(rayYieldIndex > RAY, 'Should grow from RAY baseline');
 
-    // Maximum safe rate for a full year is exactly 1.5 * RAY (50% APR)
+    // Maximum safe rate for a full year, compounded continuously
     uint256 maxRateIndex = _emulateYieldIndex(RAY, MAX_SAFE_RATE, 365 days);
-    assertEq(maxRateIndex, (RAY * 15) / 10, 'Max rate for 1 year should be exactly 1.5x');
+    _assertGrowth(maxRateIndex, GROWTH_50_PERCENT_1_YEAR, 'Max rate for 1 year');
   }
 
   function test_precision_yieldIndex_fuzz(uint256 timeSkip, uint16 rate) external pure {
@@ -574,11 +767,14 @@ contract TestSGhoYield is TestSGhoBase {
     assertTrue(newYieldIndex >= prevYieldIndex, 'Yield index should never decrease');
     assertTrue(newYieldIndex <= type(uint256).max, 'Should not overflow');
 
-    // Reasonable growth bounds (max 50% per year * 10 years = 500% max theoretical)
-    assertTrue(
-      newYieldIndex <= prevYieldIndex * 6,
-      'Growth should be bounded by reasonable limits'
+    // Compounding grows at least as fast as simple interest, and at most like continuous
+    // compounding: e^(50% * 10 years) is below 149, and the approximation stays below it
+    assertGe(
+      newYieldIndex,
+      prevYieldIndex + (prevYieldIndex * rate * timeSkip) / (10000 * 365 days),
+      'Growth below simple interest'
     );
+    assertLe(newYieldIndex, prevYieldIndex * 149, 'Growth above continuous compounding');
   }
 
   function test_precision_yieldIndex_zeroRateOrTime() external pure {
@@ -640,7 +836,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_ExchangeRateUpdatedEvent_basic() external {
     // Set a target rate to ensure yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
+    sgho.setTargetRate(1000); // 10% annual rate
     vm.stopPrank();
 
     // Initial state

@@ -80,7 +80,8 @@ interface IsGho {
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * The new rate must not exceed `MAX_SAFE_RATE` (5000 basis points).
-   * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
+   * @param newRate The new annual rate in basis points, compounded continuously
+   * (e.g., 1000 for 10%).
    */
   function setTargetRate(uint16 newRate) external;
 
@@ -94,7 +95,7 @@ interface IsGho {
 
   /**
    * @notice Returns the maximum safe rate for the vault.
-   * @dev Maximum safe annual yield rate in basis points (50%)
+   * @dev Maximum annual rate in basis points, compounded continuously (50%)
    * @return The maximum safe rate.
    */
   function MAX_SAFE_RATE() external view returns (uint16);
@@ -140,8 +141,8 @@ interface IsGho {
   function supplyCap() external view returns (uint256);
 
   /**
-   * @notice Returns the current target annual percentage rate (APR) for yield generation.
-   * @dev The rate is expressed in basis points (1% = 100).
+   * @notice Returns the current target rate for yield generation.
+   * @dev Annual rate in basis points (1% = 100), compounded continuously.
    * @return The target rate in basis points.
    */
   function targetRate() external view returns (uint16);

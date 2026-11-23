@@ -38,13 +38,14 @@ abstract contract sGho is
 {
   using Math for uint256;
   using SafeCast for uint256;
+  using WadRayMath for uint256;
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGhoStorage {
     // Storage variables - Optimally packed into a single slot
     uint120 yieldIndex; // 15 bytes - current yield index for share/asset conversion
     uint40 lastUpdate; // 5 bytes - timestamp of the last yield index checkpoint
-    uint16 targetRate; // 2 bytes - target annual yield rate in basis points (e.g., 1000 = 10%)
+    uint16 targetRate; // 2 bytes - annual rate in basis points, compounded continuously
     uint40 supplyCap; // 5 bytes - maximum total assets allowed in the vault, in whole GHO units
   }
 
@@ -285,20 +286,43 @@ abstract contract sGho is
 
   /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
-   * @dev Linear accrual on the checkpointed index: `index * (1 + targetRate * elapsed / year)`.
-   * There is no compounding until the next checkpoint, which starts a new base.
+   * @dev Compounds the checkpointed index continuously at `targetRate`, approximating
+   * `e^(targetRate * elapsed / year)` by `_calculateCompoundedInterest`.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {
     sGhoStorage storage $ = _getSGhoStorage();
     if ($.targetRate == 0) return $.yieldIndex;
 
-    uint256 timeSinceLastUpdate = block.timestamp - $.lastUpdate;
-    if (timeSinceLastUpdate == 0) return $.yieldIndex;
+    uint256 growthFactor = _calculateCompoundedInterest(
+      (uint256($.targetRate) * WadRayMath.RAY) / PercentageMath.PERCENTAGE_FACTOR,
+      $.lastUpdate
+    );
+    return uint256($.yieldIndex).mulDiv(growthFactor, WadRayMath.RAY).toUint120();
+  }
 
-    uint256 accrued = (uint256($.yieldIndex) * $.targetRate * timeSinceLastUpdate) /
-      (PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR);
-    return ($.yieldIndex + accrued).toUint120();
+  /**
+   * @dev Same as Aave v3 `MathUtils.calculateCompoundedInterest`, but rounds down instead of
+   * half up.
+   * @param rate The annual rate, compounded continuously, in ray.
+   * @param lastUpdateTimestamp The timestamp to accrue from.
+   * @return The growth factor since `lastUpdateTimestamp`, in ray.
+   */
+  function _calculateCompoundedInterest(
+    uint256 rate,
+    uint40 lastUpdateTimestamp
+  ) internal view returns (uint256) {
+    uint256 exp = block.timestamp - lastUpdateTimestamp;
+
+    if (exp == 0) {
+      return WadRayMath.RAY;
+    }
+
+    unchecked {
+      uint256 x = (rate * exp) / MathUtils.SECONDS_PER_YEAR;
+
+      return WadRayMath.RAY + x + x.rayMulFloor(x / 2 + x.rayMulFloor(x / 6));
+    }
   }
 
   /**

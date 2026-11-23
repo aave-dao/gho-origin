@@ -10,6 +10,7 @@ import {ERC4626Upgradeable} from 'openzeppelin-contracts-upgradeable/contracts/t
 import {sGho} from 'src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {sGhoInstanceStoragePatch} from 'src/contracts/sgho/instances/sGhoInstanceStoragePatch.sol';
+import {SGhoYieldMath} from 'tests/helpers/SGhoYieldMath.sol';
 
 /// @dev Forks Ethereum mainnet and verifies the storage-layout migration of the live sGHO instance.
 contract sGhoInstanceStoragePatchForkTest is Test {
@@ -185,7 +186,7 @@ contract sGhoInstanceStoragePatchForkTest is Test {
     sGhoInstance(PROXY).initialize(gho, 0, address(this));
   }
 
-  function test_fork_postUpgrade_existingUserAccruesLinearly() external onlyForked {
+  function test_fork_postUpgrade_existingUserAccrues() external onlyForked {
     _upgrade();
 
     uint256 ray = 1e27;
@@ -197,23 +198,20 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     vm.warp(block.timestamp + 365 days);
 
-    // The index grows by exactly `rate` of its checkpointed value over a year
-    assertEq(
-      sgho.convertToAssets(ray),
-      indexBefore + (indexBefore * rate) / 10000,
-      'index not linear'
-    );
+    // The index compounds at `rate` from its checkpointed value
+    uint256 indexAfter = SGhoYieldMath.accrue(indexBefore, rate, 365 days);
+    assertEq(sgho.convertToAssets(ray), indexAfter, 'index not compounded');
 
-    // The existing holder earns `rate` on the GHO value of their position, up to share rounding
+    // The existing holder's position grows by the same factor, up to share rounding
     assertApproxEqAbs(
-      sgho.convertToAssets(shares) - assetsBefore,
-      (assetsBefore * rate) / 10000,
+      sgho.convertToAssets(shares),
+      (assetsBefore * indexAfter) / indexBefore,
       2,
-      'existing user accrual not linear'
+      'existing user accrual mismatch'
     );
   }
 
-  function test_fork_postUpgrade_newUserAccruesLinearly() external onlyForked {
+  function test_fork_postUpgrade_newUserAccrues() external onlyForked {
     _upgrade();
 
     address newUser = makeAddr('newUser');
@@ -230,12 +228,12 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     vm.warp(block.timestamp + 365 days);
 
-    // A position opened after the upgrade earns `rate` on its deposited GHO value
+    // A position opened after the upgrade grows by one year of `rate`, up to share rounding
     assertApproxEqAbs(
-      sgho.convertToAssets(shares) - assetsBefore,
-      (assetsBefore * rate) / 10000,
+      sgho.convertToAssets(shares),
+      (assetsBefore * SGhoYieldMath.accrue(SGhoYieldMath.RAY, rate, 365 days)) / SGhoYieldMath.RAY,
       2,
-      'new user accrual not linear'
+      'new user accrual mismatch'
     );
   }
 

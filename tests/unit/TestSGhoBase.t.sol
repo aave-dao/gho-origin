@@ -19,6 +19,7 @@ import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/
 import {IsGho} from '../../src/contracts/sgho/interfaces/IsGho.sol';
 import {sGho} from '../../src/contracts/sgho/sGho.sol';
 import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol';
+import {SGhoYieldMath} from '../helpers/SGhoYieldMath.sol';
 
 contract TestSGhoBase is TestnetProcedures {
   using stdStorage for StdStorage;
@@ -85,7 +86,7 @@ contract TestSGhoBase is TestnetProcedures {
 
     // Set target rate as yield manager
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
+    sgho.setTargetRate(1000); // 10% annual rate
     vm.stopPrank();
 
     // Calculate domain separator for permits
@@ -108,16 +109,14 @@ contract TestSGhoBase is TestnetProcedures {
   // INTERNAL UTILITY FUNCTIONS
   // ========================================
 
-  /// @dev Spec: the APR applies to the value at the last checkpoint, linearly in time
+  /// @dev Spec: the Aave v3 compounded interest approximation, rounded down, applied to the
+  /// checkpointed index
   function _emulateYieldIndex(
     uint256 prevYieldIndex,
     uint16 targetRate,
     uint256 timeSinceLastUpdate
   ) internal pure returns (uint256) {
-    if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
-
-    return
-      prevYieldIndex + (prevYieldIndex * targetRate * timeSinceLastUpdate) / (10000 * 365 days);
+    return SGhoYieldMath.accrue(prevYieldIndex, targetRate, timeSinceLastUpdate);
   }
 
   function _createPermitSignature(
@@ -135,17 +134,5 @@ contract TestSGhoBase is TestnetProcedures {
 
     bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
     return vm.sign(privateKey, hash);
-  }
-
-  function _wadPow(uint256 base, uint256 exp) internal pure returns (uint256) {
-    uint256 res = 1e18; // WAD
-    while (exp > 0) {
-      if (exp % 2 == 1) {
-        res = (res * base) / 1e18;
-      }
-      base = (base * base) / 1e18;
-      exp /= 2;
-    }
-    return res;
   }
 }

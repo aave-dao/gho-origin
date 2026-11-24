@@ -7,7 +7,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ## Key Features
 
 - **Full EIP-4626 Compliance**: Complete implementation of the ERC-4626 standard for tokenized vaults
-- **Continuous Compounding**: Yield compounds continuously at the target rate, tracked via a yield index
+- **Fixed-Rate Yield**: Yield compounds continuously at a fixed target rate, tracked via a yield index
 - **Role-Based Access Control**: Granular permissions for yield management and emergency operations
 - **Permit Support**: Gasless deposits using EIP-2612 permits
 - **Supply Cap Management**: Configurable maximum vault capacity, set in whole GHO units (no decimals)
@@ -35,7 +35,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ### Key Parameters
 
-- **Target Rate**: Annual rate in basis points, compounded continuously (max 50% = 5000)
+- **Target Rate**: Fixed annual rate in basis points, compounded continuously (max 50% = 5000)
 - **Yield Index**: Index used for share/asset conversions
 
 ## Multi-Chain Synchronization

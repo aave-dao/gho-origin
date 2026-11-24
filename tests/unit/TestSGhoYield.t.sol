@@ -234,9 +234,9 @@ contract TestSGhoYield is TestSGhoBase {
     assertEq(sgho.yieldIndex(), 1054184987980041905847125777, 'inner product not rounded down');
   }
 
-  function test_yield_growthMatchesModel_fuzz(uint16 rate, uint32 elapsed) external {
+  function test_yield_growthMatchesModel_fuzz(uint16 rate, uint256 elapsed) external {
     rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
-    elapsed = (bound(elapsed, 1, 10 * 365 days)).toUint32();
+    elapsed = bound(elapsed, 1, 1000 * 365 days);
     vm.prank(yManager);
     sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 startIndex = sgho.yieldIndex();
@@ -248,6 +248,51 @@ contract TestSGhoYield is TestSGhoBase {
       _emulateYieldIndex(startIndex, rate, elapsed),
       'growth differs from the round-down model'
     );
+  }
+
+  /// @dev Over every timestamp a `uint40` can hold, the unchecked growth factor matches the
+  /// model, which uses checked arithmetic, or the index overflows `uint120` and reverts
+  function test_yield_growthMatchesModelOrReverts_fullRange_fuzz(
+    uint16 rate,
+    uint256 elapsed
+  ) external {
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
+    elapsed = bound(elapsed, 1, type(uint40).max - block.timestamp);
+    vm.prank(yManager);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
+    uint256 startIndex = sgho.yieldIndex();
+
+    vm.warp(block.timestamp + elapsed);
+    uint256 expected = _emulateYieldIndex(startIndex, rate, elapsed);
+    if (expected > type(uint120).max) {
+      vm.expectRevert(
+        abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 120, expected)
+      );
+      sgho.convertToAssets(RAY);
+    } else {
+      assertEq(sgho.convertToAssets(RAY), expected, 'growth differs from the model');
+    }
+  }
+
+  function test_yield_growthAtMaxTimestamp() external {
+    uint256 elapsed = type(uint40).max - block.timestamp;
+
+    // At 0.01% the index still fits in `uint120` at the last `uint40` timestamp
+    vm.prank(yManager);
+    sgho.setTargetRate(1, block.timestamp.toUint40());
+    vm.warp(type(uint40).max);
+    assertEq(sgho.convertToAssets(RAY), _emulateYieldIndex(RAY, 1, elapsed), 'growth mismatch');
+
+    // At the maximum rate it does not, and conversions revert instead of wrapping
+    vm.warp(block.timestamp - elapsed);
+    vm.prank(yManager);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
+    vm.warp(type(uint40).max);
+    uint256 expected = _emulateYieldIndex(sgho.yieldIndex(), MAX_SAFE_RATE, elapsed);
+    vm.expectRevert(
+      abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 120, expected)
+    );
+    sgho.convertToAssets(RAY);
   }
 
   function test_yield_storedIndexUnchangedByOperations() external {

@@ -201,10 +201,11 @@ interface IsGho {
   function targetRate() external view returns (uint16);
 
   /**
-   * @notice Returns the last checkpointed yield index.
-   * @dev This index is used to calculate the value of sGHO in terms of GHO. Index scale is in RAY.
+   * @notice Returns the yield index at the last checkpoint.
+   * @dev Excludes yield accrued since the checkpoint; `convertToAssets(RAY)` gives the live index.
+   * Index scale is in RAY.
    * @dev Reflects a scheduled rate change once it is effective, even before it is persisted.
-   * @return The last checkpointed yield index.
+   * @return The yield index at the last checkpoint.
    */
   function yieldIndex() external view returns (uint256);
 

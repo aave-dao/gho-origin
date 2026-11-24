@@ -8,6 +8,9 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
 
   function setUp() public override {
     super.setUp();
+    // Keep the live index at RAY, so the syncs below raise it; a sync can never lower it
+    vm.prank(yManager);
+    sgho.setTargetRate(0, block.timestamp.toUint40());
     // Headroom for checkpoints in the past
     vm.warp(block.timestamp + 365 days);
   }
@@ -159,7 +162,7 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
   // SHARE VALUE EFFECTS
   // ========================================
 
-  function test_sync_canDecreaseShareValue() external {
+  function test_revert_sync_decreasesShareValue() external {
     // Deposit at a known RAY index
     sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);
     vm.prank(user1);
@@ -170,9 +173,50 @@ contract TestSGhoSyncYieldIndex is TestSGhoBase {
     // One year at 10% compounded continuously (exact value of the polynomial, rounded down)
     assertEq(sgho.previewRedeem(shares), 110516666666666666666, 'Yield must have accrued');
 
-    // Reconciliation may legitimately rewind over-accrual, decreasing share value
+    // Rewinding the accrued yield would cut share value, so it reverts
+    vm.expectRevert(IsGho.SyncDecreasesYieldIndex.selector);
     sgho.syncYieldIndex(RAY.toUint120(), block.timestamp.toUint40(), 1000);
-    assertEq(sgho.previewRedeem(shares), 100 ether, 'Share value must follow the synced index');
+
+    // So does a checkpoint that lands one wei below the live index
+    uint256 liveIndex = sgho.convertToAssets(RAY);
+    vm.expectRevert(IsGho.SyncDecreasesYieldIndex.selector);
+    sgho.syncYieldIndex((liveIndex - 1).toUint120(), block.timestamp.toUint40(), 1000);
+
+    // Re-syncing the same live index is allowed
+    sgho.syncYieldIndex(liveIndex.toUint120(), block.timestamp.toUint40(), 1000);
+    assertEq(sgho.previewRedeem(shares), 110516666666666666666, 'Share value changed');
+  }
+
+  /// @dev A sync reverts exactly when the live index after it would be below the live index before
+  function test_sync_neverDecreasesLiveIndex_fuzz(
+    uint16 rateBefore,
+    uint32 accrualBefore,
+    uint120 newIndex,
+    uint32 checkpointAge,
+    uint16 newRate
+  ) external {
+    rateBefore = (bound(rateBefore, 0, MAX_SAFE_RATE)).toUint16();
+    accrualBefore = (bound(accrualBefore, 0, 730 days)).toUint32();
+    newIndex = (bound(newIndex, RAY, 3 * RAY)).toUint120();
+    newRate = (bound(newRate, 0, MAX_SAFE_RATE)).toUint16();
+
+    vm.prank(yManager);
+    sgho.setTargetRate(rateBefore, block.timestamp.toUint40());
+    vm.warp(block.timestamp + accrualBefore);
+    checkpointAge = (bound(checkpointAge, 0, block.timestamp - 1)).toUint32();
+    uint40 newLastUpdate = (block.timestamp - checkpointAge).toUint40();
+
+    uint256 liveBefore = sgho.convertToAssets(RAY);
+    uint256 liveAfter = _emulateYieldIndex(newIndex, newRate, checkpointAge);
+    if (liveAfter < liveBefore) {
+      vm.expectRevert(IsGho.SyncDecreasesYieldIndex.selector);
+      sgho.syncYieldIndex(newIndex, newLastUpdate, newRate);
+      assertEq(sgho.convertToAssets(RAY), liveBefore, 'Reverted sync changed the index');
+    } else {
+      sgho.syncYieldIndex(newIndex, newLastUpdate, newRate);
+      assertEq(sgho.convertToAssets(RAY), liveAfter, 'Live index not synced');
+      assertGe(sgho.convertToAssets(RAY), liveBefore, 'Live index decreased');
+    }
   }
 
   function test_sync_canIncreaseShareValue() external {

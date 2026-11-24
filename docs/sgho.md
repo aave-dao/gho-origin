@@ -59,11 +59,11 @@ Rules for operators:
 `syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the checkpoint with values read from an in-sync deployment: `yieldIndex()`, `lastUpdate()` and `targetRate()`. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. Any pending update on the synced chain is discarded and has to be re-scheduled.
 
 - **Cold start**: `initialize` takes the same checkpoint values, target rate included, so a new chain starts in sync from a live deployment's checkpoint and needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not set a rate through the new chain's steward on its own: it checkpoints that chain only.
-- **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the affected chain from a healthy one.
+- **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the chain that is behind from the one that is ahead. A sync cannot lower a chain's index, so if the affected chain got ahead, the other chains are synced up to it.
 
 The steward stores no rate, so an update discarded by a sync is re-scheduled through it like any other.
 
-Syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to DEFAULT_ADMIN (governance).
+Syncing rewrites the index directly, which is why it is restricted to DEFAULT_ADMIN (governance). It reverts if the live index after the sync would be below the live index before it, so the asset value of existing shares never decreases. To reconcile two diverged chains, sync the one that is behind from the one that is ahead.
 
 ## Role Management
 

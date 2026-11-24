@@ -37,6 +37,11 @@ interface IsGho {
   error NoPendingTargetRate();
 
   /**
+   * @notice Thrown if a sync would lower the live yield index.
+   */
+  error SyncDecreasesYieldIndex();
+
+  /**
    * @dev Emitted when a target rate update is set or scheduled.
    * @param newRate The new target rate.
    * @param effectiveAt The timestamp at which the new rate takes effect.
@@ -145,7 +150,8 @@ interface IsGho {
    * @dev Brings a deployment in sync with the other chains, after a cold start or a rate update
    * that missed this chain. Pass `yieldIndex()`, `lastUpdate()` and `targetRate()` read from an
    * in-sync deployment, then re-schedule any pending update.
-   * @dev Can decrease the yield index and thereby the asset value of existing shares.
+   * @dev Reverts if the live yield index after the sync is below the live index before it, so
+   * the asset value of existing shares never decreases.
    * @param newYieldIndex The new yield index (RAY scale, at least RAY).
    * @param newLastUpdate The new checkpoint timestamp (must not be in the future).
    * @param newTargetRate The new target rate in basis points (e.g., 1000 for 10%).

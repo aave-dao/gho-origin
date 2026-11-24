@@ -184,7 +184,11 @@ abstract contract sGho is
     uint40 newLastUpdate,
     uint16 newTargetRate
   ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    uint120 yieldIndexBefore = _getCurrentYieldIndex();
     _syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate);
+    if (_getCurrentYieldIndex() < yieldIndexBefore) {
+      revert SyncDecreasesYieldIndex();
+    }
   }
 
   /// @inheritdoc IsGho

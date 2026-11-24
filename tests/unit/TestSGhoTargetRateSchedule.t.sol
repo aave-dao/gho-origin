@@ -611,8 +611,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
   /// @dev An overwrite that straddles the pending `effectiveAt` desyncs the chains: the chain
   /// executing before it skips the pending rate, the one executing after applies it first.
-  /// `syncYieldIndex` from the intended chain reconciles.
-  function test_schedule_overwriteStraddlingEffectiveAt_desyncsAndSyncReconciles() external {
+  /// A sync cannot lower an index, so the chain behind is synced up to the one ahead.
+  function test_schedule_overwriteStraddlingEffectiveAt_desyncsAndSyncReconcilesUpward() external {
     (sGho chainA, sGho chainB) = _deployTwoChainsAt(1000);
 
     uint40 effectiveAt1 = (block.timestamp + 10 days).toUint40();
@@ -646,11 +646,19 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
       'Divergence must persist without reconciliation'
     );
 
-    // Reconciliation AIP: chain A is the intended state, copy its checkpoint onto chain B
-    chainB.syncYieldIndex(
-      chainA.yieldIndex().toUint120(),
-      chainA.lastUpdate().toUint40(),
-      chainA.targetRate()
+    // Chain B ran at the higher pending rate, so it is ahead and cannot be synced down to A
+    assertGt(chainB.convertToAssets(RAY), chainA.convertToAssets(RAY), 'Chain B must be ahead');
+    uint120 indexA = chainA.yieldIndex().toUint120();
+    uint40 lastUpdateA = chainA.lastUpdate().toUint40();
+    uint16 rateA = chainA.targetRate();
+    vm.expectRevert(IsGho.SyncDecreasesYieldIndex.selector);
+    chainB.syncYieldIndex(indexA, lastUpdateA, rateA);
+
+    // Reconciliation AIP: sync chain A up to chain B's checkpoint
+    chainA.syncYieldIndex(
+      chainB.yieldIndex().toUint120(),
+      chainB.lastUpdate().toUint40(),
+      chainB.targetRate()
     );
     _assertInSync(chainA, chainB);
 

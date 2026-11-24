@@ -148,9 +148,10 @@ interface IsGho {
   function targetRate() external view returns (uint16);
 
   /**
-   * @notice Returns the current yield index, representing the accumulated yield.
-   * @dev This index is used to calculate the value of sGHO in terms of GHO. Index scale is in RAY.
-   * @return The current yield index.
+   * @notice Returns the yield index at the last checkpoint.
+   * @dev Excludes yield accrued since the checkpoint; `convertToAssets(RAY)` gives the live index.
+   * Index scale is in RAY.
+   * @return The yield index at the last checkpoint.
    */
   function yieldIndex() external view returns (uint256);
 }

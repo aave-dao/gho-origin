@@ -43,6 +43,7 @@ contract sGhoInstanceStoragePatch is sGho {
       slot1 := sload(add(sGhoStorageLocation, 1))
     }
 
+    // The plain casts extract the fields of the packed previous layout, truncating on purpose
     uint120 yieldIndex_ = uint256(uint176(slot0)).toUint120();
     uint40 lastUpdate_ = uint256(uint64(slot0 >> 176)).toUint40();
     uint16 targetRate_ = uint16(slot0 >> 240);

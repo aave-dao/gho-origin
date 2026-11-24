@@ -97,8 +97,9 @@ The live vault migrates to this layout through `sGhoInstanceStoragePatch`, in on
 1. Grant the executor `YIELD_MANAGER_ROLE` and call the legacy `setTargetRate(currentRate)`. The patch reverts unless the index was checkpointed in the same block.
 2. `upgradeAndCall` to `sGhoInstanceStoragePatch` with `initialize()`. This consumes revision 2.
 3. `upgradeAndCall` to `sGhoInstance` with empty calldata. Its `initialize` is locked because revision 2 is already used.
+4. Revoke `YIELD_MANAGER_ROLE` from the executor.
 
-The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload and granted `YIELD_MANAGER_ROLE` in place of the old one.
+The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload and granted `YIELD_MANAGER_ROLE`. Revoke `YIELD_MANAGER_ROLE` from the old steward in the same payload.
 
 ## Math
 

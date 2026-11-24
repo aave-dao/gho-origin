@@ -50,7 +50,7 @@ The update is applied lazily. Views resolve it once it is due. The next rate upd
 
 Rules for operators:
 
-- Every scheduled update must be mirrored on all chains, including a same-rate one. Each checkpoint restarts the compounding approximation, so a checkpoint on one chain only changes its accrual.
+- Every scheduled update must be mirrored on all chains. Each checkpoint restarts the compounding approximation, so even a same-rate update executed on one chain only changes its accrual. The steward rejects a same-rate update unless it overwrites a pending one.
 - A pending update that is not yet effective is overwritten by the next `setTargetRate`. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain. If it straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`.
 - `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
@@ -58,10 +58,10 @@ Rules for operators:
 
 `syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the checkpoint with values read from an in-sync deployment: `yieldIndex()`, `lastUpdate()` and `targetRate()`. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. Any pending update on the synced chain is discarded and has to be re-scheduled.
 
-- **Cold start**: `initialize` takes the same checkpoint values, target rate included, so a new chain starts in sync from a live deployment's checkpoint and needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not configure the new chain's steward on its own: `setRateConfig` checkpoints that chain only. Its stored config stays `(0, 0, 0)` until the first rate change scheduled on all chains, and on that first change it counts every field as changed, so the caller needs all three manager roles.
+- **Cold start**: `initialize` takes the same checkpoint values, target rate included, so a new chain starts in sync from a live deployment's checkpoint and needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not set a rate through the new chain's steward on its own: it checkpoints that chain only.
 - **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the affected chain from a healthy one.
 
-The steward is not affected by a sync. If it scheduled the discarded update, it still holds that config, and submitting the same config again reverts with `RateUnchanged`. To re-schedule it, submit a different config first and then the intended one, both with the same future `effectiveAt`. The second call overwrites the first pending update, so no checkpoint is created.
+The steward stores no rate, so an update discarded by a sync is re-scheduled through it like any other.
 
 Syncing rewrites the index directly and can decrease the asset value of existing shares, which is why it is restricted to DEFAULT_ADMIN (governance).
 
@@ -98,7 +98,7 @@ The live vault migrates to this layout through `sGhoInstanceStoragePatch`, in on
 2. `upgradeAndCall` to `sGhoInstanceStoragePatch` with `initialize()`. This consumes revision 2.
 3. `upgradeAndCall` to `sGhoInstance` with empty calldata. Its `initialize` is locked because revision 2 is already used.
 
-The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload and granted `YIELD_MANAGER_ROLE` in place of the old one. Configuring it with the current rate config checkpoints mainnet only, so do it while mainnet is the only live chain. Once other chains are live, the config is set by the next rate change scheduled on all chains.
+The deployed `sGhoSteward` calls `setTargetRate(uint16)` and `setSupplyCap(uint160)`, selectors that no longer exist, so a new steward must be deployed in the same payload and granted `YIELD_MANAGER_ROLE` in place of the old one.
 
 ## Math
 

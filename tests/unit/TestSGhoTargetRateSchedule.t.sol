@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import './TestSGhoBase.t.sol';
+import {ERC1967Utils} from 'openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol';
 
 contract TestSGhoTargetRateSchedule is TestSGhoBase {
   using SafeCast for uint256;
@@ -382,7 +383,9 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
   }
 
   function test_revert_cancel_notYieldManager(address caller) external {
-    vm.assume(caller != yManager);
+    // The proxy admin cannot reach the implementation at all; the truncation reads the address
+    address proxyAdmin = address(uint160(uint256(vm.load(address(sgho), ERC1967Utils.ADMIN_SLOT))));
+    vm.assume(caller != yManager && caller != proxyAdmin);
     vm.prank(yManager);
     sgho.setTargetRate(2000, (block.timestamp + 10 days).toUint40());
 

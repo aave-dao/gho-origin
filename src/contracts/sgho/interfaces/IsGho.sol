@@ -22,12 +22,12 @@ interface IsGho {
   error EffectiveTimestampInPast();
 
   /**
-   * @notice Thrown if the yield index is synced with a checkpoint timestamp in the future.
+   * @notice Thrown if the yield index checkpoint is set with a timestamp in the future.
    */
   error SyncTimestampInFuture();
 
   /**
-   * @notice Thrown if the yield index is synced with a value below its RAY genesis value.
+   * @notice Thrown if the yield index checkpoint is set with a value below its RAY genesis value.
    */
   error YieldIndexTooLow();
 
@@ -35,11 +35,6 @@ interface IsGho {
    * @notice Thrown if there is no scheduled rate change to cancel, or it is already effective.
    */
   error NoPendingTargetRate();
-
-  /**
-   * @notice Thrown if a sync would lower the live yield index.
-   */
-  error SyncDecreasesYieldIndex();
 
   /**
    * @dev Emitted when a target rate update is set or scheduled.
@@ -57,7 +52,7 @@ interface IsGho {
   event ExchangeRateUpdated(uint256 timestamp, uint256 currentRate);
 
   /**
-   * @dev Emitted when the yield index checkpoint is overwritten via `syncYieldIndex`.
+   * @dev Emitted when the yield index checkpoint is set at initialization.
    * @param newYieldIndex The new yield index.
    * @param newLastUpdate The new checkpoint timestamp.
    * @param newTargetRate The new target rate.
@@ -127,7 +122,7 @@ interface IsGho {
    * resolve a due update immediately; the next rate update, deposit or withdrawal persists it.
    * @dev A pending update that is not yet effective is overwritten. Across chains, the overwrite
    * must execute either before the pending `effectiveAt` on every chain or after it on every
-   * chain. A straddle desyncs the indexes and needs `syncYieldIndex` to reconcile.
+   * chain. A straddle desyncs the indexes.
    * @dev `effectiveAt == block.timestamp` applies the update now, at the chain-local time. Only
    * suitable for single-chain deployments.
    * @param newRate The new annual rate in basis points, compounded continuously
@@ -143,24 +138,6 @@ interface IsGho {
    * must execute before the pending `effectiveAt` on every chain.
    */
   function cancelPendingTargetRate() external;
-
-  /**
-   * @notice Overwrites the yield index checkpoint and target rate, discarding any scheduled rate change.
-   * @dev This function can only be called by an address with the DEFAULT_ADMIN role.
-   * @dev Brings a deployment in sync with the other chains, after a cold start or a rate update
-   * that missed this chain. Pass `yieldIndex()`, `lastUpdate()` and `targetRate()` read from an
-   * in-sync deployment, then re-schedule any pending update.
-   * @dev Reverts if the live yield index after the sync is below the live index before it, so
-   * the asset value of existing shares never decreases.
-   * @param newYieldIndex The new yield index (RAY scale, at least RAY).
-   * @param newLastUpdate The new checkpoint timestamp (must not be in the future).
-   * @param newTargetRate The new target rate in basis points (e.g., 1000 for 10%).
-   */
-  function syncYieldIndex(
-    uint120 newYieldIndex,
-    uint40 newLastUpdate,
-    uint16 newTargetRate
-  ) external;
 
   /**
    * @notice Sets the supply cap for the vault.

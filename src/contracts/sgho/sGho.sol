@@ -179,19 +179,6 @@ abstract contract sGho is
   }
 
   /// @inheritdoc IsGho
-  function syncYieldIndex(
-    uint120 newYieldIndex,
-    uint40 newLastUpdate,
-    uint16 newTargetRate
-  ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    uint120 yieldIndexBefore = _getCurrentYieldIndex();
-    _syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate);
-    if (_getCurrentYieldIndex() < yieldIndexBefore) {
-      revert SyncDecreasesYieldIndex();
-    }
-  }
-
-  /// @inheritdoc IsGho
   function setSupplyCap(uint256 newSupplyCap) public onlyRole(YIELD_MANAGER_ROLE) {
     _getSGhoStorage().supplyCap = newSupplyCap.toUint40();
     emit SupplyCapUpdated(newSupplyCap);

@@ -30,7 +30,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### How It Works
 
 1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
-2. **Continuous Compounding**: The index grows to `index * e^(targetRate * timeElapsed / year)` from its last checkpoint, using the Aave v3 approximation `1 + x + x^2 / 2 + x^3 / 6`. It is only checkpointed when a rate change takes effect, as of that change's timestamp, or by `syncYieldIndex`, so user actions and their timing never change it. The approximation falls short of `e^x` by about `x^4 / 24`, so the yield is slightly lower the longer a rate stays unchanged. In between, conversions read the live accrued value
+2. **Continuous Compounding**: The index grows to `index * e^(targetRate * timeElapsed / year)` from its last checkpoint, using the Aave v3 approximation `1 + x + x^2 / 2 + x^3 / 6`. It is only checkpointed when a rate change takes effect, as of that change's timestamp, so user actions and their timing never change it. The approximation falls short of `e^x` by about `x^4 / 24`, so the yield is slightly lower the longer a rate stays unchanged. In between, conversions read the live accrued value
 3. **Share Conversion**: Asset/share conversions use the current yield index
 
 ### Key Parameters
@@ -51,26 +51,21 @@ The update is applied lazily. Views resolve it once it is due. The next rate upd
 Rules for operators:
 
 - Every scheduled update must be mirrored on all chains. Each checkpoint restarts the compounding approximation, so even a same-rate update executed on one chain only changes its accrual. The steward rejects a rate that is already in force.
-- A pending update that is not yet effective is overwritten by the next `setTargetRate`, or dropped by `cancelPendingTargetRate` without a checkpoint. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain, and a cancel before it on every chain. If an overwrite straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`. A cancel that runs after it on some chain reverts there.
+- A pending update that is not yet effective is overwritten by the next `setTargetRate`, or dropped by `cancelPendingTargetRate` without a checkpoint. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain, and a cancel before it on every chain. If an overwrite straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync. Reconciling them takes a pause and an upgrade. A cancel that runs after it on some chain reverts there.
 - `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
-### Cold Start & Reconciliation
+### Cold Start
 
-`syncYieldIndex(newYieldIndex, newLastUpdate, newTargetRate)` (DEFAULT_ADMIN only) overwrites the checkpoint with values read from an in-sync deployment: `yieldIndex()`, `lastUpdate()` and `targetRate()`. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on. Any pending update on the synced chain is discarded and has to be re-scheduled.
+`initialize` takes the checkpoint values `yieldIndex()`, `lastUpdate()` and `targetRate()` read from a live deployment. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on, and the new chain needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not set a rate through the new chain's steward on its own: it checkpoints that chain only. A pending update on the source chain is not carried over and has to be scheduled on the new chain too.
 
-- **Cold start**: `initialize` takes the same checkpoint values, target rate included, so a new chain starts in sync from a live deployment's checkpoint and needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not set a rate through the new chain's steward on its own: it checkpoints that chain only.
-- **Reconciliation**: if a rate update missed one chain, or an overwrite straddled a pending `effectiveAt`, sync the chain that is behind from the one that is ahead. A sync cannot lower a chain's index, so if the affected chain got ahead, the other chains are synced up to it.
-
-The steward stores no rate, so an update discarded by a sync is re-scheduled through it like any other.
-
-Syncing rewrites the index directly, which is why it is restricted to DEFAULT_ADMIN (governance). It reverts if the live index after the sync would be below the live index before it, so the asset value of existing shares never decreases. To reconcile two diverged chains, sync the one that is behind from the one that is ahead.
+There is no function to overwrite the checkpoint after initialization. If chains desync, the fix is to pause and upgrade the affected deployments.
 
 ## Role Management
 
 - `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
 - `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate (immediately or scheduled), cancel a scheduled update, and update the supply cap.
-- `DEFAULT_ADMIN_ROLE` : Besides managing roles, this role has permissions to overwrite the yield index checkpoint via `syncYieldIndex`.
+- `DEFAULT_ADMIN_ROLE` : This role manages all other roles.
 
 ## Security Considerations
 

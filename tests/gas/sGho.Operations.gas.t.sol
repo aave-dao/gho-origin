@@ -85,9 +85,4 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
     sgho.cancelPendingTargetRate();
     vm.snapshotGasLastCall('sGho.Operations', 'cancelPendingTargetRate');
   }
-
-  function test_gas_syncYieldIndex() external {
-    sgho.syncYieldIndex((2 * RAY).toUint120(), (block.timestamp - 1 days).toUint40(), 2000);
-    vm.snapshotGasLastCall('sGho.Operations', 'syncYieldIndex');
-  }
 }

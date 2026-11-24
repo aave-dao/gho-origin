@@ -424,45 +424,6 @@ contract sGhoStewardTest is TestSGhoBase {
     );
   }
 
-  /// @dev A sync discards a steward-scheduled update; the steward stores no rate, so the same
-  /// update is re-scheduled directly.
-  function test_syncDiscardsPending_rescheduleThroughSteward() public {
-    vm.warp(block.timestamp + 180 days);
-    (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
-
-    uint256 checkpointIndex = sgho.yieldIndex();
-    uint256 checkpointTime = sgho.lastUpdate();
-    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
-    vm.startPrank(riskCouncil);
-    steward.setTargetRate(1500, effectiveAt);
-    l2Steward.setTargetRate(1500, effectiveAt);
-    vm.stopPrank();
-
-    // Reconciliation on the L2 before effectiveAt discards its pending update
-    vm.warp(block.timestamp + 1 days);
-    l2.syncYieldIndex(
-      sgho.yieldIndex().toUint120(),
-      sgho.lastUpdate().toUint40(),
-      sgho.targetRate()
-    );
-    (uint16 pendingRate, ) = l2.pendingTargetRate();
-    assertEq(pendingRate, 0, 'Sync must discard the pending update');
-
-    vm.prank(riskCouncil);
-    l2Steward.setTargetRate(1500, effectiveAt);
-    (pendingRate, ) = l2.pendingTargetRate();
-    assertEq(pendingRate, 1500, 'Update not re-scheduled');
-
-    vm.warp(effectiveAt + 365 days);
-    uint256 expectedIndex = _emulateYieldIndex(
-      _emulateYieldIndex(checkpointIndex, 1000, effectiveAt - checkpointTime),
-      1500,
-      365 days
-    );
-    assertEq(sgho.convertToAssets(RAY), expectedIndex, 'Source index off spec');
-    assertEq(l2.convertToAssets(RAY), expectedIndex, 'L2 index off spec');
-  }
-
   /// @dev Two chains receive the same steward calls at skewed times, each strictly before the
   /// effective timestamp and after the previous one, including cancels. Both chains accept or
   /// both reject every call, and their indexes match each other and the schedule.

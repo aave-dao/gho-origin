@@ -32,6 +32,11 @@ interface IsGho {
   error YieldIndexTooLow();
 
   /**
+   * @notice Thrown if there is no scheduled rate change to cancel, or it is already effective.
+   */
+  error NoPendingTargetRate();
+
+  /**
    * @dev Emitted when a target rate update is set or scheduled.
    * @param newRate The new target rate.
    * @param effectiveAt The timestamp at which the new rate takes effect.
@@ -53,6 +58,13 @@ interface IsGho {
    * @param newTargetRate The new target rate.
    */
   event YieldIndexSynced(uint256 newYieldIndex, uint256 newLastUpdate, uint256 newTargetRate);
+
+  /**
+   * @dev Emitted when a scheduled rate change is cancelled.
+   * @param rate The cancelled target rate.
+   * @param effectiveAt The timestamp at which the cancelled rate would have taken effect.
+   */
+  event PendingTargetRateCancelled(uint256 rate, uint256 effectiveAt);
 
   /**
    * @dev Emitted when the supply cap is updated.
@@ -118,6 +130,14 @@ interface IsGho {
    * @param effectiveAt The timestamp at which the new rate takes effect (must not be in the past).
    */
   function setTargetRate(uint16 newRate, uint40 effectiveAt) external;
+
+  /**
+   * @notice Cancels the scheduled rate change, without checkpointing the yield index.
+   * @dev This function can only be called by an address with the YIELD_MANAGER role.
+   * @dev Reverts if no change is scheduled or it is already effective. Across chains, the cancel
+   * must execute before the pending `effectiveAt` on every chain.
+   */
+  function cancelPendingTargetRate() external;
 
   /**
    * @notice Overwrites the yield index checkpoint and target rate, discarding any scheduled rate change.

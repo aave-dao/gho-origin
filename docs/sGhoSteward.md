@@ -31,7 +31,8 @@ The `setTargetRate(targetRate, effectiveAt)` function sets the `sGHO` target rat
 
 - Access is restricted to addresses with the `RATE_MANAGER_ROLE`.
 - `sGHO` reverts if the rate exceeds `MAX_SAFE_RATE` or if `effectiveAt` is in the past.
-- The function reverts with `RateUnchanged` if `targetRate` is already in force and no update is scheduled on `sGHO`. With an update scheduled, the call overwrites it, so passing the current rate cancels it.
+- The function reverts with `RateUnchanged` if `targetRate` is already in force. A scheduled update on `sGHO` is overwritten by the next call.
+- `cancelTargetRate()` drops the scheduled update without a checkpoint. It reverts if nothing is scheduled or the update is already effective, and across chains it must execute before the pending `effectiveAt` on every chain.
 - Submitting the same `targetRate` and `effectiveAt` on the stewards of every chain keeps the yield indexes in sync. Passing the current timestamp applies immediately (single-chain deployments only).
 
 ## Supply Cap Management
@@ -47,5 +48,6 @@ The `setSupplyCap()` function allows authorized users to update the `sGHO` `supp
 | Function                                               | Description                                         | Required Role             |
 | :----------------------------------------------------- | :-------------------------------------------------- | :------------------------ |
 | `setTargetRate(uint16 targetRate, uint40 effectiveAt)` | Updates the target rate, effective at `effectiveAt` | `RATE_MANAGER_ROLE`       |
+| `cancelTargetRate()`                                   | Cancels the scheduled target rate update            | `RATE_MANAGER_ROLE`       |
 | `setSupplyCap(uint256 newSupplyCap)`                   | Updates the maximum allowed sGHO supply             | `SUPPLY_CAP_MANAGER_ROLE` |
 | `sGHO()`                                               | Returns current `sGHO` address                      | Public                    |

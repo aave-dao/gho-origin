@@ -346,6 +346,102 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     );
   }
 
+  function test_cancel_clearsPendingWithoutCheckpoint() external {
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, effectiveAt);
+    (uint120 rawIndex, uint40 rawLastUpdate, uint16 rawRate, , ) = _rawStorage(sgho);
+
+    vm.warp(block.timestamp + 1 days);
+    vm.expectEmit(true, true, true, true, address(sgho));
+    emit IsGho.PendingTargetRateCancelled(2000, effectiveAt);
+    vm.prank(yManager);
+    sgho.cancelPendingTargetRate();
+
+    (
+      uint120 indexAfter,
+      uint40 lastUpdateAfter,
+      uint16 rateAfter,
+      uint40 rawEffectiveAt,
+      uint16 rawPendingRate
+    ) = _rawStorage(sgho);
+    assertEq(indexAfter, rawIndex, 'Cancel checkpointed the index');
+    assertEq(lastUpdateAfter, rawLastUpdate, 'Cancel moved the checkpoint');
+    assertEq(rateAfter, rawRate, 'Cancel changed the rate');
+    assertEq(rawEffectiveAt, 0, 'Pending timestamp not cleared');
+    assertEq(rawPendingRate, 0, 'Pending rate not cleared');
+
+    // Accrual is exactly as if nothing had been scheduled
+    vm.warp(effectiveAt + 365 days);
+    assertEq(sgho.targetRate(), 1000, 'Cancelled rate applied');
+    assertEq(
+      sgho.convertToAssets(RAY),
+      _emulateYieldIndex(rawIndex, 1000, block.timestamp - rawLastUpdate),
+      'Accrual differs from never scheduling'
+    );
+  }
+
+  function test_revert_cancel_notYieldManager(address caller) external {
+    vm.assume(caller != yManager);
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, (block.timestamp + 10 days).toUint40());
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        caller,
+        sgho.YIELD_MANAGER_ROLE()
+      )
+    );
+    vm.prank(caller);
+    sgho.cancelPendingTargetRate();
+  }
+
+  function test_revert_cancel_nothingPending() external {
+    vm.expectRevert(IsGho.NoPendingTargetRate.selector);
+    vm.prank(yManager);
+    sgho.cancelPendingTargetRate();
+  }
+
+  /// @dev A due update is effective even before it is persisted, so it cannot be cancelled
+  function test_revert_cancel_dueOrPersisted() external {
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, effectiveAt);
+
+    vm.warp(effectiveAt);
+    vm.expectRevert(IsGho.NoPendingTargetRate.selector);
+    vm.prank(yManager);
+    sgho.cancelPendingTargetRate();
+
+    vm.warp(effectiveAt + 1 days);
+    vm.prank(user1);
+    sgho.deposit(1 ether, user1);
+    vm.expectRevert(IsGho.NoPendingTargetRate.selector);
+    vm.prank(yManager);
+    sgho.cancelPendingTargetRate();
+    assertEq(sgho.targetRate(), 2000, 'Effective rate lost');
+  }
+
+  /// @dev A due previous update is persisted by the next schedule, so cancelling the new one
+  /// keeps the previous rate in force
+  function test_cancel_afterPreviousUpdateApplied() external {
+    uint40 effectiveAt1 = (block.timestamp + 10 days).toUint40();
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, effectiveAt1);
+
+    vm.warp(effectiveAt1 + 1 days);
+    uint40 effectiveAt2 = (block.timestamp + 10 days).toUint40();
+    vm.prank(yManager);
+    sgho.setTargetRate(3000, effectiveAt2);
+    vm.prank(yManager);
+    sgho.cancelPendingTargetRate();
+
+    vm.warp(effectiveAt2 + 1 days);
+    assertEq(sgho.targetRate(), 2000, 'Previous rate not kept');
+    assertEq(sgho.lastUpdate(), effectiveAt1, 'Checkpoint not at the previous update');
+  }
+
   function test_schedule_immediateSetDiscardsPending() external {
     uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
     vm.startPrank(yManager);

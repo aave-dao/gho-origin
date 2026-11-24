@@ -17,6 +17,12 @@ interface IsGhoSteward {
   event TargetRateUpdated(address indexed caller, uint16 targetRate, uint40 effectiveAt);
 
   /**
+   * @dev Event is emitted whenever a scheduled `targetRate` update is cancelled.
+   * @param caller Message sender, who initiated the cancellation
+   */
+  event TargetRateCancelled(address indexed caller);
+
+  /**
    * @dev Event is emitted whenever the `supplyCap` is updated.
    * @param caller Message sender, who initiated the update
    * @param supplyCap Supply Cap set in `sGHO` after update
@@ -29,7 +35,7 @@ interface IsGhoSteward {
   error ZeroAddress();
 
   /**
-   * @dev Attempted to set the rate already in force, with no scheduled update to overwrite.
+   * @dev Attempted to set the rate already in force.
    */
   error RateUnchanged();
 
@@ -41,9 +47,8 @@ interface IsGhoSteward {
   /**
    * @notice Updates `targetRate` on `sGHO`, effective at `effectiveAt`.
    * @dev Only callable by `RATE_MANAGER_ROLE`.
-   * @dev Reverts with `RateUnchanged` if `targetRate` is already in force and no update is
-   * scheduled. With an update scheduled, the call overwrites it, so the current rate can be
-   * passed to cancel it.
+   * @dev Reverts with `RateUnchanged` if `targetRate` is already in force. A scheduled update is
+   * overwritten; use `cancelTargetRate` to drop it instead.
    * @dev Submitting the same `targetRate` and `effectiveAt` on the stewards of every chain keeps
    * the yield indexes in sync. Passing the current timestamp applies immediately and is only
    * suitable for single-chain deployments.
@@ -51,6 +56,14 @@ interface IsGhoSteward {
    * @param effectiveAt Timestamp at which the rate takes effect (must not be in the past)
    */
   function setTargetRate(uint16 targetRate, uint40 effectiveAt) external;
+
+  /**
+   * @notice Cancels the scheduled `targetRate` update on `sGHO`, without a checkpoint.
+   * @dev Only callable by `RATE_MANAGER_ROLE`. Reverts if no update is scheduled or it is already
+   * effective. Across chains, the cancel must execute before the pending `effectiveAt` on every
+   * chain.
+   */
+  function cancelTargetRate() external;
 
   /**
    * @notice Updates `supplyCap` on `sGHO`.

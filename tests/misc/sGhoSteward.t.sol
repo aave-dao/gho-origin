@@ -179,16 +179,16 @@ contract sGhoStewardTest is TestSGhoBase {
     steward.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
   }
 
-  /// @dev Passing the current rate overwrites a pending update, which cancels it
-  function test_setTargetRate_currentRateCancelsPending() public {
+  /// @dev The rate in force is rejected even with an update pending; cancelling goes through
+  /// `cancelTargetRate`
+  function test_revert_setTargetRate_currentRateWithPending() public {
     uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
-    vm.startPrank(riskCouncil);
+    vm.prank(riskCouncil);
     steward.setTargetRate(2000, effectiveAt);
-    steward.setTargetRate(1000, effectiveAt);
-    vm.stopPrank();
 
-    vm.warp(effectiveAt + 365 days);
-    assertEq(sgho.targetRate(), 1000, 'Cancelled rate applied');
+    vm.expectRevert(IsGhoSteward.RateUnchanged.selector);
+    vm.prank(riskCouncil);
+    steward.setTargetRate(1000, effectiveAt);
   }
 
   /// @dev Passing the pending rate again with another timestamp moves it
@@ -210,8 +210,8 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(sgho.targetRate(), 2000, 'Moved update not applied');
   }
 
-  /// @dev The steward reverts on a same-rate update exactly when nothing is pending and the rate
-  /// is in force, whatever the history
+  /// @dev The steward reverts on a same-rate update exactly when the rate is in force, whatever
+  /// is scheduled
   function test_setTargetRate_unchangedRule_fuzz(
     uint16 scheduledRate,
     uint16 newRate,
@@ -233,14 +233,99 @@ contract sGhoStewardTest is TestSGhoBase {
     steward.setTargetRate(scheduledRate, effectiveAt);
     vm.warp(block.timestamp + elapsed);
 
-    bool pending = block.timestamp < effectiveAt;
-    uint16 rateInForce = pending ? 1000 : scheduledRate;
-    uint40 nextEffectiveAt = (block.timestamp + 1 days).toUint40();
-    if (!pending && newRate == rateInForce) {
+    uint16 rateInForce = block.timestamp < effectiveAt ? 1000 : scheduledRate;
+    if (newRate == rateInForce) {
       vm.expectRevert(IsGhoSteward.RateUnchanged.selector);
     }
     vm.prank(riskCouncil);
-    steward.setTargetRate(newRate, nextEffectiveAt);
+    steward.setTargetRate(newRate, (block.timestamp + 1 days).toUint40());
+  }
+
+  // ========================================
+  // CANCEL
+  // ========================================
+
+  function test_cancelTargetRate() public {
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.prank(riskCouncil);
+    steward.setTargetRate(2000, effectiveAt);
+    (uint120 rawIndex, uint40 rawLastUpdate, uint16 rawRate, , ) = _rawStorage(sgho);
+
+    vm.warp(block.timestamp + 1 days);
+    vm.expectEmit(true, true, true, true, address(sgho));
+    emit IsGho.PendingTargetRateCancelled(2000, effectiveAt);
+    vm.expectEmit(true, true, true, true, address(steward));
+    emit IsGhoSteward.TargetRateCancelled(riskCouncil);
+    vm.prank(riskCouncil);
+    steward.cancelTargetRate();
+
+    // The pending update is gone and the checkpoint is untouched
+    (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
+    assertEq(pendingRate, 0, 'Pending rate not cleared');
+    assertEq(pendingEffectiveAt, 0, 'Pending timestamp not cleared');
+    assertEq(
+      _encodeRawStorage(sgho),
+      abi.encode(rawIndex, rawLastUpdate, rawRate, uint40(0), uint16(0)),
+      'Cancel must only clear the pending update'
+    );
+
+    // Accrual is exactly as if nothing had been scheduled
+    vm.warp(effectiveAt + 365 days);
+    assertEq(sgho.targetRate(), 1000, 'Cancelled rate applied');
+    assertEq(
+      sgho.convertToAssets(RAY),
+      _emulateYieldIndex(rawIndex, 1000, block.timestamp - rawLastUpdate),
+      'Accrual differs from never scheduling'
+    );
+  }
+
+  function test_revert_cancelTargetRate_notRateManager(address caller) public {
+    vm.assume(caller != riskCouncil);
+    vm.prank(riskCouncil);
+    steward.setTargetRate(2000, (block.timestamp + 10 days).toUint40());
+
+    vm.expectRevert(_craftError(caller, RATE_MANAGER_ROLE));
+    vm.prank(caller);
+    steward.cancelTargetRate();
+  }
+
+  function test_revert_cancelTargetRate_nothingPending() public {
+    vm.expectRevert(IsGho.NoPendingTargetRate.selector);
+    vm.prank(riskCouncil);
+    steward.cancelTargetRate();
+  }
+
+  /// @dev A due update is effective even before sGho persists it, so it cannot be cancelled
+  function test_revert_cancelTargetRate_alreadyEffective() public {
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.prank(riskCouncil);
+    steward.setTargetRate(2000, effectiveAt);
+
+    vm.warp(effectiveAt);
+    vm.expectRevert(IsGho.NoPendingTargetRate.selector);
+    vm.prank(riskCouncil);
+    steward.cancelTargetRate();
+
+    // Persisted by a deposit, still not cancellable
+    vm.warp(effectiveAt + 1 days);
+    vm.prank(user1);
+    sgho.deposit(1 ether, user1);
+    vm.expectRevert(IsGho.NoPendingTargetRate.selector);
+    vm.prank(riskCouncil);
+    steward.cancelTargetRate();
+    assertEq(sgho.targetRate(), 2000, 'Effective rate lost');
+  }
+
+  function test_cancelTargetRate_thenReschedule() public {
+    uint40 effectiveAt = (block.timestamp + 10 days).toUint40();
+    vm.startPrank(riskCouncil);
+    steward.setTargetRate(2000, effectiveAt);
+    steward.cancelTargetRate();
+    steward.setTargetRate(3000, effectiveAt);
+    vm.stopPrank();
+
+    vm.warp(effectiveAt);
+    assertEq(sgho.targetRate(), 3000, 'Rescheduled rate not applied');
   }
 
   // ========================================
@@ -379,8 +464,8 @@ contract sGhoStewardTest is TestSGhoBase {
   }
 
   /// @dev Two chains receive the same steward calls at skewed times, each strictly before the
-  /// effective timestamp and after the previous one. Both chains accept or both reject every
-  /// call, and their indexes match each other and the schedule.
+  /// effective timestamp and after the previous one, including cancels. Both chains accept or
+  /// both reject every call, and their indexes match each other and the schedule.
   function test_stewards_crossChain_fuzz(uint256 seed) public {
     (sGho l2, sGhoSteward l2Steward) = _coldStartFrom(sgho);
     uint256 expectedIndex = sgho.yieldIndex();
@@ -394,23 +479,17 @@ contract sGhoStewardTest is TestSGhoBase {
       uint16 newRate = (roundSeed >> 64) % 3 == 0
         ? rate
         : (bound(roundSeed >> 128, 0, MAX_SAFE_RATE)).toUint16();
-      uint256 execA = block.timestamp + ((roundSeed >> 32) % (effectiveAt - block.timestamp));
-      uint256 execB = block.timestamp + ((roundSeed >> 96) % (effectiveAt - block.timestamp));
 
-      bool acceptedA;
-      bool acceptedB;
-      if (execA <= execB) {
-        acceptedA = _stewardCallAt(steward, newRate, effectiveAt, execA);
-        acceptedB = _stewardCallAt(l2Steward, newRate, effectiveAt, execB);
-      } else {
-        acceptedB = _stewardCallAt(l2Steward, newRate, effectiveAt, execB);
-        acceptedA = _stewardCallAt(steward, newRate, effectiveAt, execA);
-      }
-      assertEq(acceptedA, acceptedB, 'Chains disagreed on the same call');
-      assertEq(acceptedA, newRate != rate, 'Same-rate rule not applied');
+      bool applied = _crossChainRound({
+        l2Steward: l2Steward,
+        roundSeed: roundSeed,
+        newRate: newRate,
+        effectiveAt: effectiveAt,
+        rateInForce: rate
+      });
 
       vm.warp(effectiveAt);
-      if (acceptedA) {
+      if (applied) {
         expectedIndex = _emulateYieldIndex(expectedIndex, rate, effectiveAt - from);
         from = effectiveAt;
         rate = newRate;
@@ -420,6 +499,45 @@ contract sGhoStewardTest is TestSGhoBase {
       assertEq(sgho.convertToAssets(RAY), live, 'Source index off spec');
       assertEq(l2.convertToAssets(RAY), live, 'L2 index off spec');
     }
+  }
+
+  /// @dev Runs one round of mirrored steward calls and returns whether the update stays scheduled.
+  /// One in three accepted updates is then cancelled on both chains, at skewed times after both
+  /// executions and before it is effective.
+  function _crossChainRound(
+    sGhoSteward l2Steward,
+    uint256 roundSeed,
+    uint16 newRate,
+    uint256 effectiveAt,
+    uint16 rateInForce
+  ) internal returns (bool) {
+    uint256 execA = block.timestamp + ((roundSeed >> 32) % (effectiveAt - block.timestamp));
+    uint256 execB = block.timestamp + ((roundSeed >> 96) % (effectiveAt - block.timestamp));
+
+    bool acceptedA;
+    bool acceptedB;
+    if (execA <= execB) {
+      acceptedA = _stewardCallAt(steward, newRate, effectiveAt, execA);
+      acceptedB = _stewardCallAt(l2Steward, newRate, effectiveAt, execB);
+    } else {
+      acceptedB = _stewardCallAt(l2Steward, newRate, effectiveAt, execB);
+      acceptedA = _stewardCallAt(steward, newRate, effectiveAt, execA);
+    }
+    assertEq(acceptedA, acceptedB, 'Chains disagreed on the same call');
+    assertEq(acceptedA, newRate != rateInForce, 'Same-rate rule not applied');
+    if (!acceptedA || (roundSeed >> 200) % 3 != 0) return acceptedA;
+
+    uint256 lastExec = execA > execB ? execA : execB;
+    uint256 cancelA = lastExec + ((roundSeed >> 208) % (effectiveAt - lastExec));
+    uint256 cancelB = lastExec + ((roundSeed >> 216) % (effectiveAt - lastExec));
+    if (cancelA <= cancelB) {
+      _stewardCancelAt(steward, cancelA);
+      _stewardCancelAt(l2Steward, cancelB);
+    } else {
+      _stewardCancelAt(l2Steward, cancelB);
+      _stewardCancelAt(steward, cancelA);
+    }
+    return false;
   }
 
   // ========================================
@@ -440,6 +558,23 @@ contract sGhoStewardTest is TestSGhoBase {
     } catch (bytes memory reason) {
       assertEq(bytes4(reason), IsGhoSteward.RateUnchanged.selector, 'Unexpected revert');
     }
+  }
+
+  function _encodeRawStorage(sGho target) internal view returns (bytes memory) {
+    (
+      uint120 index,
+      uint40 lastUpdate_,
+      uint16 rate,
+      uint40 pendingEffectiveAt,
+      uint16 pendingRate
+    ) = _rawStorage(target);
+    return abi.encode(index, lastUpdate_, rate, pendingEffectiveAt, pendingRate);
+  }
+
+  function _stewardCancelAt(sGhoSteward target, uint256 timestamp) internal {
+    vm.warp(timestamp);
+    vm.prank(riskCouncil);
+    target.cancelTargetRate();
   }
 
   function _craftError(address account, bytes32 role) internal pure returns (bytes memory) {

@@ -181,6 +181,30 @@ contract TestSGhoCrossChainSync is TestSGhoBase {
   // OPERATIONAL RULES
   // ========================================
 
+  /// @dev A scheduled update cancelled on every chain before it is effective, at skewed times,
+  /// leaves the chains in sync and accruing as if it had never been scheduled.
+  function test_crossChain_mirroredCancelStaysInSync() external {
+    _deployChains(1000);
+    uint40 effectiveAt = (block.timestamp + 30 days).toUint40();
+    for (uint256 c = 0; c < CHAINS; c++) {
+      vm.warp(genesis + c * 1 days);
+      vm.prank(yManager);
+      chains[c].setTargetRate(2000, effectiveAt);
+      _act(chains[c], c);
+    }
+    for (uint256 c = 0; c < CHAINS; c++) {
+      vm.warp(effectiveAt - 10 days + c * 4 days);
+      vm.prank(yManager);
+      chains[c].cancelPendingTargetRate();
+      _act(chains[c], c + 10);
+    }
+
+    // Nothing is pushed to the schedule: the reference model accrues at the genesis rate
+    vm.warp(effectiveAt + 365 days);
+    _assertAllInSync();
+    assertEq(chains[0].lastUpdate(), genesis, 'Cancel created a checkpoint');
+  }
+
   /// @dev A same-rate update checkpoints the index, which restarts the approximation of `e^x`, so
   /// it changes accrual and must be mirrored on every chain like any other update.
   function test_crossChain_unmirroredSameRateUpdateDesyncs() external {

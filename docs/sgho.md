@@ -50,8 +50,8 @@ The update is applied lazily. Views resolve it once it is due. The next rate upd
 
 Rules for operators:
 
-- Every scheduled update must be mirrored on all chains. Each checkpoint restarts the compounding approximation, so even a same-rate update executed on one chain only changes its accrual. The steward rejects a same-rate update unless it overwrites a pending one.
-- A pending update that is not yet effective is overwritten by the next `setTargetRate`. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain. If it straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`.
+- Every scheduled update must be mirrored on all chains. Each checkpoint restarts the compounding approximation, so even a same-rate update executed on one chain only changes its accrual. The steward rejects a rate that is already in force.
+- A pending update that is not yet effective is overwritten by the next `setTargetRate`, or dropped by `cancelPendingTargetRate` without a checkpoint. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain, and a cancel before it on every chain. If an overwrite straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync until reconciled with `syncYieldIndex`. A cancel that runs after it on some chain reverts there.
 - `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
 ### Cold Start & Reconciliation
@@ -69,7 +69,7 @@ Syncing rewrites the index directly and can decrease the asset value of existing
 
 - `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
-- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate (immediately or scheduled) and the supply cap.
+- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate (immediately or scheduled), cancel a scheduled update, and update the supply cap.
 - `DEFAULT_ADMIN_ROLE` : Besides managing roles, this role has permissions to overwrite the yield index checkpoint via `syncYieldIndex`.
 
 ## Security Considerations

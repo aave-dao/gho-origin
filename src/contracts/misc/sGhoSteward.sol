@@ -39,13 +39,18 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     uint16 targetRate,
     uint40 effectiveAt
   ) external onlyRole(RATE_MANAGER_ROLE) {
-    (, uint40 pendingEffectiveAt) = _sGho.pendingTargetRate();
-    if (pendingEffectiveAt == 0 && targetRate == _sGho.targetRate()) {
+    if (targetRate == _sGho.targetRate()) {
       revert RateUnchanged();
     }
 
     _sGho.setTargetRate(targetRate, effectiveAt);
     emit TargetRateUpdated(msg.sender, targetRate, effectiveAt);
+  }
+
+  /// @inheritdoc IsGhoSteward
+  function cancelTargetRate() external onlyRole(RATE_MANAGER_ROLE) {
+    _sGho.cancelPendingTargetRate();
+    emit TargetRateCancelled(msg.sender);
   }
 
   /// @inheritdoc IsGhoSteward

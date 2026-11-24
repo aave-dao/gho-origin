@@ -165,6 +165,20 @@ abstract contract sGho is
   }
 
   /// @inheritdoc IsGho
+  function cancelPendingTargetRate() external onlyRole(YIELD_MANAGER_ROLE) {
+    sGhoStorage storage $ = _getSGhoStorage();
+    uint40 effectiveAt = $.pendingRateEffectiveAt;
+    if (effectiveAt == 0 || block.timestamp >= effectiveAt) {
+      revert NoPendingTargetRate();
+    }
+
+    uint16 rate = $.pendingTargetRate;
+    $.pendingRateEffectiveAt = 0;
+    $.pendingTargetRate = 0;
+    emit PendingTargetRateCancelled(rate, effectiveAt);
+  }
+
+  /// @inheritdoc IsGho
   function syncYieldIndex(
     uint120 newYieldIndex,
     uint40 newLastUpdate,

@@ -330,6 +330,36 @@ contract TestSGhoYield is TestSGhoBase {
     sgho.setTargetRate(0);
   }
 
+  /// @dev The cap allows `21 / rate` years of accrual. At its last second the growth matches the
+  /// checked model, one second later it reverts.
+  function test_yield_accrualCapEdge() external {
+    _assertCapEdge({rate: 1, expectedMaxElapsed: 210_000 * 365 days});
+    _assertCapEdge({rate: 10_00, expectedMaxElapsed: 210 * 365 days});
+    _assertCapEdge({rate: MAX_SAFE_RATE, expectedMaxElapsed: 42 * 365 days});
+  }
+
+  function _assertCapEdge(uint16 rate, uint256 expectedMaxElapsed) internal {
+    uint256 start = block.timestamp;
+    vm.prank(yManager);
+    sgho.setTargetRate(rate);
+    uint256 startIndex = sgho.yieldIndex();
+    uint256 maxElapsed = _maxElapsed(rate);
+    assertEq(maxElapsed, expectedMaxElapsed, 'max elapsed');
+
+    vm.warp(start + maxElapsed);
+    assertEq(
+      sgho.convertToAssets(RAY),
+      _emulateYieldIndex(startIndex, rate, maxElapsed),
+      'growth at the cap'
+    );
+
+    vm.warp(start + maxElapsed + 1);
+    vm.expectRevert(IsGho.YieldIndexOverflow.selector);
+    sgho.convertToAssets(RAY);
+
+    vm.warp(start);
+  }
+
   function test_revert_yield_indexAboveUint120WithinCap() external {
     // Start above RAY, so accruing up to the cap overflows `uint120`
     vm.warp(block.timestamp + 365 days);

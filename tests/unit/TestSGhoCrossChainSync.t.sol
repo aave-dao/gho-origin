@@ -205,8 +205,8 @@ contract TestSGhoCrossChainSync is TestSGhoBase {
     assertEq(chains[0].lastUpdate(), genesis, 'Cancel created a checkpoint');
   }
 
-  /// @dev A same-rate update checkpoints the index, which restarts the approximation of `e^x`, so
-  /// it changes accrual and must be mirrored on every chain like any other update.
+  /// @dev A same-rate update on one chain only checkpoints, and so rounds, its index there. The
+  /// indexes then differ by rounding, so every update must be mirrored.
   function test_crossChain_unmirroredSameRateUpdateDesyncs() external {
     _deployChains(1000);
     uint40 effectiveAt = (block.timestamp + 180 days).toUint40();
@@ -215,11 +215,11 @@ contract TestSGhoCrossChainSync is TestSGhoBase {
     chains[0].setTargetRate(1000, effectiveAt);
 
     vm.warp(effectiveAt + 365 days);
-    assertGt(
-      chains[0].convertToAssets(RAY),
-      chains[1].convertToAssets(RAY),
-      'A checkpoint on one chain only must add yield there'
-    );
+    uint256 indexA = chains[0].convertToAssets(RAY);
+    uint256 indexB = chains[1].convertToAssets(RAY);
+    assertTrue(indexA != indexB, 'A checkpoint on one chain only must desync');
+    // Only rounding, at most about one ray unit per second elapsed
+    assertApproxEqAbs(indexA, indexB, 2 * (180 days + 365 days), 'Desync beyond rounding');
   }
 
   /// @dev An update applied immediately (`effectiveAt == block.timestamp`) is checkpointed at the

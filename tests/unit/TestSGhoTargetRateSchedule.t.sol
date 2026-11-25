@@ -529,8 +529,8 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
     vm.warp(effectiveAt2);
     _assertInSync(chainA, chainB);
 
-    // Third AIP: a same-rate re-schedule also checkpoints (restarting the approximation), so it
-    // must be mirrored on every chain like any other update
+    // Third AIP: a same-rate re-schedule also checkpoints, which rounds the index, so it must be
+    // mirrored on every chain like any other update
     uint40 effectiveAt3 = (block.timestamp + 30 days).toUint40();
     vm.prank(yManager);
     chainA.setTargetRate(3000, effectiveAt3);
@@ -650,6 +650,51 @@ contract TestSGhoTargetRateSchedule is TestSGhoBase {
 
     // Chain B ran at the higher pending rate
     assertGt(chainB.convertToAssets(RAY), chainA.convertToAssets(RAY), 'Chain B must be ahead');
+  }
+
+  // ========================================
+  // ACCRUAL CAP
+  // ========================================
+
+  function test_revert_schedule_dueUpdateAfterSegmentAboveCap() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
+    vm.prank(user1);
+    sgho.deposit(1 ether, user1);
+
+    // 43 years at 50% before the scheduled rate takes over: past the 42-year cap
+    uint40 effectiveAt = (block.timestamp + 43 * 365 days).toUint40();
+    vm.prank(yManager);
+    sgho.setTargetRate(100, effectiveAt);
+
+    vm.warp(effectiveAt + 1 days);
+    vm.expectRevert(IsGho.YieldIndexOverflow.selector);
+    sgho.convertToAssets(RAY);
+    vm.expectRevert(IsGho.YieldIndexOverflow.selector);
+    sgho.yieldIndex();
+    vm.expectRevert(IsGho.YieldIndexOverflow.selector);
+    vm.prank(user1);
+    sgho.redeem(1, user1, user1);
+  }
+
+  /// @dev The cap applies to each segment between checkpoints, not to the time since the stored one
+  function test_schedule_capAppliesPerSegment() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
+    uint256 startIndex = sgho.yieldIndex();
+
+    // 30 years at 50%, then 30,000 years at 0.01%, with no checkpoint persisted
+    uint40 effectiveAt = (block.timestamp + 30 * 365 days).toUint40();
+    vm.prank(yManager);
+    sgho.setTargetRate(1, effectiveAt);
+    vm.warp(effectiveAt + 30_000 * 365 days);
+
+    uint256 expected = _emulateYieldIndex(
+      _emulateYieldIndex(startIndex, MAX_SAFE_RATE, 30 * 365 days),
+      1,
+      30_000 * 365 days
+    );
+    assertEq(sgho.convertToAssets(RAY), expected, 'index across both segments');
   }
 
   function _deployTwoChainsAt(uint16 rate) internal returns (sGho chainA, sGho chainB) {

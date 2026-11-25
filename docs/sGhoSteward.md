@@ -27,7 +27,7 @@ Over time, **Aave DAO** may choose to delegate or reassign these roles to other 
 
 ## Target Rate Management
 
-The `setTargetRate(targetRate, effectiveAt)` function sets the `sGHO` target rate, an annual rate in basis points compounded continuously, effective at `effectiveAt`.
+The `setTargetRate(targetRate, effectiveAt)` function sets the `sGHO` target rate, an annual rate in basis points compounded every second, effective at `effectiveAt`.
 
 - Access is restricted to addresses with the `RATE_MANAGER_ROLE`.
 - `sGHO` reverts if the rate exceeds `MAX_SAFE_RATE` or if `effectiveAt` is in the past.

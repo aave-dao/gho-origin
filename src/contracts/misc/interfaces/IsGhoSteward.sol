@@ -52,7 +52,7 @@ interface IsGhoSteward {
    * @dev Submitting the same `targetRate` and `effectiveAt` on the stewards of every chain keeps
    * the yield indexes in sync. Passing the current timestamp applies immediately and is only
    * suitable for single-chain deployments.
-   * @param targetRate New annual rate in basis points, compounded continuously
+   * @param targetRate New annual rate in basis points, compounded every second
    * @param effectiveAt Timestamp at which the rate takes effect (must not be in the past)
    */
   function setTargetRate(uint16 targetRate, uint40 effectiveAt) external;

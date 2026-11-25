@@ -59,6 +59,7 @@
 # never give less growth. z3 checks one generic iteration: if it starts within the bounds, its
 # products fit and it ends within the bounds. The loop starts within them (result = P(0),
 # base = P(1)), so every iteration does.
+import sys
 from decimal import Decimal, getcontext
 
 from z3 import *
@@ -68,6 +69,8 @@ UINT256_MAX = 2**256 - 1
 UINT120_MAX = 2**120 - 1
 MAX_ACCRUAL_EXPONENT = 21
 MAX_GROWTH = 1318816 * 10**30  # e^21 * RAY, rounded up
+
+failures = []
 
 
 def proveValid(s, propertyDescription, property, assumptions=[]):
@@ -79,10 +82,12 @@ def proveValid(s, propertyDescription, property, assumptions=[]):
     if result == sat:
         print("❌ Property is not valid:")
         print(s.model())
+        failures.append(propertyDescription)
     elif result == unsat:
         print(f"✅ Property is valid.")
     elif result == unknown:
         print("❓ Timed out or unknown.")
+        failures.append(propertyDescription)
 
     print("=" * len(propertyDescriptionOutput))
 
@@ -93,7 +98,11 @@ capDescription = "-- VALID Property: e^(MAX_ACCRUAL_EXPONENT + 1 / RAY) * RAY <=
 capBound = (Decimal(MAX_ACCRUAL_EXPONENT) + Decimal(1) / RAY).exp() * RAY
 print("=" * len(capDescription))
 print(capDescription)
-print("✅ Property is valid." if capBound <= MAX_GROWTH else f"❌ Property is not valid: {capBound}")
+if capBound <= MAX_GROWTH:
+    print("✅ Property is valid.")
+else:
+    print(f"❌ Property is not valid: {capBound}")
+    failures.append("cap bound")
 print("=" * len(capDescription))
 
 # Part 2
@@ -164,3 +173,6 @@ proveValid(
     nextResult <= UINT120_MAX,
     assumptions=[loopReturns],
 )
+
+if failures:
+    sys.exit(1)

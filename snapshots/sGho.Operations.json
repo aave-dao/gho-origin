@@ -1,12 +1,22 @@
 {
   "cancelPendingTargetRate": "35504",
   "deposit": "94685",
+  "deposit: 1 year": "95423",
+  "deposit: 5 years": "95921",
   "deposit: scheduled rate due": "109756",
   "mint": "99579",
+  "mint: 1 year": "100686",
+  "mint: 5 years": "101433",
   "redeem": "76853",
+  "redeem: 1 year": "77591",
+  "redeem: 5 years": "78089",
   "setTargetRate": "44484",
+  "setTargetRate: 1 year": "44865",
+  "setTargetRate: 5 years": "45114",
   "setTargetRate: scheduled": "58462",
   "setTargetRate: scheduled, previous applied": "47219",
   "transfer": "58863",
-  "withdraw": "76776"
+  "withdraw": "76776",
+  "withdraw: 1 year": "77514",
+  "withdraw: 5 years": "78012"
 }

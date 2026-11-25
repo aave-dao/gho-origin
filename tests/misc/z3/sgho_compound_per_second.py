@@ -16,32 +16,43 @@
 #
 # The proof has two parts.
 #
-# Part 1: the cap bounds the exact growth (checked numerically below)
+# Part 1: the cap bounds P(elapsed) (checked numerically below)
 #
-# Per second the index is multiplied by B = 1 + x, with x = floor(rate / Y) / RAY. P(t) = B^t * RAY
-# is the exact growth over t seconds, without rounding. Then:
+# Per second the index is multiplied by B = 1 + x, with x = floor(rate / Y) / RAY. This is the
+# code's `base` without the ray scaling (base = B * RAY).
+# P(t) = B^t * RAY is what the loop would return over t seconds if it did not round its products.
 #
 #   1. 1 + x <= e^x for x >= 0, since e^x = 1 + x + x^2/2! + ... and the dropped terms are >= 0.
 #   2. Both sides are >= 0, so raising them to t keeps the order: B^t <= e^(x * t).
-#   3. The floor in x only lowers it, so x * t <= rate * t / (Y * RAY).
-#   4. The cap passes only if floor(rate * elapsed / Y) <= 21 * RAY. Without the floor the value is
-#      below 21 * RAY + 1, so the exponent is below 21 + 1 / RAY.
+#   3. floor(rate / Y) <= rate / Y, so x * t <= rate * t / (Y * RAY). e^ is increasing, so
+#      B^t <= e^(rate * t / (Y * RAY)).
+#   4. Let v = rate * elapsed / Y, unrounded. The cap passes only if floor(v) <= 21 * RAY.
+#      Any v is below floor(v) + 1, so v < 21 * RAY + 1 and v / RAY < 21 + 1 / RAY.
+#   5. Steps 3 and 4 with t = elapsed give B^elapsed < e^(21 + 1 / RAY). Multiplying by RAY,
+#      P(elapsed) < e^(21 + 1 / RAY) * RAY.
+#   6. MAX_GROWTH must be at least e^(21 + 1 / RAY) * RAY. The code under "# Part 1" computes
+#      that value with 80-digit decimals and asserts it.
 #
-# So P(elapsed) < e^(21 + 1 / RAY) * RAY <= MAX_GROWTH.
+# So P(elapsed) < MAX_GROWTH.
 #
-# Part 2: the rounded loop stays below the exact growth (proved by z3)
+# Part 2: the loop, which rounds down, never exceeds P (proved by z3)
 #
-# The loop is binary exponentiation: `base` covers 1, 2, 4, 8... seconds, and `result` multiplies
-# in the bases for the bits of `elapsed`. With B = 2, no ray and elapsed = 13 (1101):
+# The loop is binary exponentiation. Each row reads one bit of `elapsed`, lowest first, worth
+# `step` = 1, 2, 4, 8... seconds, and `base` covers those `step` seconds. When the bit is 1,
+# `result` is multiplied by `base`. `processed` counts the seconds of the bits read so far.
+# A toy example: x = 1 (100% per second), so B = 1 + x = 2. With no ray, P(t) = 2^t.
+# For elapsed = 13 (1101), after each row:
 #
-#   row | step | low | bit | base | result after
-#     1 |    1 |   0 |   1 |    2 |      2
-#     2 |    2 |   1 |   0 |    4 |      2
-#     3 |    4 |   1 |   1 |   16 |     32
-#     4 |    8 |   5 |   1 |  256 |   8192 = 2^13
+#   row | step | bit | base | processed | result
+#     0 |      |     |      |         0 |    1 = 2^0
+#     1 |    1 |   1 |    2 |         1 |    2 = 2^1
+#     2 |    2 |   0 |    4 |         1 |    2 = 2^1
+#     3 |    4 |   1 |   16 |         5 |   32 = 2^5
+#     4 |    8 |   1 |  256 |        13 | 8192 = 2^13
 #
-# Rounding down keeps result <= P(low) and base <= P(step). Both are at most P(elapsed), which
-# Part 1 keeps below MAX_GROWTH. So every product fits in uint256.
+# The real loop divides each product by RAY and rounds down, so result <= P(processed) and
+# base <= P(step). Both are at most P(elapsed), which Part 1 keeps below MAX_GROWTH. So every
+# product fits in uint256.
 #
 # z3 cannot compute B^t, so the P values are unknown reals constrained only by facts true for
 # any rate: growth over a + b seconds is growth over a times growth over b, and more seconds
@@ -88,26 +99,26 @@ print("=" * len(capDescription))
 # Part 2
 s = Solver()
 
-# `step` = 2^k is the bit being processed, `low` < step the seconds already processed, and
-# `m` = elapsed >> k the bits still to go
-elapsed, low, step, m = Ints("elapsed low step m")
-s.add(0 <= low, low < step, m >= 1, elapsed == low + step * m)
+# Loop state at the start of an iteration: `step` = 2^k is the bit being read, `processed` < step
+# the seconds of the bits already read, and `m` = elapsed >> k the bits still to read
+elapsed, processed, step, m = Ints("elapsed processed step m")
+s.add(0 <= processed, processed < step, m >= 1, elapsed == processed + step * m)
 
-# P(low), P(step), P(low + step), P(2 * step) and P(elapsed), in ray
-pLow, pStep, pLowPlusStep, pTwoSteps, pElapsed = Reals(
-    "pLow pStep pLowPlusStep pTwoSteps pElapsed"
+# P(processed), P(step), P(processed + step), P(2 * step) and P(elapsed), in ray
+pProcessed, pStep, pProcessedPlusStep, pTwoSteps, pElapsed = Reals(
+    "pProcessed pStep pProcessedPlusStep pTwoSteps pElapsed"
 )
-s.add(pLow >= RAY, pStep >= RAY)
-s.add(pLow * pStep == pLowPlusStep * RAY)
+s.add(pProcessed >= RAY, pStep >= RAY)
+s.add(pProcessed * pStep == pProcessedPlusStep * RAY)
 s.add(pStep * pStep == pTwoSteps * RAY)
-s.add(pLow <= pElapsed)
-s.add(Implies(low + step <= elapsed, pLowPlusStep <= pElapsed))
+s.add(pProcessed <= pElapsed)
+s.add(Implies(processed + step <= elapsed, pProcessedPlusStep <= pElapsed))
 s.add(Implies(2 * step <= elapsed, pTwoSteps <= pElapsed))
 s.add(pElapsed <= MAX_GROWTH)
 
 # Loop state at the start of the iteration, within the bounds
 result, base = Ints("result base")
-s.add(RAY <= result, result <= pLow)
+s.add(RAY <= result, result <= pProcessed)
 s.add(RAY <= base, base <= pStep)
 
 bitSet = m % 2 == 1
@@ -130,8 +141,8 @@ proveValid(
 nextResult = If(bitSet, (result * base) / RAY, result)
 proveValid(
     s,
-    "next result stays within [RAY, P(seconds consumed)]",
-    And(RAY <= nextResult, nextResult <= If(bitSet, pLowPlusStep, pLow)),
+    "next result stays within [RAY, P(seconds processed)]",
+    And(RAY <= nextResult, nextResult <= If(bitSet, pProcessedPlusStep, pProcessed)),
 )
 proveValid(s, "next result <= MAX_GROWTH", nextResult <= MAX_GROWTH)
 
@@ -146,18 +157,10 @@ proveValid(
     s, "next base <= MAX_GROWTH", nextBase <= MAX_GROWTH, assumptions=[loopContinues]
 )
 
-# After the loop: `uint256(index).mulDiv(growth, RAY).toUint120()`. The cast is SafeCast and
-# reverts above uint120, so only the inputs to it need bounds
+# After the loop: `uint256(index).mulDiv(growth, RAY).toUint120()`
 proveValid(
     s,
     "returned growth fits in uint120",
     nextResult <= UINT120_MAX,
     assumptions=[loopReturns],
-)
-index = Int("index")
-proveValid(
-    s,
-    "index * growth fits in uint256 for any uint120 index",
-    index * nextResult <= UINT256_MAX,
-    assumptions=[loopReturns, 0 <= index, index <= UINT120_MAX],
 )

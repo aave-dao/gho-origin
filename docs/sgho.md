@@ -30,7 +30,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### How It Works
 
 1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
-2. **Per-Second Compounding**: The index grows to `index * (1 + targetRate / year) ^ timeElapsed` from its last checkpoint, so growth over a period depends only on its length. It is only checkpointed when a rate change takes effect, as of that change's timestamp, so user actions and their timing never change it. In between, conversions read the live accrued value. Accrual from a single checkpoint is capped at `targetRate * timeElapsed / year <= 21`, so the unchecked compounding cannot overflow. Beyond it, conversions revert with `YieldIndexOverflow`. The index itself is a `uint120`, and conversions revert once it would exceed it
+2. **Per-Second Compounding**: The index grows to `index * (1 + targetRate / year) ^ timeElapsed` from its last checkpoint, so growth over a period depends only on its length. It is only checkpointed when a rate change takes effect, as of that change's timestamp, so user actions and their timing never change it. In between, conversions read the live accrued value
 3. **Share Conversion**: Asset/share conversions use the current yield index
 
 ### Key Parameters
@@ -102,6 +102,6 @@ sGHO uses high-precision arithmetic to ensure accurate yield calculations and pr
 The following are key considerations for arithmetic precision in math operations:
 
 - **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: The growth factor since the last checkpoint is `(RAY + rate / year) ^ timeElapsed`, computed by binary exponentiation and applied to the checkpointed index. `tests/misc/z3/sgho_compound_per_second.py` proves it cannot overflow within the accrual cap
+- **Rate Calculations**: The growth factor since the last checkpoint is `(RAY + rate / year) ^ timeElapsed`, computed by binary exponentiation and applied to the checkpointed index
 - **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
 - **Accumulated Interest**: Every operation rounds down, so the index never exceeds the exact growth

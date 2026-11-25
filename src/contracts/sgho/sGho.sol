@@ -61,8 +61,8 @@ abstract contract sGho is
   /// @inheritdoc IsGho
   uint16 public constant MAX_SAFE_RATE = 50_00;
 
-  /// @dev Cap on `rate * elapsed / year` since the last checkpoint, so the unchecked compounding
-  /// cannot overflow.
+  /// @dev Cap on `rate * elapsed / year` since the last checkpoint. Growth is at most `e` to this
+  /// power, so the unchecked compounding cannot overflow.
   uint256 internal constant MAX_ACCRUAL_EXPONENT = 21;
 
   /// @inheritdoc IsGho
@@ -289,7 +289,8 @@ abstract contract sGho is
 
   /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
-   * @dev Compounds the checkpointed index every second at `targetRate / year`.
+   * @dev Computes `index * (1 + targetRate / year) ^ elapsed`, with `elapsed` in seconds since the
+   * last checkpoint.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {

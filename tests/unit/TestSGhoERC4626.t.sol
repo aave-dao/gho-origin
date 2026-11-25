@@ -479,4 +479,90 @@ contract TestSGhoERC4626 is TestSGhoBase {
       'maxMint should be remaining capacity in shares'
     );
   }
+
+  // ========================================
+  // ROUNDING AT A NON-RAY INDEX
+  // ========================================
+
+  /// @dev Index after one year at the 10% rate from setUp. Conversions at this index have a
+  /// remainder, so the rounding direction shows in the result
+  function _indexAfterOneYear() internal pure returns (uint256) {
+    return _emulateYieldIndex(RAY, 1000, 365 days);
+  }
+
+  function test_4626_mint_roundsAssetsUp() external {
+    vm.warp(block.timestamp + 365 days);
+    uint256 index = _indexAfterOneYear();
+    uint256 shares = 1 ether;
+    uint256 expectedAssets = (shares * index + RAY - 1) / RAY;
+    assertTrue((shares * index) % RAY != 0, 'rounding has no effect');
+
+    uint256 ghoBefore = gho.balanceOf(user1);
+    vm.prank(user1);
+    uint256 assets = sgho.mint(shares, user1);
+
+    assertEq(assets, expectedAssets, 'mint must round assets up');
+    assertEq(ghoBefore - gho.balanceOf(user1), expectedAssets, 'GHO pulled');
+    assertEq(sgho.balanceOf(user1), shares, 'shares minted');
+  }
+
+  function test_4626_withdraw_roundsSharesUp() external {
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    vm.warp(block.timestamp + 365 days);
+    uint256 index = _indexAfterOneYear();
+    uint256 assets = 1 ether;
+    uint256 expectedShares = (assets * RAY + index - 1) / index;
+    assertTrue((assets * RAY) % index != 0, 'rounding has no effect');
+
+    vm.prank(user1);
+    uint256 shares = sgho.withdraw(assets, user1, user1);
+
+    assertEq(shares, expectedShares, 'withdraw must round shares up');
+    assertEq(sgho.balanceOf(user1), 100 ether - expectedShares, 'shares burned');
+  }
+
+  function test_4626_mint_exactlyMaxMint() external {
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    vm.warp(block.timestamp + 365 days);
+    vm.prank(yManager);
+    sgho.setSupplyCap(200);
+
+    uint256 index = _indexAfterOneYear();
+    uint256 remaining = 200 ether - (100 ether * index) / RAY;
+    uint256 expectedMaxMint = (remaining * RAY) / index;
+    assertTrue((remaining * RAY) % index != 0, 'rounding has no effect');
+    assertEq(sgho.maxMint(user2), expectedMaxMint, 'maxMint must round down');
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        ERC4626.ERC4626ExceededMaxMint.selector,
+        user2,
+        expectedMaxMint + 1,
+        expectedMaxMint
+      )
+    );
+    vm.prank(user2);
+    sgho.mint(expectedMaxMint + 1, user2);
+
+    vm.prank(user2);
+    sgho.mint(expectedMaxMint, user2);
+    assertEq(sgho.balanceOf(user2), expectedMaxMint, 'maxMint not mintable');
+    assertLe(sgho.totalAssets(), 200 ether, 'supply cap exceeded');
+  }
+
+  function test_4626_maxRedeem_limitedByVaultBalance() external {
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    // The yield is not funded, so the vault's GHO balance is the limit
+    vm.warp(block.timestamp + 365 days);
+
+    uint256 index = _indexAfterOneYear();
+    uint256 vaultGho = gho.balanceOf(address(sgho));
+    uint256 expectedMaxRedeem = (vaultGho * RAY) / index;
+    assertTrue((vaultGho * RAY) % index != 0, 'rounding has no effect');
+    assertLt(expectedMaxRedeem, sgho.balanceOf(user1), 'balance not limiting');
+    assertEq(sgho.maxRedeem(user1), expectedMaxRedeem, 'maxRedeem must round down');
+  }
 }

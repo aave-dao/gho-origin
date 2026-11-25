@@ -17,6 +17,11 @@ interface IsGho {
   error ZeroAddressNotAllowed();
 
   /**
+   * @notice Thrown if the yield accrued since the last checkpoint exceeds the supported range.
+   */
+  error YieldIndexOverflow();
+
+  /**
    * @notice Thrown if a target rate update is scheduled with an effective timestamp in the past.
    */
   error EffectiveTimestampInPast();
@@ -125,7 +130,7 @@ interface IsGho {
    * chain. A straddle desyncs the indexes.
    * @dev `effectiveAt == block.timestamp` applies the update now, at the chain-local time. Only
    * suitable for single-chain deployments.
-   * @param newRate The new annual rate in basis points, compounded continuously
+   * @param newRate The new annual rate in basis points, compounded every second
    * (e.g., 1000 for 10%).
    * @param effectiveAt The timestamp at which the new rate takes effect (must not be in the past).
    */
@@ -149,7 +154,7 @@ interface IsGho {
 
   /**
    * @notice Returns the maximum safe rate for the vault.
-   * @dev Maximum annual rate in basis points, compounded continuously (50%)
+   * @dev Maximum annual rate in basis points, compounded every second (50%)
    * @return The maximum safe rate.
    */
   function MAX_SAFE_RATE() external view returns (uint16);
@@ -197,7 +202,7 @@ interface IsGho {
 
   /**
    * @notice Returns the current target rate for yield generation.
-   * @dev Annual rate in basis points (1% = 100), compounded continuously.
+   * @dev Annual rate in basis points (1% = 100), compounded every second.
    * @dev Reflects a scheduled rate change once it is effective, even before it is persisted.
    * @return The target rate in basis points.
    */

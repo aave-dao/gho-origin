@@ -115,8 +115,8 @@ contract TestSGhoBase is TestnetProcedures {
   // INTERNAL UTILITY FUNCTIONS
   // ========================================
 
-  /// @dev Spec: the Aave v3 compounded interest approximation, rounded down, applied to the
-  /// checkpointed index
+  /// @dev Spec: the checkpointed index compounded every second at `targetRate / year`, every
+  /// product rounded down
   function _emulateYieldIndex(
     uint256 prevYieldIndex,
     uint16 targetRate,

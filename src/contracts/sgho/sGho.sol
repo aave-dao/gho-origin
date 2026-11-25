@@ -63,8 +63,8 @@ abstract contract sGho is
   /// @inheritdoc IsGho
   uint16 public constant MAX_SAFE_RATE = 50_00;
 
-  /// @dev Cap on `rate * elapsed / year` since the last checkpoint, so the unchecked compounding
-  /// cannot overflow.
+  /// @dev Cap on `rate * elapsed / year` since the last checkpoint. Growth is at most `e` to this
+  /// power, so the unchecked compounding cannot overflow.
   uint256 internal constant MAX_ACCRUAL_EXPONENT = 21;
 
   /// @inheritdoc IsGho
@@ -413,7 +413,8 @@ abstract contract sGho is
 
   /**
    * @notice Accrues a yield index over a period at a fixed rate.
-   * @dev Compounds every second at `rate / year`, see `_calculateCompoundedInterest`.
+   * @dev Computes `index * (1 + rate / year) ^ (toTimestamp - fromTimestamp)`, compounded every
+   * second, see `_calculateCompoundedInterest`.
    * @param index The yield index at the start of the period.
    * @param rate The annual rate in basis points, compounded every second.
    * @param fromTimestamp The start of the period.

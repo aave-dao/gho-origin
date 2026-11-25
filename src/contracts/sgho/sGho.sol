@@ -38,14 +38,13 @@ abstract contract sGho is
 {
   using Math for uint256;
   using SafeCast for uint256;
-  using WadRayMath for uint256;
 
   /// @custom:storage-location erc7201:gho.storage.sGHO
   struct sGhoStorage {
     // Storage variables - Optimally packed into a single slot
     uint120 yieldIndex; // 15 bytes - current yield index for share/asset conversion
     uint40 lastUpdate; // 5 bytes - timestamp of the last yield index checkpoint
-    uint16 targetRate; // 2 bytes - annual rate in basis points, compounded continuously
+    uint16 targetRate; // 2 bytes - annual rate in basis points, compounded every second
     uint40 supplyCap; // 5 bytes - maximum total assets allowed in the vault, in whole GHO units
   }
 
@@ -61,6 +60,10 @@ abstract contract sGho is
 
   /// @inheritdoc IsGho
   uint16 public constant MAX_SAFE_RATE = 50_00;
+
+  /// @dev Cap on `rate * elapsed / year` since the last checkpoint, so the unchecked compounding
+  /// cannot overflow.
+  uint256 internal constant MAX_ACCRUAL_EXPONENT = 21;
 
   /// @inheritdoc IsGho
   bytes32 public constant PAUSE_GUARDIAN_ROLE = keccak256('PAUSE_GUARDIAN_ROLE');
@@ -286,8 +289,7 @@ abstract contract sGho is
 
   /**
    * @notice Calculates the current yield index, accruing yield since the last checkpoint.
-   * @dev Compounds the checkpointed index continuously at `targetRate`, approximating
-   * `e^(targetRate * elapsed / year)` by `_calculateCompoundedInterest`.
+   * @dev Compounds the checkpointed index every second at `targetRate / year`.
    * @return The current yield index.
    */
   function _getCurrentYieldIndex() internal view returns (uint120) {
@@ -302,26 +304,35 @@ abstract contract sGho is
   }
 
   /**
-   * @dev Same as Aave v3 `MathUtils.calculateCompoundedInterest`, but rounds down instead of
-   * half up.
-   * @param rate The annual rate, compounded continuously, in ray.
+   * @notice Compounds `rate / year` every second since `lastUpdateTimestamp`.
+   * @dev Computes `(RAY + rate / year) ^ elapsed` in ray by binary exponentiation, rounding every
+   * product down. Reverts with `YieldIndexOverflow` if `rate * elapsed / year` exceeds
+   * `MAX_ACCRUAL_EXPONENT`, which bounds every product below `2^256` (see
+   * `tests/misc/z3/sgho_compound_per_second.py`).
+   * @param rate The annual rate, in ray.
    * @param lastUpdateTimestamp The timestamp to accrue from.
-   * @return The growth factor since `lastUpdateTimestamp`, in ray.
+   * @return result The growth factor since `lastUpdateTimestamp`, in ray.
    */
   function _calculateCompoundedInterest(
     uint256 rate,
     uint40 lastUpdateTimestamp
-  ) internal view returns (uint256) {
-    uint256 exp = block.timestamp - lastUpdateTimestamp;
-
-    if (exp == 0) {
-      return WadRayMath.RAY;
+  ) internal view returns (uint256 result) {
+    uint256 elapsed = block.timestamp - lastUpdateTimestamp;
+    if ((rate * elapsed) / MathUtils.SECONDS_PER_YEAR > MAX_ACCRUAL_EXPONENT * WadRayMath.RAY) {
+      revert YieldIndexOverflow();
     }
 
-    unchecked {
-      uint256 x = (rate * exp) / MathUtils.SECONDS_PER_YEAR;
+    result = WadRayMath.RAY;
+    if (elapsed == 0) return result;
 
-      return WadRayMath.RAY + x + x.rayMulFloor(x / 2 + x.rayMulFloor(x / 6));
+    uint256 base = WadRayMath.RAY + rate / MathUtils.SECONDS_PER_YEAR;
+    unchecked {
+      while (true) {
+        if (elapsed & 1 != 0) result = (result * base) / WadRayMath.RAY;
+        elapsed >>= 1;
+        if (elapsed == 0) return result;
+        base = (base * base) / WadRayMath.RAY;
+      }
     }
   }
 

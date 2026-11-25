@@ -1,8 +1,8 @@
 {
-  "deposit": "88740",
-  "mint": "90959",
-  "redeem": "70925",
-  "setTargetRate": "38720",
+  "deposit": "94028",
+  "mint": "98891",
+  "redeem": "76213",
+  "setTargetRate": "41364",
   "transfer": "58863",
-  "withdraw": "70848"
+  "withdraw": "76136"
 }

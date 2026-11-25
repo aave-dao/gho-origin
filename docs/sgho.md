@@ -7,7 +7,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ## Key Features
 
 - **Full EIP-4626 Compliance**: Complete implementation of the ERC-4626 standard for tokenized vaults
-- **Fixed-Rate Yield**: Yield compounds continuously at a fixed target rate, tracked via a yield index
+- **Fixed-Rate Yield**: Yield compounds every second at a fixed target rate, tracked via a yield index
 - **Role-Based Access Control**: Granular permissions for yield management and emergency operations
 - **Permit Support**: Gasless deposits using EIP-2612 permits
 - **Supply Cap Management**: Configurable maximum vault capacity, set in whole GHO units (no decimals)
@@ -30,12 +30,12 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### How It Works
 
 1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
-2. **Continuous Compounding**: The index grows to `index * e^(targetRate * timeElapsed / year)` from its last checkpoint, using the Aave v3 approximation `1 + x + x^2 / 2 + x^3 / 6`. It is only checkpointed to storage when the rate changes, and user actions never checkpoint it. The approximation falls short of `e^x` by about `x^4 / 24`, so the yield is slightly lower the longer a rate stays unchanged. In between, conversions read the live accrued value
+2. **Per-Second Compounding**: The index grows to `index * (1 + targetRate / year) ^ timeElapsed` from its last checkpoint, so growth over a period depends only on its length. It is only checkpointed to storage when the rate changes, and user actions never checkpoint it. In between, conversions read the live accrued value. Accrual from a single checkpoint is capped at `targetRate * timeElapsed / year <= 21`, so the unchecked compounding cannot overflow. Beyond it, conversions revert with `YieldIndexOverflow`. The index itself is a `uint120`, and conversions revert once it would exceed it
 3. **Share Conversion**: Asset/share conversions use the current yield index
 
 ### Key Parameters
 
-- **Target Rate**: Fixed annual rate in basis points, compounded continuously (max 50% = 5000)
+- **Target Rate**: Fixed annual rate in basis points, compounded every second (max 50% = 5000)
 - **Yield Index**: Index used for share/asset conversions
 
 ## Role Management
@@ -49,7 +49,7 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ### Built-in Protections
 
 - **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate, compounded continuously, to prevent excessive yield.
+- **Rate Limits**: Maximum 50% annual rate, compounded every second, to prevent excessive yield.
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 
 ### Important Limitations
@@ -79,6 +79,6 @@ sGHO uses high-precision arithmetic to ensure accurate yield calculations and pr
 The following are key considerations for arithmetic precision in math operations:
 
 - **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: The growth factor since the last checkpoint is the same polynomial as Aave v3 `MathUtils.calculateCompoundedInterest`, applied to the checkpointed index
+- **Rate Calculations**: The growth factor since the last checkpoint is `(RAY + rate / year) ^ timeElapsed`, computed by binary exponentiation and applied to the checkpointed index. `tests/misc/z3/sgho_compound_per_second.py` proves it cannot overflow within the accrual cap
 - **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
-- **Accumulated Interest**: Unlike Aave v3, which rounds half up, every operation rounds down, so the index never exceeds the exact polynomial, which itself stays below `e^x`
+- **Accumulated Interest**: Every operation rounds down, so the index never exceeds the exact growth

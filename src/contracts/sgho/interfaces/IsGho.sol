@@ -17,6 +17,11 @@ interface IsGho {
   error ZeroAddressNotAllowed();
 
   /**
+   * @notice Thrown if the yield accrued since the last checkpoint exceeds the supported range.
+   */
+  error YieldIndexOverflow();
+
+  /**
    * @dev Emitted when the target rate is updated.
    * @param newRate The new target rate.
    */
@@ -80,7 +85,7 @@ interface IsGho {
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
    * The new rate must not exceed `MAX_SAFE_RATE` (5000 basis points).
-   * @param newRate The new annual rate in basis points, compounded continuously
+   * @param newRate The new annual rate in basis points, compounded every second
    * (e.g., 1000 for 10%).
    */
   function setTargetRate(uint16 newRate) external;
@@ -95,7 +100,7 @@ interface IsGho {
 
   /**
    * @notice Returns the maximum safe rate for the vault.
-   * @dev Maximum annual rate in basis points, compounded continuously (50%)
+   * @dev Maximum annual rate in basis points, compounded every second (50%)
    * @return The maximum safe rate.
    */
   function MAX_SAFE_RATE() external view returns (uint16);
@@ -142,7 +147,7 @@ interface IsGho {
 
   /**
    * @notice Returns the current target rate for yield generation.
-   * @dev Annual rate in basis points (1% = 100), compounded continuously.
+   * @dev Annual rate in basis points (1% = 100), compounded every second.
    * @return The target rate in basis points.
    */
   function targetRate() external view returns (uint16);

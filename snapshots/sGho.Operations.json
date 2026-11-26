@@ -3,13 +3,18 @@
   "deposit: 1 year since rate update": "95423",
   "deposit: 30 days since rate update": "94685",
   "deposit: 5 years since rate update": "95921",
+  "deposit: rate scheduled, not yet due": "94742",
   "deposit: scheduled rate due": "109756",
   "mint: 1 year since rate update": "100686",
   "mint: 30 days since rate update": "99579",
   "mint: 5 years since rate update": "101433",
+  "mint: rate scheduled, not yet due": "99655",
+  "mint: scheduled rate due": "117857",
   "redeem: 1 year since rate update": "77591",
   "redeem: 30 days since rate update": "76853",
   "redeem: 5 years since rate update": "78089",
+  "redeem: rate scheduled, not yet due": "76910",
+  "redeem: scheduled rate due": "91924",
   "setTargetRate: 1 year since rate update": "44865",
   "setTargetRate: 30 days since rate update": "44484",
   "setTargetRate: 5 years since rate update": "45114",
@@ -18,5 +23,7 @@
   "transfer": "58863",
   "withdraw: 1 year since rate update": "77514",
   "withdraw: 30 days since rate update": "76776",
-  "withdraw: 5 years since rate update": "78012"
+  "withdraw: 5 years since rate update": "78012",
+  "withdraw: rate scheduled, not yet due": "76833",
+  "withdraw: scheduled rate due": "91847"
 }

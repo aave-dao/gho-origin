@@ -123,13 +123,56 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled, previous applied');
   }
 
+  function test_gas_deposit_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _deposit();
+    vm.snapshotGasLastCall('sGho.Operations', 'deposit: rate scheduled, not yet due');
+  }
+
+  function test_gas_mint_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _mint();
+    vm.snapshotGasLastCall('sGho.Operations', 'mint: rate scheduled, not yet due');
+  }
+
+  function test_gas_withdraw_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _withdraw();
+    vm.snapshotGasLastCall('sGho.Operations', 'withdraw: rate scheduled, not yet due');
+  }
+
+  function test_gas_redeem_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _redeem();
+    vm.snapshotGasLastCall('sGho.Operations', 'redeem: rate scheduled, not yet due');
+  }
+
   function test_gas_deposit_pendingRateDue() external {
-    vm.prank(yManager);
-    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
+    _scheduleTargetRate();
     vm.warp(block.timestamp + 2 days);
-    vm.prank(user2);
-    sgho.deposit(AMOUNT, user2);
+    _deposit();
     vm.snapshotGasLastCall('sGho.Operations', 'deposit: scheduled rate due');
+  }
+
+  function test_gas_mint_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _mint();
+    vm.snapshotGasLastCall('sGho.Operations', 'mint: scheduled rate due');
+  }
+
+  function test_gas_withdraw_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _withdraw();
+    vm.snapshotGasLastCall('sGho.Operations', 'withdraw: scheduled rate due');
+  }
+
+  function test_gas_redeem_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _redeem();
+    vm.snapshotGasLastCall('sGho.Operations', 'redeem: scheduled rate due');
   }
 
   function test_gas_cancelPendingTargetRate() external {
@@ -169,5 +212,11 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
   function _setTargetRate() internal {
     vm.prank(yManager);
     sgho.setTargetRate(2000, block.timestamp.toUint40());
+  }
+
+  /// @dev Schedules a rate change one day ahead.
+  function _scheduleTargetRate() internal {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
   }
 }

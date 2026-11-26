@@ -10,11 +10,15 @@ Furthermore, the Aave Governance has the ability to approve entities as Facilita
 
 ## Documentation
 
-See the link to the technical paper
-
 - [Technical Paper](./techpaper/GHO_Technical_Paper.pdf)
 - [Developer Documentation](https://docs.gho.xyz/)
 - [Gho Stewards](./docs/gho-stewards.md)
+- [Remote Facilitator](./docs/remote-facilitator.md)
+- [sGHO](./docs/sgho.md)
+- [sGHO Precision Analysis](./docs/sgho-precision-analysis/precision.md)
+- [sGhoSteward](./docs/sGhoSteward.md)
+- [StkGhoMigrator](./docs/stkgho-migrator.md)
+- [GSM Upgrades](./docs/gsm-upgrades.md)
 
 ## Security
 
@@ -31,7 +35,12 @@ You can find all audit reports under the [audits](./audits/) folder
 - [2023-12-07 - Certora Formal Verification (GHO Stability Module)](./certora/reports/Formal_Verification_Report_of_GHO_Stability_Module.pdf)
 - [2024-03-14 - Certora Formal Verification (GhoStewardV2)](./audits/2024-03-14_GhoStewardV2_Certora.pdf)
 - [2024-06-11 - Certora Formal Verification (UpgradeableGHO)](./audits/2024-06-11_UpgradeableGHO_Certora.pdf)
-- [2024-06-11 - Certora Formal Verification (Modular Gho Stewards)](./audits/2024-09-15_ModularGhoStewards_Certora.pdf)
+- [2024-09-15 - Certora Formal Verification (Modular Gho Stewards)](./audits/2024-09-15_ModularGhoStewards_Certora.pdf)
+- [2025-07-15 - Certora (Remote GSM)](./audits/2025-07-15_RemoteGSM_Certora.pdf)
+- [2025-09-09 - Certora (sGHO)](./audits/2025-09-09_sGHO_Certora.pdf)
+- [2026-03-04 - Sherlock (sGHO)](./audits/2026-03-04_sGHO_Sherlock.pdf)
+- [2026-10-28 - Pashov Audit Group (Permissioned GSM)](./audits/2026-10-28_PermissionedGSM_Pashov.pdf)
+- [2026-11-06 - Certora (Permissioned GSM)](./audits/2026-11-06_PermissionedGSM_Certora.pdf)
 
 ## Development
 

@@ -249,7 +249,6 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     _assertUnwrapReverts(PausableUpgradeable.EnforcedPause.selector);
   }
 
-  /// @dev The wrap path may pay up to one static aToken share more than previewed, never less
   function _assertTokenToGho(uint256 amount, uint256 expected, uint256 expectedRefund) internal {
     uint256 preview = GHO_ROUTER.previewSwap(
       AAVE_USDX,
@@ -266,8 +265,7 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     });
 
     assertEq(amountOut, expected, 'output');
-    assertGe(amountOut, preview, 'output below preview');
-    assertLe(amountOut - preview, _oneShareInGho(), 'output above preview by more than one share');
+    assertEq(amountOut, preview, 'output != preview');
     assertEq(GHO_TOKEN.balanceOf(RECIPIENT), amountOut, 'recipient GHO balance');
     _assertStataRefundedToSender(expectedRefund);
     _assertRouterClean();
@@ -284,12 +282,7 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     });
 
     assertEq(amountOut, expected, 'output');
-    assertGe(amountOut, preview, 'output below preview');
-    assertLe(
-      SGHO.convertToAssets(amountOut - preview),
-      _oneShareInGho(),
-      'output above preview by more than one share'
-    );
+    assertEq(amountOut, preview, 'output != preview');
     assertEq(IERC20(address(SGHO)).balanceOf(RECIPIENT), amountOut, 'recipient sGHO balance');
     _assertStataRefundedToSender(expectedRefund);
     _assertRouterClean();
@@ -507,11 +500,6 @@ contract TestGhoRouterStata is TestGhoRouterBase {
       rate
     );
     usdx = Math.mulDiv(boughtShares, rate, WadRayMath.RAY);
-  }
-
-  /// @dev GHO value of one static aToken share, at the GSM's 1:1 price and 6 -> 18 decimals
-  function _oneShareInGho() internal view returns (uint256) {
-    return STATA_USDX.previewMint(1) * 1e12;
   }
 
   function _assertRouterClean() internal view {

@@ -62,17 +62,6 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 The vault operates on a first-come, first-served basis. If the contract's GHO balance falls below the theoretical total assets, some users may be unable to withdraw their full balance until additional GHO is provided.
 
-## Upgrade Notes (Ethereum Mainnet)
-
-The live vault migrates to this layout through `sGhoInstanceStoragePatch`, in one governance payload:
-
-1. Grant the executor `YIELD_MANAGER_ROLE` and call the legacy `setTargetRate(currentRate)`. The patch reverts unless the index was checkpointed in the same block.
-2. `upgradeAndCall` to `sGhoInstanceStoragePatch` with `initialize()`. This consumes revision 2.
-3. `upgrade` to `sGhoInstance` with no calldata. Its `initialize` is locked because revision 2 is already used.
-4. Revoke `YIELD_MANAGER_ROLE` from the executor.
-
-The deployed `sGhoSteward` calls `setSupplyCap(uint160)`, a selector that no longer exists, so a new steward must be deployed in the same payload, granted `YIELD_MANAGER_ROLE`, and configured with the current rate config. Revoke `YIELD_MANAGER_ROLE` from the old steward in the same payload.
-
 ## Math
 
 sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions.

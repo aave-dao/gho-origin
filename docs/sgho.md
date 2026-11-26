@@ -50,8 +50,8 @@ The update is applied lazily. Views resolve it once it is due. The next rate upd
 
 Rules for operators:
 
-- Every scheduled update must be mirrored on all chains. Each checkpoint rounds the index, so even a same-rate update executed on one chain only changes its index there. The steward rejects a rate that is already in force.
-- A pending update that is not yet effective is overwritten by the next `setTargetRate`, or dropped by `cancelPendingTargetRate` without a checkpoint. Across chains, the overwrite must execute either before the pending `effectiveAt` on every chain or after it on every chain, and a cancel before it on every chain. If an overwrite straddles that timestamp, some chains skip the pending rate and others apply it, and the indexes desync. Reconciling them takes a pause and an upgrade. A cancel that runs after it on some chain reverts there.
+- To keep chains in sync, every scheduled update should be mirrored on all of them. Each checkpoint rounds the index, so even a same-rate update executed on one chain only changes its index there. The steward rejects a rate that is already in force.
+- A pending update can be overwritten by the next `setTargetRate` or dropped by `cancelPendingTargetRate`. To keep chains in sync, do either before the pending `effectiveAt` on every chain.
 - `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
 
 ### Cold Start

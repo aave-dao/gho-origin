@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import './TestGhoRouterBase.t.sol';
+import '../../unit/GhoRouter/TestGhoRouterBase.t.sol';
 
 import {IERC4626} from '@openzeppelin/contracts/interfaces/IERC4626.sol';
 import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
@@ -14,6 +14,8 @@ import {AaveV3StataEnvironment} from '../../helpers/AaveV3StataEnvironment.sol';
  * @notice GhoRouter against a real StataTokenV2 on a local Aave v3 market
  */
 contract TestGhoRouterStata is TestGhoRouterBase {
+  using SafeCast for uint256;
+
   uint256 internal constant GSM_SEED = 1_000_000e6;
   uint256 internal constant SWAP_AMOUNT = 10_000e6;
   uint256 internal constant GHO_SWAP_AMOUNT = 1_000 ether;
@@ -21,6 +23,8 @@ contract TestGhoRouterStata is TestGhoRouterBase {
   uint256 internal constant MAX_USDX = 500_000e6;
   uint256 internal constant MIN_GHO = 1 ether;
   uint256 internal constant MAX_GHO = 500_000 ether;
+  /// @dev Keeps the redeemed GHO, after up to 5 years at the max sGHO rate, within the GSM's stataUSDX
+  uint256 internal constant MAX_SGHO_DEPOSIT = 20_000 ether;
 
   AaveV3StataEnvironment internal AAVE;
   address internal AAVE_USDX;
@@ -80,12 +84,14 @@ contract TestGhoRouterStata is TestGhoRouterBase {
 
   /// @dev Same GHO as `test_stata_tokenToGho`, deposited into sGHO at index 1
   function test_stata_tokenToSGho() external {
+    _assertSGhoIndexOne();
     _assertTokenToSGho(SWAP_AMOUNT, 9_000 ether, 0);
   }
 
   function test_stata_tokenToSGho_fuzzAmount(uint256 amount) external {
     amount = bound(amount, MIN_USDX, MAX_USDX);
     (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertSGhoIndexOne();
     _assertTokenToSGho(amount, gho, refund);
   }
 
@@ -93,6 +99,7 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     _growIndex(bound(elapsed, 1 days, 5 * 365 days));
     amount = bound(amount, MIN_USDX, MAX_USDX);
     (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertSGhoIndexOne();
     _assertTokenToSGho(amount, gho, refund);
   }
 
@@ -118,12 +125,16 @@ contract TestGhoRouterStata is TestGhoRouterBase {
   /// @dev 1,000 sGHO redeem to 1,000 GHO at index 1, then buy as in `test_stata_ghoToToken`, and the
   /// unspent 1e11 wei of GHO is refunded to the sender
   function test_stata_sGhoToToken() external {
+    _assertSGhoIndexOne();
+    _mintSgho(GHO_SWAP_AMOUNT);
     _assertSGhoToToken(GHO_SWAP_AMOUNT, 909_090909, 1e11);
   }
 
   function test_stata_sGhoToToken_fuzzAmount(uint256 amount) external {
     amount = bound(amount, MIN_GHO, MAX_GHO);
     (uint256 usdx, uint256 ghoSold) = _expectedBuy(amount);
+    _assertSGhoIndexOne();
+    _mintSgho(amount);
     _assertSGhoToToken(amount, usdx, amount - ghoSold);
   }
 
@@ -131,7 +142,44 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     _growIndex(bound(elapsed, 1 days, 5 * 365 days));
     amount = bound(amount, MIN_GHO, MAX_GHO);
     (uint256 usdx, uint256 ghoSold) = _expectedBuy(amount);
+    _assertSGhoIndexOne();
+    _mintSgho(amount);
     _assertSGhoToToken(amount, usdx, amount - ghoSold);
+  }
+
+  /// @dev With the stata rate and the sGHO index both above 1, the GHO from the sale buys fewer sGHO
+  /// shares than it would at index 1
+  function test_stata_tokenToSGho_sGhoRateUp(
+    uint256 amount,
+    uint256 rate,
+    uint256 elapsed
+  ) external {
+    _setSGhoRate(rate);
+    _growIndex(bound(elapsed, 1 days, 5 * 365 days));
+    assertGt(SGHO.convertToAssets(1 ether), 1 ether, 'sGHO index did not grow');
+    amount = bound(amount, MIN_USDX, MAX_USDX);
+    (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertTokenToSGho(amount, SGHO.previewDeposit(gho), refund);
+  }
+
+  /// @dev With the stata rate and the sGHO index both above 1, the shares redeem for more GHO than
+  /// was deposited, and that GHO is what the GSM buy is priced on
+  function test_stata_sGhoToToken_sGhoRateUp(
+    uint256 amount,
+    uint256 rate,
+    uint256 elapsed
+  ) external {
+    _setSGhoRate(rate);
+    amount = bound(amount, MIN_GHO, MAX_SGHO_DEPOSIT);
+    _mintSgho(amount);
+    _growIndex(bound(elapsed, 1 days, 5 * 365 days));
+
+    uint256 ghoRedeemed = SGHO.previewRedeem(IERC20(address(SGHO)).balanceOf(USER));
+    assertGt(ghoRedeemed, amount, 'sGHO index did not grow');
+    // Fund the vault so it can pay out the accrued yield on redeem
+    deal(address(GHO_TOKEN), address(SGHO), ghoRedeemed * 2);
+    (uint256 usdx, uint256 ghoSold) = _expectedBuy(ghoRedeemed);
+    _assertSGhoToToken(amount, usdx, ghoRedeemed - ghoSold);
   }
 
   /// @dev Asking for one wei more than the route pays reverts, on the wrap and the unwrap paths
@@ -179,10 +227,16 @@ contract TestGhoRouterStata is TestGhoRouterBase {
       address(STATA_GSM),
       ghoAmount
     );
-    uint256 amountOut = _swap(address(GHO_TOKEN), address(STATA_USDX), ghoAmount);
+    (, uint256 ghoSold) = _expectedBuy(ghoAmount);
+    uint256 amountOut = _swap({
+      tokenIn: address(GHO_TOKEN),
+      tokenOut: address(STATA_USDX),
+      amount: ghoAmount,
+      expectedAmountIn: ghoSold,
+      expectedOut: preview
+    });
     assertEq(amountOut, preview, 'output != preview');
     assertEq(STATA_USDX.balanceOf(RECIPIENT), amountOut, 'recipient stata balance');
-    (, uint256 ghoSold) = _expectedBuy(ghoAmount);
     _assertGhoKeptBySender(ghoAmount - ghoSold);
     _assertRouterClean();
   }
@@ -203,7 +257,13 @@ contract TestGhoRouterStata is TestGhoRouterBase {
       address(STATA_GSM),
       amount
     );
-    uint256 amountOut = _swap(AAVE_USDX, address(GHO_TOKEN), amount);
+    uint256 amountOut = _swap({
+      tokenIn: AAVE_USDX,
+      tokenOut: address(GHO_TOKEN),
+      amount: amount,
+      expectedAmountIn: amount,
+      expectedOut: expected
+    });
 
     assertEq(amountOut, expected, 'output');
     assertGe(amountOut, preview, 'output below preview');
@@ -214,9 +274,14 @@ contract TestGhoRouterStata is TestGhoRouterBase {
   }
 
   function _assertTokenToSGho(uint256 amount, uint256 expected, uint256 expectedRefund) internal {
-    assertEq(SGHO.convertToAssets(1 ether), 1 ether, 'sGHO index not 1');
     uint256 preview = GHO_ROUTER.previewSwap(AAVE_USDX, address(SGHO), address(STATA_GSM), amount);
-    uint256 amountOut = _swap(AAVE_USDX, address(SGHO), amount);
+    uint256 amountOut = _swap({
+      tokenIn: AAVE_USDX,
+      tokenOut: address(SGHO),
+      amount: amount,
+      expectedAmountIn: amount,
+      expectedOut: expected
+    });
 
     assertEq(amountOut, expected, 'output');
     assertGe(amountOut, preview, 'output below preview');
@@ -238,7 +303,14 @@ contract TestGhoRouterStata is TestGhoRouterBase {
       address(STATA_GSM),
       amount
     );
-    uint256 amountOut = _swap(address(GHO_TOKEN), AAVE_USDX, amount);
+    // On GHO -> token routes the event reports the GHO the GSM charged, not the GHO offered
+    uint256 amountOut = _swap({
+      tokenIn: address(GHO_TOKEN),
+      tokenOut: AAVE_USDX,
+      amount: amount,
+      expectedAmountIn: amount - expectedGhoKept,
+      expectedOut: expected
+    });
 
     assertEq(amountOut, expected, 'output');
     assertEq(amountOut, preview, 'output != preview');
@@ -247,15 +319,15 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     _assertRouterClean();
   }
 
-  /// @dev GHO redeemed from sGHO but not spent by the GSM is refunded to the sender, not the recipient
+  /// @dev Swaps the sender's whole sGHO balance. GHO redeemed from sGHO but not spent by the GSM is
+  /// refunded to the sender, not the recipient
   function _assertSGhoToToken(
-    uint256 ghoAmount,
+    uint256 sghoAmountIn,
     uint256 expected,
     uint256 expectedRefund
   ) internal {
-    assertEq(SGHO.convertToAssets(1 ether), 1 ether, 'sGHO index not 1');
-    _mintSgho(ghoAmount);
     uint256 sghoAmount = IERC20(address(SGHO)).balanceOf(USER);
+    assertEq(sghoAmount, sghoAmountIn, 'sender sGHO');
     uint256 preview = GHO_ROUTER.previewSwap(
       address(SGHO),
       AAVE_USDX,
@@ -264,6 +336,8 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     );
     vm.prank(USER);
     IERC20(address(SGHO)).approve(address(GHO_ROUTER), sghoAmount);
+    vm.expectEmit(address(GHO_ROUTER));
+    emit IGhoRouter.Swap(USER, address(SGHO), AAVE_USDX, sghoAmount, expected, RECIPIENT);
     vm.prank(USER);
     uint256 amountOut = GHO_ROUTER.swap({
       tokenIn: address(SGHO),
@@ -358,8 +432,17 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     });
   }
 
-  function _swap(address tokenIn, address tokenOut, uint256 amount) internal returns (uint256) {
+  /// @dev Swaps from `USER` to `RECIPIENT`, expecting the router's `Swap` event
+  function _swap(
+    address tokenIn,
+    address tokenOut,
+    uint256 amount,
+    uint256 expectedAmountIn,
+    uint256 expectedOut
+  ) internal returns (uint256) {
     _dealAndApprove(tokenIn, address(GHO_ROUTER), amount);
+    vm.expectEmit(address(GHO_ROUTER));
+    emit IGhoRouter.Swap(USER, tokenIn, tokenOut, expectedAmountIn, expectedOut, RECIPIENT);
     vm.prank(USER);
     return
       GHO_ROUTER.swap({
@@ -371,6 +454,15 @@ contract TestGhoRouterStata is TestGhoRouterBase {
         recipient: RECIPIENT,
         deadline: block.timestamp
       });
+  }
+
+  function _assertSGhoIndexOne() internal view {
+    assertEq(SGHO.convertToAssets(1 ether), 1 ether, 'sGHO index not 1');
+  }
+
+  function _setSGhoRate(uint256 rate) internal {
+    SGHO.grantRole(SGHO.YIELD_MANAGER_ROLE(), address(this));
+    SGHO.setTargetRate(bound(rate, 1, SGHO.MAX_SAFE_RATE()).toUint16());
   }
 
   /// @dev Borrows half the reserve and lets interest accrue, so the stata rate grows above 1

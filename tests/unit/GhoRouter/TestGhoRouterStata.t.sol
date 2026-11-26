@@ -17,7 +17,10 @@ contract TestGhoRouterStata is TestGhoRouterBase {
   uint256 internal constant GSM_SEED = 1_000_000e6;
   uint256 internal constant SWAP_AMOUNT = 10_000e6;
   uint256 internal constant GHO_SWAP_AMOUNT = 1_000 ether;
-  uint256 internal constant RAY = 1e27;
+  uint256 internal constant MIN_USDX = 1e6;
+  uint256 internal constant MAX_USDX = 500_000e6;
+  uint256 internal constant MIN_GHO = 1 ether;
+  uint256 internal constant MAX_GHO = 500_000 ether;
 
   AaveV3StataEnvironment internal AAVE;
   address internal AAVE_USDX;
@@ -56,44 +59,91 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     STATA_GSM.sellAsset(seedShares, address(this));
   }
 
-  /// @dev 10,000 USDX wrap 1:1 at rate 1, minus the 10% sell fee
+  /// @dev 10,000 USDX wrap 1:1 at rate 1 and sell for 9,000 GHO after the 10% fee. The GSM takes
+  /// every share, so nothing is refunded
   function test_stata_tokenToGho() external {
-    _assertTokenToGho(9_000 ether);
+    _assertTokenToGho(SWAP_AMOUNT, 9_000 ether, 0);
   }
 
-  function test_stata_tokenToGho_indexAboveOne(uint256 elapsed) external {
+  function test_stata_tokenToGho_fuzzAmount(uint256 amount) external {
+    amount = bound(amount, MIN_USDX, MAX_USDX);
+    (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertTokenToGho(amount, gho, refund);
+  }
+
+  function test_stata_tokenToGho_indexAboveOne(uint256 amount, uint256 elapsed) external {
     _growIndex(bound(elapsed, 1 days, 5 * 365 days));
-    _assertTokenToGho(_expectedGhoForSell(SWAP_AMOUNT));
+    amount = bound(amount, MIN_USDX, MAX_USDX);
+    (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertTokenToGho(amount, gho, refund);
   }
 
   /// @dev Same GHO as `test_stata_tokenToGho`, deposited into sGHO at index 1
   function test_stata_tokenToSGho() external {
-    _assertTokenToSGho(9_000 ether);
+    _assertTokenToSGho(SWAP_AMOUNT, 9_000 ether, 0);
   }
 
-  function test_stata_tokenToSGho_indexAboveOne(uint256 elapsed) external {
+  function test_stata_tokenToSGho_fuzzAmount(uint256 amount) external {
+    amount = bound(amount, MIN_USDX, MAX_USDX);
+    (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertTokenToSGho(amount, gho, refund);
+  }
+
+  function test_stata_tokenToSGho_indexAboveOne(uint256 amount, uint256 elapsed) external {
     _growIndex(bound(elapsed, 1 days, 5 * 365 days));
-    _assertTokenToSGho(_expectedGhoForSell(SWAP_AMOUNT));
+    amount = bound(amount, MIN_USDX, MAX_USDX);
+    (uint256 gho, uint256 refund) = _expectedSell(amount);
+    _assertTokenToSGho(amount, gho, refund);
   }
 
-  /// @dev 1,000 GHO buy 1,000 / 1.1 USDX after the 10% buy fee, floored to 6 decimals
+  /// @dev 1,000 GHO buy 1,000 / 1.1 USDX after the 10% buy fee, floored to 6 decimals. The GSM
+  /// charges 999.9999999 GHO for it, so 1e11 wei of GHO stays with the sender
   function test_stata_ghoToToken() external {
-    _assertGhoToToken(909_090909);
+    _assertGhoToToken(GHO_SWAP_AMOUNT, 909_090909, 1e11);
   }
 
-  function test_stata_ghoToToken_indexAboveOne(uint256 elapsed) external {
+  function test_stata_ghoToToken_fuzzAmount(uint256 amount) external {
+    amount = bound(amount, MIN_GHO, MAX_GHO);
+    (uint256 usdx, uint256 ghoSold) = _expectedBuy(amount);
+    _assertGhoToToken(amount, usdx, amount - ghoSold);
+  }
+
+  function test_stata_ghoToToken_indexAboveOne(uint256 amount, uint256 elapsed) external {
     _growIndex(bound(elapsed, 1 days, 5 * 365 days));
-    _assertGhoToToken(_expectedUsdxForBuy(GHO_SWAP_AMOUNT));
+    amount = bound(amount, MIN_GHO, MAX_GHO);
+    (uint256 usdx, uint256 ghoSold) = _expectedBuy(amount);
+    _assertGhoToToken(amount, usdx, amount - ghoSold);
   }
 
-  /// @dev 1,000 sGHO redeem to 1,000 GHO at index 1, then buy as in `test_stata_ghoToToken`
+  /// @dev 1,000 sGHO redeem to 1,000 GHO at index 1, then buy as in `test_stata_ghoToToken`, and the
+  /// unspent 1e11 wei of GHO is refunded to the sender
   function test_stata_sGhoToToken() external {
-    _assertSGhoToToken(909_090909);
+    _assertSGhoToToken(GHO_SWAP_AMOUNT, 909_090909, 1e11);
   }
 
-  function test_stata_sGhoToToken_indexAboveOne(uint256 elapsed) external {
+  function test_stata_sGhoToToken_fuzzAmount(uint256 amount) external {
+    amount = bound(amount, MIN_GHO, MAX_GHO);
+    (uint256 usdx, uint256 ghoSold) = _expectedBuy(amount);
+    _assertSGhoToToken(amount, usdx, amount - ghoSold);
+  }
+
+  function test_stata_sGhoToToken_indexAboveOne(uint256 amount, uint256 elapsed) external {
     _growIndex(bound(elapsed, 1 days, 5 * 365 days));
-    _assertSGhoToToken(_expectedUsdxForBuy(GHO_SWAP_AMOUNT));
+    amount = bound(amount, MIN_GHO, MAX_GHO);
+    (uint256 usdx, uint256 ghoSold) = _expectedBuy(amount);
+    _assertSGhoToToken(amount, usdx, amount - ghoSold);
+  }
+
+  /// @dev Asking for one wei more than the route pays reverts, on the wrap and the unwrap paths
+  function test_stata_slippage(uint256 usdxAmount, uint256 ghoAmount) external {
+    usdxAmount = bound(usdxAmount, MIN_USDX, MAX_USDX);
+    ghoAmount = bound(ghoAmount, MIN_GHO, MAX_GHO);
+    (uint256 gho, ) = _expectedSell(usdxAmount);
+    (uint256 usdx, ) = _expectedBuy(ghoAmount);
+
+    _assertSlippageReverts(AAVE_USDX, address(GHO_TOKEN), usdxAmount, gho + 1);
+    _assertSlippageReverts(AAVE_USDX, address(SGHO), usdxAmount, gho + 1);
+    _assertSlippageReverts(address(GHO_TOKEN), AAVE_USDX, ghoAmount, usdx + 1);
   }
 
   /// @dev A paused reserve blocks both the wrap and the unwrap, while previews still quote an amount
@@ -107,7 +157,7 @@ contract TestGhoRouterStata is TestGhoRouterBase {
   function test_stata_reserveFrozen() external {
     AAVE.setReserveFrozen(AAVE_USDX, true);
     _assertWrapReverts(ERC4626Upgradeable.ERC4626ExceededMaxDeposit.selector);
-    _assertGhoToToken(909_090909);
+    _assertGhoToToken(GHO_SWAP_AMOUNT, 909_090909, 1e11);
   }
 
   function test_stata_supplyCapReached() external {
@@ -132,6 +182,8 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     uint256 amountOut = _swap(address(GHO_TOKEN), address(STATA_USDX), ghoAmount);
     assertEq(amountOut, preview, 'output != preview');
     assertEq(STATA_USDX.balanceOf(RECIPIENT), amountOut, 'recipient stata balance');
+    (, uint256 ghoSold) = _expectedBuy(ghoAmount);
+    _assertGhoKeptBySender(ghoAmount - ghoSold);
     _assertRouterClean();
   }
 
@@ -144,31 +196,27 @@ contract TestGhoRouterStata is TestGhoRouterBase {
   }
 
   /// @dev The wrap path may pay up to one static aToken share more than previewed, never less
-  function _assertTokenToGho(uint256 expected) internal {
+  function _assertTokenToGho(uint256 amount, uint256 expected, uint256 expectedRefund) internal {
     uint256 preview = GHO_ROUTER.previewSwap(
       AAVE_USDX,
       address(GHO_TOKEN),
       address(STATA_GSM),
-      SWAP_AMOUNT
+      amount
     );
-    uint256 amountOut = _swap(AAVE_USDX, address(GHO_TOKEN), SWAP_AMOUNT);
+    uint256 amountOut = _swap(AAVE_USDX, address(GHO_TOKEN), amount);
 
     assertEq(amountOut, expected, 'output');
     assertGe(amountOut, preview, 'output below preview');
     assertLe(amountOut - preview, _oneShareInGho(), 'output above preview by more than one share');
     assertEq(GHO_TOKEN.balanceOf(RECIPIENT), amountOut, 'recipient GHO balance');
+    _assertStataRefundedToSender(expectedRefund);
     _assertRouterClean();
   }
 
-  function _assertTokenToSGho(uint256 expected) internal {
+  function _assertTokenToSGho(uint256 amount, uint256 expected, uint256 expectedRefund) internal {
     assertEq(SGHO.convertToAssets(1 ether), 1 ether, 'sGHO index not 1');
-    uint256 preview = GHO_ROUTER.previewSwap(
-      AAVE_USDX,
-      address(SGHO),
-      address(STATA_GSM),
-      SWAP_AMOUNT
-    );
-    uint256 amountOut = _swap(AAVE_USDX, address(SGHO), SWAP_AMOUNT);
+    uint256 preview = GHO_ROUTER.previewSwap(AAVE_USDX, address(SGHO), address(STATA_GSM), amount);
+    uint256 amountOut = _swap(AAVE_USDX, address(SGHO), amount);
 
     assertEq(amountOut, expected, 'output');
     assertGe(amountOut, preview, 'output below preview');
@@ -178,28 +226,35 @@ contract TestGhoRouterStata is TestGhoRouterBase {
       'output above preview by more than one share'
     );
     assertEq(IERC20(address(SGHO)).balanceOf(RECIPIENT), amountOut, 'recipient sGHO balance');
+    _assertStataRefundedToSender(expectedRefund);
     _assertRouterClean();
   }
 
-  function _assertGhoToToken(uint256 expected) internal {
-    uint256 ghoAmount = GHO_SWAP_AMOUNT;
+  /// @dev The router pulls only the GHO the GSM charges, so the rest never leaves the sender
+  function _assertGhoToToken(uint256 amount, uint256 expected, uint256 expectedGhoKept) internal {
     uint256 preview = GHO_ROUTER.previewSwap(
       address(GHO_TOKEN),
       AAVE_USDX,
       address(STATA_GSM),
-      ghoAmount
+      amount
     );
-    uint256 amountOut = _swap(address(GHO_TOKEN), AAVE_USDX, ghoAmount);
+    uint256 amountOut = _swap(address(GHO_TOKEN), AAVE_USDX, amount);
 
     assertEq(amountOut, expected, 'output');
     assertEq(amountOut, preview, 'output != preview');
     assertEq(IERC20(AAVE_USDX).balanceOf(RECIPIENT), amountOut, 'recipient USDX balance');
+    _assertGhoKeptBySender(expectedGhoKept);
     _assertRouterClean();
   }
 
-  function _assertSGhoToToken(uint256 expected) internal {
+  /// @dev GHO redeemed from sGHO but not spent by the GSM is refunded to the sender, not the recipient
+  function _assertSGhoToToken(
+    uint256 ghoAmount,
+    uint256 expected,
+    uint256 expectedRefund
+  ) internal {
     assertEq(SGHO.convertToAssets(1 ether), 1 ether, 'sGHO index not 1');
-    _mintSgho(GHO_SWAP_AMOUNT);
+    _mintSgho(ghoAmount);
     uint256 sghoAmount = IERC20(address(SGHO)).balanceOf(USER);
     uint256 preview = GHO_ROUTER.previewSwap(
       address(SGHO),
@@ -223,7 +278,21 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     assertEq(amountOut, expected, 'output');
     assertEq(amountOut, preview, 'output != preview');
     assertEq(IERC20(AAVE_USDX).balanceOf(RECIPIENT), amountOut, 'recipient USDX balance');
+    assertEq(IERC20(address(SGHO)).balanceOf(USER), 0, 'sender sGHO left');
+    _assertGhoKeptBySender(expectedRefund);
     _assertRouterClean();
+  }
+
+  /// @dev Static aToken shares the GSM did not take go back to the sender, and all USDX was pulled
+  function _assertStataRefundedToSender(uint256 expectedRefund) internal view {
+    assertEq(STATA_USDX.balanceOf(USER), expectedRefund, 'stata refund to sender');
+    assertEq(STATA_USDX.balanceOf(RECIPIENT), 0, 'stata refund to recipient');
+    assertEq(IERC20(AAVE_USDX).balanceOf(USER), 0, 'sender USDX left');
+  }
+
+  function _assertGhoKeptBySender(uint256 expectedGho) internal view {
+    assertEq(GHO_TOKEN.balanceOf(USER), expectedGho, 'sender GHO');
+    assertEq(GHO_TOKEN.balanceOf(RECIPIENT), 0, 'recipient GHO');
   }
 
   /// @dev USDX -> GHO reverts with `selector` on the stata deposit, while the preview still quotes
@@ -269,6 +338,26 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     });
   }
 
+  function _assertSlippageReverts(
+    address tokenIn,
+    address tokenOut,
+    uint256 amount,
+    uint256 minAmountOut
+  ) internal {
+    _dealAndApprove(tokenIn, address(GHO_ROUTER), amount);
+    vm.expectRevert(IGhoRouter.SlippageExceeded.selector);
+    vm.prank(USER);
+    GHO_ROUTER.swap({
+      tokenIn: tokenIn,
+      tokenOut: tokenOut,
+      gsm: address(STATA_GSM),
+      exactAmountIn: amount,
+      minAmountOut: minAmountOut,
+      recipient: RECIPIENT,
+      deadline: block.timestamp
+    });
+  }
+
   function _swap(address tokenIn, address tokenOut, uint256 amount) internal returns (uint256) {
     _dealAndApprove(tokenIn, address(GHO_ROUTER), amount);
     vm.prank(USER);
@@ -292,30 +381,40 @@ contract TestGhoRouterStata is TestGhoRouterBase {
     assertGt(STATA_USDX.convertToAssets(1e6), rateBefore, 'stata rate did not grow');
   }
 
-  /// @dev GHO for selling `usdxAmount` through the stata GSM: wrap at the pool rate (floor), value
-  /// the shares at 1:1 (floor, 6 -> 18 decimals), minus the 10% sell fee (rounded up)
-  function _expectedGhoForSell(uint256 usdxAmount) internal view returns (uint256) {
+  /// @dev GHO from selling `usdxAmount` through the stata GSM, and the shares the GSM leaves unsold.
+  /// The USDX wraps at the pool rate (floor) and the shares are valued 1:1 (floor, 6 -> 18 decimals)
+  /// minus the 10% sell fee (rounded up). The GSM then takes only the shares worth that GHO grossed
+  /// back up (rounded up), and the rest are refunded
+  function _expectedSell(uint256 usdxAmount) internal view returns (uint256 gho, uint256 refund) {
     uint256 rate = AAVE.normalizedIncome(AAVE_USDX);
-    uint256 shares = Math.mulDiv(usdxAmount, RAY, rate);
-    uint256 gross = Math.mulDiv(shares, rate, RAY) * 1e12;
-    return gross - Math.mulDiv(gross, sellFee, 1e4, Math.Rounding.Ceil);
+    uint256 shares = Math.mulDiv(usdxAmount, WadRayMath.RAY, rate);
+    uint256 gross = Math.mulDiv(shares, rate, WadRayMath.RAY) * 1e12;
+    gho = gross - Math.mulDiv(gross, sellFee, 1e4, Math.Rounding.Ceil);
+
+    uint256 soldGross = Math.mulDiv(gho, 1e4, 1e4 - sellFee, Math.Rounding.Ceil);
+    uint256 soldUsdx = Math.mulDiv(soldGross, 1, 1e12, Math.Rounding.Ceil);
+    refund = shares - Math.mulDiv(soldUsdx, WadRayMath.RAY, rate, Math.Rounding.Ceil);
   }
 
-  /// @dev USDX for buying with `ghoAmount` through the stata GSM and unwrapping. The GSM quotes the
-  /// shares `ghoAmount` buys net of the 10% buy fee, re-prices them on the buy (rounding up), then
-  /// the shares are redeemed at the pool rate (floor)
-  function _expectedUsdxForBuy(uint256 ghoAmount) internal view returns (uint256) {
+  /// @dev USDX from buying with `ghoAmount` through the stata GSM and unwrapping, and the GHO the GSM
+  /// charges. The GSM quotes the shares `ghoAmount` buys net of the 10% buy fee, re-prices them on
+  /// the buy (rounding up), then the shares are redeemed at the pool rate (floor)
+  function _expectedBuy(uint256 ghoAmount) internal view returns (uint256 usdx, uint256 ghoSold) {
     uint256 rate = AAVE.normalizedIncome(AAVE_USDX);
     uint256 quotedShares = Math.mulDiv(
       (Math.mulDiv(ghoAmount, 1e4, 1e4 + buyFee)) / 1e12,
-      RAY,
+      WadRayMath.RAY,
       rate
     );
 
-    uint256 buyGross = Math.mulDiv(quotedShares, rate, RAY, Math.Rounding.Ceil) * 1e12;
-    uint256 ghoSold = buyGross + Math.mulDiv(buyGross, buyFee, 1e4, Math.Rounding.Ceil);
-    uint256 boughtShares = Math.mulDiv(Math.mulDiv(ghoSold, 1e4, 1e4 + buyFee) / 1e12, RAY, rate);
-    return Math.mulDiv(boughtShares, rate, RAY);
+    uint256 buyGross = Math.mulDiv(quotedShares, rate, WadRayMath.RAY, Math.Rounding.Ceil) * 1e12;
+    ghoSold = buyGross + Math.mulDiv(buyGross, buyFee, 1e4, Math.Rounding.Ceil);
+    uint256 boughtShares = Math.mulDiv(
+      Math.mulDiv(ghoSold, 1e4, 1e4 + buyFee) / 1e12,
+      WadRayMath.RAY,
+      rate
+    );
+    usdx = Math.mulDiv(boughtShares, rate, WadRayMath.RAY);
   }
 
   /// @dev GHO value of one static aToken share, at the GSM's 1:1 price and 6 -> 18 decimals

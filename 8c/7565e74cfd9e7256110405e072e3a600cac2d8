@@ -1,0 +1,44 @@
+src/contracts/misc/sGhoSteward.sol
+  s_3ac7e60bd238cf::t_03699181f767a9 42,50-55
+tests/unit/TestSGhoCrossChainSync.t.sol
+  s_3ac7e60bd238cf::t_bbc989768e570c 196
+  s_3ac7e60bd238cf::t_cbd7e80dd91d3b 184-195,197-207
+docs/sgho.md
+  s_3ac7e60bd238cf::t_5a52982020ceef 53-54
+  s_3ac7e60bd238cf::t_ac34a73645b03c 72
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3ac7e60bd238cf::t_cbd7e80dd91d3b 349-444
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3ac7e60bd238cf::t_18d02a3c2d37a2 34-38,62-68,134-141
+src/contracts/sgho/sGho.sol
+  s_3ac7e60bd238cf::t_18d02a3c2d37a2 168-181
+docs/sGhoSteward.md
+  s_3ac7e60bd238cf::t_5a52982020ceef 34-35
+  s_3ac7e60bd238cf::t_d779f556f89cdf 51
+src/contracts/misc/interfaces/IsGhoSteward.sol
+  s_3ac7e60bd238cf::t_03699181f767a9 19-24,38,50-51,60-67
+tests/misc/sGhoSteward.t.sol
+  s_3ac7e60bd238cf::t_9353f32069f752 266-270,483-489,492,504-524,526-540,563-571
+  s_3ac7e60bd238cf::t_6c75bb72885c89 182-184,186,189-191,213-214,236-237,241-265,271-328,525,541-542,578-579
+  s_3ac7e60bd238cf::t_d779f556f89cdf 467-468,482,572-577
+snapshots/sGho.Operations.json
+  s_3ac7e60bd238cf::t_bbc989768e570c 2-5,7-9,11-12
+tests/gas/sGho.Operations.gas.t.sol
+  s_3ac7e60bd238cf::t_cbd7e80dd91d3b 81-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c7565e74cfd9e7256110405e072e3a600cac2d8",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

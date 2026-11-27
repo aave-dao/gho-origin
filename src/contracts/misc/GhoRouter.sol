@@ -410,7 +410,7 @@ contract GhoRouter is Ownable2StepWithGuardian, Pausable, ReentrancyGuard, IGhoR
   }
 
   /**
-   * @dev Pulls sGHO from the caller and redeems it for GHO into the router.
+   * @dev Redeems the caller's sGHO, using the router's allowance, for GHO sent to the router.
    * @param exactAmountIn Amount of sGHO shares to redeem.
    * @param minGhoAmount Minimum acceptable GHO output.
    * @return ghoAmount Amount of GHO redeemed.

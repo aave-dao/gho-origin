@@ -15,9 +15,8 @@ import {MockBadGsm} from '../../mocks/MockBadGsm.sol';
 import {MockBadStata} from '../../mocks/MockBadStata.sol';
 
 /**
- * @title GhoRouterTest
+ * @title TestGhoRouterBase
  * @notice Unit tests for GhoRouter
- * @dev Run with: forge test --match-path test/unit/GhoRouter/GhoRouterTest.t.sol -vvv
  */
 contract TestGhoRouterBase is TestGhoBase {
   uint256 public constant MAX_FUZZ_AMOUNT_6_DECIMALS = 10_000_000e6;

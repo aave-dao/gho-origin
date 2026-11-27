@@ -9,7 +9,7 @@ interface IGhoRouter {
   /// @dev Deadline for performing swap has expired
   error DeadlineExpired();
 
-  /// @dev GSM not configured for the given token
+  /// @dev The GSM is not allowed for swaps
   error GsmNotConfigured();
 
   /// @dev Amount must be greater than zero
@@ -35,7 +35,7 @@ interface IGhoRouter {
   /// @dev The GSM is already allowed
   error GsmAlreadySet();
 
-  /// @dev The GSM is not allowed
+  /// @dev The GSM to revoke is not allowed
   error GsmNotSet();
 
   /// @dev The required GHO to swap for token is greater than expected amount

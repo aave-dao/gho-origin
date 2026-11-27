@@ -455,7 +455,7 @@ contract TestGhoRouterStata is TestGhoRouterBase {
 
   function _setSGhoRate(uint256 rate) internal {
     SGHO.grantRole(SGHO.YIELD_MANAGER_ROLE(), address(this));
-    SGHO.setTargetRate(bound(rate, 1, SGHO.MAX_SAFE_RATE()).toUint16());
+    SGHO.setTargetRate(bound(rate, 1, SGHO.MAX_SAFE_RATE()).toUint16(), block.timestamp.toUint40());
   }
 
   /// @dev Borrows half the reserve and lets interest accrue, so the stata rate grows above 1

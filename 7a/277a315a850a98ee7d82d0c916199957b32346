@@ -1,0 +1,19 @@
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3ac7e60bd238cf::t_25037cbb522e62 5,386-388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a277a315a850a98ee7d82d0c916199957b32346",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

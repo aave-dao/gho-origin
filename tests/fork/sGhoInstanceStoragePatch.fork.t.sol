@@ -179,7 +179,9 @@ contract sGhoInstanceStoragePatchForkTest is Test {
   function test_fork_upgrade_initializeLocked() external onlyForked {
     address gho = sgho.asset();
 
+    assertEq(_initializedVersion(PROXY), 1, 'version before upgrade');
     _upgrade();
+    assertEq(_initializedVersion(PROXY), 2, 'version after upgrade');
 
     // The patch consumed SGHO_REVISION, so the canonical initializer is not callable
     vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -251,5 +253,14 @@ contract sGhoInstanceStoragePatchForkTest is Test {
 
     assertEq(assets, expected, 'redeem returned unexpected assets');
     assertEq(IERC20(sgho.asset()).balanceOf(HOLDER), ghoBefore + assets, 'GHO not received');
+  }
+
+  /// @dev Reads OpenZeppelin's initialized version from its ERC-7201 `Initializable` slot
+  function _initializedVersion(address proxy) internal view returns (uint64) {
+    bytes32 slot = keccak256(
+      abi.encode(uint256(keccak256('openzeppelin.storage.Initializable')) - 1)
+    ) & ~bytes32(uint256(0xff));
+    // `_initialized` is the low 64 bits of the slot, the truncation is intentional
+    return uint64(uint256(vm.load(proxy, slot)));
   }
 }

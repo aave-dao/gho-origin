@@ -1,0 +1,37 @@
+tests/misc/sGhoSteward.t.sol
+  s_3ac7e60bd238cf::t_ac751af5479c06 41,44,46,49,51,54,56
+  s_3ac7e60bd238cf::t_c984434ddf041a 24-28,33,42-43,45,47-48,52-53,57-58,64-69,76,80,95-98,586,589-605
+src/contracts/misc/sGhoSteward.sol
+  s_3ac7e60bd238cf::t_8d1c296c1aa60f 152-155
+  s_3ac7e60bd238cf::t_46a9cb8ed1351a 199
+  s_3ac7e60bd238cf::t_bce788c7cdb33a 11
+  s_3ac7e60bd238cf::t_58e4c6d90fb611 5-10,12-13,20-21,24-25,32-40,44-77,82-85,92,126-138,141-145,147-151,156-176,181-198,200-241
+  s_3ac7e60bd238cf::t_a79d502be2cacb 140
+  s_3ac7e60bd238cf::t_1b6471b49c3f00 139,146
+tests/helpers/AaveV3StataEnvironment.sol
+  s_3ac7e60bd238cf::t_c984434ddf041a 7-9,29-32,37-61
+  s_3ac7e60bd238cf::t_8d1c296c1aa60f 33-36
+tests/integration/sGhoSteward/TestSGhoStewardFunding.t.sol
+  s_3ac7e60bd238cf::t_8d1c296c1aa60f 244
+  s_3ac7e60bd238cf::t_cba37a09156649 1-34,58-188,202-243,245-246,250-415
+  s_3ac7e60bd238cf::t_a5ec82b9c39f25 35-57,189-201,247-249
+src/contracts/misc/interfaces/IsGhoSteward.sol
+  s_3ac7e60bd238cf::t_46a9cb8ed1351a 4,9-10,34-48,54-85,125-136,138-179,194-208
+  s_3ac7e60bd238cf::t_a79d502be2cacb 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b0c5a129cb95043c061ae1dca7e73032e4fc931",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

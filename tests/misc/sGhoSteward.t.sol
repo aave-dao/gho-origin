@@ -21,11 +21,16 @@ contract sGhoStewardTest is TestSGhoBase {
   bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
   bytes32 public constant RATE_MANAGER_ROLE = keccak256('RATE_MANAGER_ROLE');
   bytes32 public constant SUPPLY_CAP_MANAGER_ROLE = keccak256('SUPPLY_CAP_MANAGER_ROLE');
+  bytes32 public constant FUNDING_MANAGER_ROLE = keccak256('FUNDING_MANAGER_ROLE');
+
+  address public collector = makeAddr('collector');
+  uint256 public constant MAX_FUNDING_AMOUNT = 100_000 ether;
+  uint256 public constant FUNDING_BUFFER_DURATION = 90 days;
 
   function setUp() public override {
     super.setUp();
 
-    steward = new sGhoSteward(governance, riskCouncil, address(sgho));
+    steward = _deploySteward(governance, riskCouncil, address(sgho), collector);
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), address(steward));
   }
 
@@ -33,31 +38,50 @@ contract sGhoStewardTest is TestSGhoBase {
   // SETUP & ACCESS CONTROL
   // ========================================
 
-  function test_wrongSetUp() public {
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(address(0), riskCouncil, address(sgho));
+  function test_revert_constructor_zeroOwner() public {
+    vm.expectRevert(IsGhoSteward.ZeroAddress.selector);
+    _deploySteward(address(0), riskCouncil, address(sgho), collector);
+  }
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, address(0), address(sgho));
+  function test_revert_constructor_zeroRiskCouncil() public {
+    vm.expectRevert(IsGhoSteward.ZeroAddress.selector);
+    _deploySteward(governance, address(0), address(sgho), collector);
+  }
 
-    vm.expectRevert(abi.encodeWithSelector(IsGhoSteward.ZeroAddress.selector));
-    new sGhoSteward(governance, riskCouncil, address(0));
+  function test_revert_constructor_zeroSGho() public {
+    vm.expectRevert(IsGhoSteward.ZeroAddress.selector);
+    _deploySteward(governance, riskCouncil, address(0), collector);
+  }
+
+  function test_revert_constructor_zeroCollector() public {
+    vm.expectRevert(IsGhoSteward.ZeroAddress.selector);
+    _deploySteward(governance, riskCouncil, address(sgho), address(0));
   }
 
   function test_initial() public view {
     assertEq(steward.RATE_MANAGER_ROLE(), RATE_MANAGER_ROLE);
     assertEq(steward.SUPPLY_CAP_MANAGER_ROLE(), SUPPLY_CAP_MANAGER_ROLE);
+    assertEq(steward.FUNDING_MANAGER_ROLE(), FUNDING_MANAGER_ROLE);
+    assertEq(steward.MINIMUM_DELAY(), 1 days);
+    assertEq(steward.FUNDING_BUFFER_DURATION(), FUNDING_BUFFER_DURATION);
+    assertEq(steward.INITIAL_MAX_FUNDING_AMOUNT(), MAX_FUNDING_AMOUNT);
+    assertEq(steward.getMaxFundingAmount(), MAX_FUNDING_AMOUNT);
+    assertEq(steward.getLastFundingTimestamp(), 0);
+    assertEq(address(steward.COLLECTOR()), collector);
 
     assertTrue(steward.hasRole(DEFAULT_ADMIN_ROLE, governance));
     assertFalse(steward.hasRole(DEFAULT_ADMIN_ROLE, riskCouncil));
 
     assertTrue(steward.hasRole(RATE_MANAGER_ROLE, riskCouncil));
     assertTrue(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, riskCouncil));
+    assertTrue(steward.hasRole(FUNDING_MANAGER_ROLE, riskCouncil));
 
     assertFalse(steward.hasRole(RATE_MANAGER_ROLE, governance));
     assertFalse(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, governance));
+    assertFalse(steward.hasRole(FUNDING_MANAGER_ROLE, governance));
 
-    assertEq(address(steward.sGHO()), address(sgho));
+    assertEq(address(steward.SGHO()), address(sgho));
+    assertEq(address(steward.GHO()), address(gho));
   }
 
   function test_riskCouncilCannotGrantRoles() public {
@@ -70,6 +94,10 @@ contract sGhoStewardTest is TestSGhoBase {
     vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
     vm.prank(riskCouncil);
     AccessControl(steward).grantRole(SUPPLY_CAP_MANAGER_ROLE, user);
+
+    vm.expectRevert(_craftError(riskCouncil, DEFAULT_ADMIN_ROLE));
+    vm.prank(riskCouncil);
+    AccessControl(steward).grantRole(FUNDING_MANAGER_ROLE, user);
   }
 
   function test_revert_setTargetRate_notRateManager(address caller) public {
@@ -557,7 +585,22 @@ contract sGhoStewardTest is TestSGhoBase {
       source.lastUpdate().toUint40(),
       source.targetRate()
     );
-    l2Steward = new sGhoSteward(governance, riskCouncil, address(l2));
+    l2Steward = _deploySteward(governance, riskCouncil, address(l2), collector);
     l2.grantRole(l2.YIELD_MANAGER_ROLE(), address(l2Steward));
+  }
+
+  function _deploySteward(
+    address owner,
+    address council,
+    address sGhoAddress,
+    address collectorAddress
+  ) internal returns (sGhoSteward) {
+    return
+      new sGhoSteward({
+        owner: owner,
+        riskCouncil: council,
+        sGho: sGhoAddress,
+        collector: collectorAddress
+      });
   }
 }

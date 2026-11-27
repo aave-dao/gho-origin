@@ -63,6 +63,10 @@ contract TestSGhoInitialization is TestSGhoBase {
     assertEq(newSgho.totalAssets(), 0, 'Should be initialized');
   }
 
+  function test_initializedVersion() external view {
+    assertEq(_initializedVersion(address(sgho)), 2, 'initialized version');
+  }
+
   function test_revert_initialize_twice() external {
     sGho newSgho = _deploySGho();
 
@@ -293,7 +297,16 @@ contract TestSGhoInitialization is TestSGhoBase {
     new TransparentUpgradeableProxy(
       impl,
       address(this),
-      abi.encodeWithSelector(sGhoInstance.initialize.selector, ghoToken, SUPPLY_CAP_UNITS, owner)
+      abi.encodeCall(sGhoInstance.initialize, (ghoToken, SUPPLY_CAP_UNITS, owner))
     );
+  }
+
+  /// @dev Reads OpenZeppelin's initialized version from its ERC-7201 `Initializable` slot
+  function _initializedVersion(address proxy) internal view returns (uint64) {
+    bytes32 slot = keccak256(
+      abi.encode(uint256(keccak256('openzeppelin.storage.Initializable')) - 1)
+    ) & ~bytes32(uint256(0xff));
+    // `_initialized` is the low 64 bits of the slot, the truncation is intentional
+    return uint64(uint256(vm.load(proxy, slot)));
   }
 }

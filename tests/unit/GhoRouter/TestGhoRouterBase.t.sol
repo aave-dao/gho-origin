@@ -9,6 +9,7 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {IWithGuardian} from 'solidity-utils/contracts/access-control/interfaces/IWithGuardian.sol';
 
 import {sGho} from 'src/contracts/sgho/sGho.sol';
+import {sGhoInstance} from 'src/contracts/sgho/instances/sGhoInstance.sol';
 import {GhoRouter} from 'src/contracts/misc/GhoRouter.sol';
 import {IGhoRouter} from 'src/contracts/misc/interfaces/IGhoRouter.sol';
 import {MockBadGsm} from '../../mocks/MockBadGsm.sol';
@@ -37,11 +38,15 @@ contract TestGhoRouterBase is TestGhoBase {
     SGHO = sGho(
       address(
         new TransparentUpgradeableProxy(
-          address(new sGho()),
+          address(new sGhoInstance()),
           makeAddr('PROXY_ADMIN_OWNER'),
           abi.encodeCall(
-            sGho.initialize,
-            (address(GHO_TOKEN), uint160(DEFAULT_SGHO_SUPPLY_CAP), address(this))
+            sGhoInstance.initialize,
+            (
+              address(GHO_TOKEN),
+              SafeCast.toUint40(DEFAULT_SGHO_SUPPLY_CAP / 10 ** GHO_TOKEN.decimals()),
+              address(this)
+            )
           )
         )
       )

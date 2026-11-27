@@ -278,4 +278,22 @@ contract TestSGhoInitialization is TestSGhoBase {
   function test_getter_totalAssets() external view {
     assertEq(sgho.totalAssets(), 0, 'Initial total assets should be 0');
   }
+
+  function test_revert_initialize_zeroGho() external {
+    _assertInitializeReverts(address(0), address(this));
+  }
+
+  function test_revert_initialize_zeroOwner() external {
+    _assertInitializeReverts(address(gho), address(0));
+  }
+
+  function _assertInitializeReverts(address ghoToken, address owner) internal {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.ZeroAddressNotAllowed.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      address(this),
+      abi.encodeWithSelector(sGhoInstance.initialize.selector, ghoToken, SUPPLY_CAP_UNITS, owner)
+    );
+  }
 }

@@ -1,96 +1,39 @@
-# sGHO - Savings GHO Vault
+# sGHO
 
 ## Overview
 
-sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows users to earn yield on their GHO tokens. The vault automatically accrues and distributes yield to depositors through internal accounting, with all logic self-contained in the sGHO contract.
+sGHO is an [ERC-4626](https://eips.ethereum.org/EIPS/eip-4626) vault over GHO. Its share price follows a yield index set by governance, not the GHO the vault holds. The DAO funds the yield by sending GHO to the vault.
 
-## Key Features
+## Yield
 
-- **Full EIP-4626 Compliance**: Complete implementation of the ERC-4626 standard for tokenized vaults
-- **Fixed-Rate Yield**: Yield compounds every second at a fixed target rate, tracked via a yield index
-- **Role-Based Access Control**: Granular permissions for yield management and emergency operations
-- **Permit Support**: Gasless deposits using EIP-2612 permits
-- **Supply Cap Management**: Configurable maximum vault capacity, set in whole GHO units (no decimals)
+- The index compounds every second at `targetRate`, an annual rate in basis points capped at `MAX_SAFE_RATE`: `index * (1 + targetRate / year) ^ elapsed` from the last checkpoint, rounding down at every step.
+- Growth over a period depends only on its length and the rate, not on how often users interact.
+- The index is checkpointed only when a rate change takes effect, as of that change's timestamp. `yieldIndex()` and `lastUpdate()` return that checkpoint, while `convertToAssets` returns the live value.
 
-## Architecture
+## Multi-chain synchronization
 
-### Core Components
+sGHO can run on several chains with an identical yield index, as long as every checkpoint happens at the same timestamp on every chain.
 
-**sGHO.sol**: The main vault contract implementing:
+- `setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute timestamp. A multi-chain AIP passes the same `effectiveAt` on every chain, so the rate switches at the same instant everywhere even though the payload executes at different times.
+- A due update is applied lazily: views resolve it, and the next rate update, deposit or withdrawal persists it, checkpointed at `effectiveAt`. Transfers do not persist it.
+- To keep chains in sync, every scheduled update should be mirrored on all of them. A pending update can be overwritten by the next `setTargetRate` or dropped by `cancelPendingTargetRate`. To stay in sync, do either before the pending `effectiveAt` on every chain.
+- `effectiveAt == now` applies the update immediately at the chain-local time, for single-chain deployments.
+- A new chain is initialized from a live chain's `yieldIndex()`, `lastUpdate()` and `targetRate()`, with `lastUpdate` possibly in the past. A pending update on the source chain is not carried over and has to be scheduled on the new chain too. There is no function to overwrite the checkpoint after initialization.
 
-- ERC-4626 vault functionality (deposit, withdraw, mint, redeem)
-- ERC-20 token standard with permit support
-- Automatic yield accrual via yield index mechanism
-- Role-based access control using OpenZeppelin's AccessControl
-- Pausability mechanism for emergency situations
-- Emergency token rescue functionality
+## Supply cap
 
-## Yield Mechanism
+`supplyCap` is in whole GHO units (no decimals), stored as `uint40`. `maxDeposit` and `maxMint` stop at the cap.
 
-### How It Works
+## Roles
 
-1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
-2. **Per-Second Compounding**: The index grows to `index * (1 + targetRate / year) ^ timeElapsed` from its last checkpoint, so growth over a period depends only on its length. It is only checkpointed when a rate change takes effect, as of that change's timestamp, so user actions and their timing never change it. In between, conversions read the live accrued value
-3. **Share Conversion**: Asset/share conversions use the current yield index
+| Role                  | Can                                                                          |
+| :-------------------- | :--------------------------------------------------------------------------- |
+| `PAUSE_GUARDIAN_ROLE` | Pause and unpause deposits, withdrawals and transfers                        |
+| `TOKEN_RESCUER_ROLE`  | Rescue tokens sent to the vault by mistake, except GHO                       |
+| `YIELD_MANAGER_ROLE`  | Set or schedule the target rate, cancel a scheduled rate, set the supply cap |
 
-### Key Parameters
+## Integrator notes
 
-- **Target Rate**: Fixed annual rate in basis points, compounded every second (max 50% = 5000)
-- **Yield Index**: Index used for share/asset conversions
-
-## Multi-Chain Synchronization
-
-sGHO can be deployed on multiple chains with an identical yield index, as long as every checkpoint happens at the same timestamp on every chain.
-
-### Scheduled Rate Updates
-
-`setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute timestamp. A multi-chain AIP passes the same `effectiveAt` on every chain, for example the expected execution time plus a 24-hour margin. The payload executes at a different moment on each chain, but the rate switches at the same instant everywhere.
-
-The update is applied lazily. Views resolve it once it is due. The next rate update, deposit or withdrawal persists it, with the checkpoint taken at `effectiveAt` rather than at execution or interaction time. Transfers do not persist it, so they stay free of the extra storage read. Because every chain checkpoints at the same `effectiveAt`, the index is identical across chains.
-
-Rules for operators:
-
-- To keep chains in sync, every scheduled update should be mirrored on all of them. Each checkpoint rounds the index, so even a same-rate update executed on one chain only changes its index there. The steward rejects a rate that is already in force.
-- A pending update can be overwritten by the next `setTargetRate` or dropped by `cancelPendingTargetRate`. To keep chains in sync, do either before the pending `effectiveAt` on every chain.
-- `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
-
-### Cold Start
-
-`initialize` takes the checkpoint values `yieldIndex()`, `lastUpdate()` and `targetRate()` read from a live deployment. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on, and the new chain needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not set a rate through the new chain's steward on its own: it checkpoints that chain only. A pending update on the source chain is not carried over and has to be scheduled on the new chain too.
-
-There is no function to overwrite the checkpoint after initialization. If chains desync, the fix is to pause and upgrade the affected deployments.
-
-## Role Management
-
-- `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares including deposits, withdrawals and transfers.
-- `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
-- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate (immediately or scheduled), cancel a scheduled update, and update the supply cap.
-- `DEFAULT_ADMIN_ROLE` : This role manages all other roles.
-
-## Security Considerations
-
-### Built-in Protections
-
-- **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate, compounded every second, to prevent excessive yield.
-- **Balance Checks**: Withdrawals limited by actual GHO balance
-
-### Important Limitations
-
-- **First-Come-First-Served**: Withdrawals depend on available GHO balance of the contract
-- **No Yield Buffer**: No explicit buffer for yield payments, so available yield is not guaranteed at any given time
-- **DAO Dependency**: Relies on DAO to maintain adequate GHO balance based on the yield index
-
-### Shortfall Risk
-
-The vault operates on a first-come, first-served basis. If the contract's GHO balance falls below the theoretical total assets, some users may be unable to withdraw their full balance until additional GHO is provided.
-
-## Math
-
-sGHO uses high-precision arithmetic to ensure accurate yield calculations and prevent precision loss during share/asset conversions.
-The following are key considerations for arithmetic precision in math operations:
-
-- **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: The growth factor since the last checkpoint is `(RAY + rate / year) ^ timeElapsed`, computed by binary exponentiation and applied to the checkpointed index
-- **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
-- **Accumulated Interest**: Every operation rounds down, so the index never exceeds the exact growth
+- **Pricing**: use `convertToAssets` or `previewRedeem`. `yieldIndex()` can be months old.
+- **Withdrawals**: first come, first served. `maxWithdraw` and `maxRedeem` are limited by the GHO the vault holds, which can be below `totalAssets` until the DAO funds it.
+- **Pausing**: blocks deposits, withdrawals and transfers. The `max*` functions return 0 while paused.

@@ -89,14 +89,16 @@ contract TestSGhoInitialization is TestSGhoBase {
     new TransparentUpgradeableProxy(
       impl,
       Admin,
-      abi.encodeWithSelector(
-        sGhoInstance.initialize.selector,
-        address(gho),
-        SUPPLY_CAP_UNITS,
-        address(this),
-        RAY.toUint120(),
-        block.timestamp.toUint40(),
-        uint16(1000)
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          RAY.toUint120(),
+          block.timestamp.toUint40(),
+          uint16(1000)
+        )
       )
     );
   }
@@ -132,14 +134,16 @@ contract TestSGhoInitialization is TestSGhoBase {
     new TransparentUpgradeableProxy(
       impl,
       Admin,
-      abi.encodeWithSelector(
-        sGhoInstance.initialize.selector,
-        address(gho),
-        SUPPLY_CAP_UNITS,
-        address(this),
-        RAY.toUint120(),
-        (block.timestamp + 1).toUint40(),
-        uint16(0)
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          RAY.toUint120(),
+          (block.timestamp + 1).toUint40(),
+          uint16(0)
+        )
       )
     );
   }
@@ -150,14 +154,16 @@ contract TestSGhoInitialization is TestSGhoBase {
     new TransparentUpgradeableProxy(
       impl,
       Admin,
-      abi.encodeWithSelector(
-        sGhoInstance.initialize.selector,
-        address(gho),
-        SUPPLY_CAP_UNITS,
-        address(this),
-        (RAY - 1).toUint120(),
-        block.timestamp.toUint40(),
-        uint16(0)
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          (RAY - 1).toUint120(),
+          block.timestamp.toUint40(),
+          uint16(0)
+        )
       )
     );
   }
@@ -168,14 +174,16 @@ contract TestSGhoInitialization is TestSGhoBase {
     new TransparentUpgradeableProxy(
       impl,
       Admin,
-      abi.encodeWithSelector(
-        sGhoInstance.initialize.selector,
-        address(gho),
-        SUPPLY_CAP_UNITS,
-        address(this),
-        RAY.toUint120(),
-        block.timestamp.toUint40(),
-        uint16(MAX_SAFE_RATE + 1)
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          RAY.toUint120(),
+          block.timestamp.toUint40(),
+          uint16(MAX_SAFE_RATE + 1)
+        )
       )
     );
   }
@@ -297,7 +305,10 @@ contract TestSGhoInitialization is TestSGhoBase {
     new TransparentUpgradeableProxy(
       impl,
       address(this),
-      abi.encodeCall(sGhoInstance.initialize, (ghoToken, SUPPLY_CAP_UNITS, owner))
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (ghoToken, SUPPLY_CAP_UNITS, owner, RAY.toUint120(), block.timestamp.toUint40(), uint16(0))
+      )
     );
   }
 

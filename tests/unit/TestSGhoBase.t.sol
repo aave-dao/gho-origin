@@ -71,14 +71,16 @@ contract TestSGhoBase is TestnetProcedures {
         new TransparentUpgradeableProxy(
           sghoImpl,
           Admin,
-          abi.encodeWithSelector(
-            sGhoInstance.initialize.selector,
-            address(gho),
-            SUPPLY_CAP_UNITS,
-            address(this), // executor
-            RAY.toUint120(),
-            block.timestamp.toUint40(),
-            uint16(0)
+          abi.encodeCall(
+            sGhoInstance.initialize,
+            (
+              address(gho),
+              SUPPLY_CAP_UNITS,
+              address(this),
+              RAY.toUint120(),
+              block.timestamp.toUint40(),
+              uint16(0)
+            )
           )
         )
       )
@@ -142,14 +144,16 @@ contract TestSGhoBase is TestnetProcedures {
         new TransparentUpgradeableProxy(
           impl,
           Admin,
-          abi.encodeWithSelector(
-            sGhoInstance.initialize.selector,
-            address(gho),
-            SUPPLY_CAP_UNITS,
-            address(this),
-            initialYieldIndex,
-            initialLastUpdate,
-            initialTargetRate
+          abi.encodeCall(
+            sGhoInstance.initialize,
+            (
+              address(gho),
+              SUPPLY_CAP_UNITS,
+              address(this),
+              initialYieldIndex,
+              initialLastUpdate,
+              initialTargetRate
+            )
           )
         )
       )

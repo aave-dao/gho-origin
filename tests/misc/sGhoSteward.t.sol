@@ -336,6 +336,10 @@ contract sGhoStewardTest is TestSGhoBase {
     uint256 initialSupplyCap = sgho.supplyCap();
     assertEq(initialSupplyCap, SUPPLY_CAP_UNITS);
 
+    vm.expectEmit(true, true, true, true, address(sgho));
+    emit IsGho.SupplyCapUpdated(type(uint40).max);
+    vm.expectEmit(true, true, true, true, address(steward));
+    emit IsGhoSteward.SupplyCapUpdated(riskCouncil, type(uint40).max);
     vm.prank(riskCouncil);
     steward.setSupplyCap(type(uint40).max);
 

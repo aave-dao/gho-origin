@@ -1,0 +1,51 @@
+docs/sgho.md
+  s_3ac7e60bd238cf::t_968e418e4d8c27 10,38,52,82,84
+  s_3ac7e60bd238cf::t_55d58229bce5f2 33
+src/contracts/sgho/sGho.sol
+  s_3ac7e60bd238cf::t_bb37c7220f2924 47,64-67,424,439-444,446,451-454,457,463-464,467
+  s_3ac7e60bd238cf::t_6524a06830e3e5 184-188,191-193,197-201,204-206,210-218,221-267,271-272,323,337-419
+  s_3ac7e60bd238cf::t_2e665e5bd7fed6 458,460,462,465-466
+  s_3ac7e60bd238cf::t_77de2fe831acf0 461
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3ac7e60bd238cf::t_2b9633a9626263 20-23
+  s_3ac7e60bd238cf::t_6524a06830e3e5 88,103,150
+  s_3ac7e60bd238cf::t_77de2fe831acf0 19
+tests/unit/TestSGhoERC4626.t.sol
+  s_3ac7e60bd238cf::t_a4c0b47b2c218a 487-488,498,516,535,558,564
+  s_3ac7e60bd238cf::t_e29c2e8670ef36 482-486,489-497,499-515,517-534,536-557,559-561,565-567
+  s_3ac7e60bd238cf::t_de93bcd03429f6 562-563
+snapshots/sGho.Operations.json
+  s_3ac7e60bd238cf::t_2e665e5bd7fed6 4-5,7
+  s_3ac7e60bd238cf::t_de93bcd03429f6 2
+  s_3ac7e60bd238cf::t_043c348471ea21 3
+tests/unit/TestSGhoYield.t.sol
+  s_3ac7e60bd238cf::t_77de2fe831acf0 21,227
+  s_3ac7e60bd238cf::t_55c5709677b3c0 8-10,12,14,16,19-20,22,38-39,128,147,149-151,155,180,182-184,189,197,209,212-215,217,219-226,228-229,231-239,244,269-270,273-277,295-302,304-312,315,317-333,335-339,341,349-353,387,392,427,432,450,476,515,522-523,528-534,552,736,741,838-839,872-873,875-877,890,892,908
+  s_3ac7e60bd238cf::t_a4c0b47b2c218a 7,15,18,23-24,36-37,113,145,164,178,193,205,218,257,284,290,303,313-314,316,334,340,348,518,527,617,622-624
+  s_3ac7e60bd238cf::t_7e26e6a403abf6 619
+tests/unit/TestSGhoBase.t.sol
+  s_3ac7e60bd238cf::t_b43c1fa70c2233 113-114
+tests/misc/z3/sgho_compound_per_second.py
+  s_3ac7e60bd238cf::t_52e61e173870cc 6-7,9,12-13
+  s_3ac7e60bd238cf::t_fd8b350c002487 1,17-18,20-24,26-28,30-35,39-40,52-53,56,59-134
+  s_3ac7e60bd238cf::t_b508a9f0bcc457 2-5,8,10-11,14-16,19,25,29,36-38,41-51,54-55,57-58
+  s_3ac7e60bd238cf::t_1de3668812301c 135-158
+tests/helpers/SGhoYieldMath.sol
+  s_3ac7e60bd238cf::t_94b4fb2529f9fe 5-6,10-19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7d17fd97fb3582e74b11d2d6e76a99abd911acc",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+docs/gho-router.md
+  s_3ac7e60bd238cf::t_cd369f5f82e659 1,3,5,7,9,11-13,15,17,19,21,23-24,26,28,30,32-34,36,38-39,41-43,45,47-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae821fdbffb4e83002a57b2fec548145026c95b1",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

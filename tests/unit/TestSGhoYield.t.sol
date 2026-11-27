@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoYield is TestSGhoBase {
+  using SafeCast for uint256;
+
   // Expected growth factors, computed in Python with exact integer math and the same rounding
   uint256 internal constant GROWTH_10_PERCENT_1_YEAR = 1105170917900423925569452715;
   uint256 internal constant GROWTH_10_PERCENT_2_YEARS = 1221402757772865560831426852;
@@ -45,7 +47,7 @@ contract TestSGhoYield is TestSGhoBase {
 
   function test_yield_claimSavingsIntegration(uint256 depositAmount, uint64 timeSkip) external {
     depositAmount = uint256(bound(depositAmount, 1 ether, 100_000 ether));
-    timeSkip = uint64(bound(timeSkip, 1, 30 days));
+    timeSkip = (bound(timeSkip, 1, 30 days)).toUint64();
 
     // Initial deposit at the RAY index
     vm.startPrank(user1);
@@ -85,7 +87,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_10_percent_one_year() external {
     // Set target rate to 10% annual rate
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% annual rate is 1000 bps
+    sgho.setTargetRate(1000, block.timestamp.toUint40()); // 10% annual rate is 1000 bps
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -126,9 +128,9 @@ contract TestSGhoYield is TestSGhoBase {
   }
 
   function test_yield_checkpointsDoNotChangeYield(uint16 rate) external {
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     uint256 depositAmount = 100 ether;
     vm.prank(user1);
@@ -139,7 +141,7 @@ contract TestSGhoYield is TestSGhoBase {
     for (uint256 i = 0; i < 365; i++) {
       vm.warp(block.timestamp + 1 days);
       vm.prank(yManager);
-      sgho.setTargetRate(rate);
+      sgho.setTargetRate(rate, block.timestamp.toUint40());
     }
 
     // Checkpoints only change rounding
@@ -156,9 +158,9 @@ contract TestSGhoYield is TestSGhoBase {
     uint16 rate,
     uint256 seed
   ) external {
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 startIndex = sgho.yieldIndex();
 
     // 20 random intervals, checkpointing after every other one
@@ -169,11 +171,11 @@ contract TestSGhoYield is TestSGhoBase {
       elapsed += interval;
       if (i % 2 == 0) {
         vm.prank(yManager);
-        sgho.setTargetRate(rate);
+        sgho.setTargetRate(rate, block.timestamp.toUint40());
       }
     }
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     // Checkpoints only change rounding
     uint256 singleAccrual = _emulateYieldIndex(startIndex, rate, elapsed);
@@ -193,19 +195,19 @@ contract TestSGhoYield is TestSGhoBase {
     // Rounding half up would give ...2509
     vm.warp(block.timestamp + 365 days);
     vm.prank(yManager);
-    sgho.setTargetRate(1000);
+    sgho.setTargetRate(1000, block.timestamp.toUint40());
     assertEq(sgho.yieldIndex(), GROWTH_10_PERCENT_1_YEAR, 'growth not rounded down');
   }
 
   function test_yield_growthRoundsDown_oneDay() external {
     vm.prank(yManager);
-    sgho.setTargetRate(450);
+    sgho.setTargetRate(450, block.timestamp.toUint40());
     assertEq(sgho.yieldIndex(), RAY, 'index moved');
 
     // Rounding half up would give ...934345
     vm.warp(block.timestamp + 1 days);
     vm.prank(yManager);
-    sgho.setTargetRate(450);
+    sgho.setTargetRate(450, block.timestamp.toUint40());
     assertEq(sgho.yieldIndex(), 1000123295271382178094860947, 'growth not rounded down');
   }
 
@@ -228,7 +230,7 @@ contract TestSGhoYield is TestSGhoBase {
     // At 50% from RAY
     vm.warp(block.timestamp - 365 days);
     vm.prank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
     vm.warp(block.timestamp + 365 days);
     growth = sgho.convertToAssets(RAY);
     assertLe(growth, EXACT_50_PERCENT_1_YEAR, 'growth above exact at 50%');
@@ -240,10 +242,10 @@ contract TestSGhoYield is TestSGhoBase {
   }
 
   function test_yield_growthMatchesModel_fuzz(uint16 rate, uint256 elapsed) external {
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
     elapsed = bound(elapsed, 1, _maxElapsed(rate));
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 startIndex = sgho.yieldIndex();
 
     vm.warp(block.timestamp + elapsed);
@@ -259,10 +261,10 @@ contract TestSGhoYield is TestSGhoBase {
     uint16 rate,
     uint256 elapsed
   ) external {
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
     elapsed = bound(elapsed, 1, type(uint40).max - block.timestamp);
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 startIndex = sgho.yieldIndex();
 
     vm.warp(block.timestamp + elapsed);
@@ -283,14 +285,14 @@ contract TestSGhoYield is TestSGhoBase {
 
     // At 0.01% the accrual stays under the cap
     vm.prank(yManager);
-    sgho.setTargetRate(1);
+    sgho.setTargetRate(1, block.timestamp.toUint40());
     vm.warp(type(uint40).max);
     assertEq(sgho.convertToAssets(RAY), _emulateYieldIndex(RAY, 1, elapsed), 'growth mismatch');
 
     // At 50% it does not
     vm.warp(block.timestamp - elapsed);
     vm.prank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
     vm.warp(type(uint40).max);
     vm.expectRevert(IsGho.YieldIndexOverflow.selector);
     sgho.convertToAssets(RAY);
@@ -298,7 +300,7 @@ contract TestSGhoYield is TestSGhoBase {
 
   function test_yield_accrualAtCap() external {
     vm.prank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
 
     vm.warp(block.timestamp + ELAPSED_TO_CAP_AT_MAX_RATE);
     assertEq(sgho.convertToAssets(RAY), GROWTH_50_PERCENT_AT_CAP, 'growth at the cap');
@@ -306,7 +308,7 @@ contract TestSGhoYield is TestSGhoBase {
 
   function test_revert_yield_accrualAboveCap() external {
     vm.prank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
     vm.prank(user1);
     sgho.deposit(1 ether, user1);
 
@@ -327,7 +329,7 @@ contract TestSGhoYield is TestSGhoBase {
     sgho.redeem(1, user1, user1);
     vm.expectRevert(IsGho.YieldIndexOverflow.selector);
     vm.prank(yManager);
-    sgho.setTargetRate(0);
+    sgho.setTargetRate(0, block.timestamp.toUint40());
   }
 
   /// @dev The cap allows `21 / rate` years of accrual. At its last second the growth matches the
@@ -341,7 +343,7 @@ contract TestSGhoYield is TestSGhoBase {
   function _assertCapEdge(uint16 rate, uint256 expectedMaxElapsed) internal {
     uint256 start = block.timestamp;
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 startIndex = sgho.yieldIndex();
     uint256 maxElapsed = _maxElapsed(rate);
     assertEq(maxElapsed, expectedMaxElapsed, 'max elapsed');
@@ -364,7 +366,7 @@ contract TestSGhoYield is TestSGhoBase {
     // Start above RAY, so accruing up to the cap overflows `uint120`
     vm.warp(block.timestamp + 365 days);
     vm.prank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
     uint256 startIndex = sgho.yieldIndex();
 
     vm.warp(block.timestamp + ELAPSED_TO_CAP_AT_MAX_RATE);
@@ -473,7 +475,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     // Switch to 20% for another year
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
     vm.warp(block.timestamp + 365 days);
 
     // The growth of each period multiplies: (1 + 10% / year) ^ year * (1 + 20% / year) ^ year
@@ -489,10 +491,10 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_rateAppliesToValueAtDeposit() external {
     // Move the index well away from RAY: two years at 50%
     vm.prank(yManager);
-    sgho.setTargetRate(5000);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
     vm.warp(block.timestamp + 730 days);
     vm.prank(yManager);
-    sgho.setTargetRate(1000);
+    sgho.setTargetRate(1000, block.timestamp.toUint40());
 
     uint256 depositAmount = 100 ether;
     vm.prank(user1);
@@ -516,13 +518,13 @@ contract TestSGhoYield is TestSGhoBase {
     uint16 rate,
     uint32 timeBeforeDeposit
   ) external {
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE));
-    timeBeforeDeposit = uint32(bound(timeBeforeDeposit, 0, 3650 days));
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16();
+    timeBeforeDeposit = (bound(timeBeforeDeposit, 0, 3650 days)).toUint32();
 
     // Let the index drift away from RAY at the 10% rate from setUp, then checkpoint at `rate`
     vm.warp(block.timestamp + timeBeforeDeposit);
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     uint256 depositAmount = 100 ether;
     vm.prank(user1);
@@ -543,7 +545,7 @@ contract TestSGhoYield is TestSGhoBase {
   }
 
   function test_yield_lateDepositorEarnsSameRate_fuzz(uint32 delay) external {
-    delay = uint32(bound(delay, 1, 10 * 365 days));
+    delay = (bound(delay, 1, 10 * 365 days)).toUint32();
 
     // Deposit late, with no checkpoint since setUp
     vm.warp(block.timestamp + delay);
@@ -566,9 +568,9 @@ contract TestSGhoYield is TestSGhoBase {
   }
 
   function test_yield_441bps_paysAtLeast4_5PercentApy_fuzz(uint32 delay) external {
-    delay = uint32(bound(delay, 0, 4 * 365 days));
+    delay = (bound(delay, 0, 4 * 365 days)).toUint32();
     vm.prank(yManager);
-    sgho.setTargetRate(441);
+    sgho.setTargetRate(441, block.timestamp.toUint40());
 
     // Deposit up to 4 years after the rate was set, with no checkpoint in between
     vm.warp(block.timestamp + delay);
@@ -602,7 +604,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     // Changing the rate checkpoints accrual at the old rate (10% over 180 days)
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
 
     uint256 expectedIndex = _emulateYieldIndex(storedBefore, 1000, 180 days);
     assertEq(sgho.yieldIndex(), expectedIndex, 'index not checkpointed at the old rate');
@@ -628,7 +630,7 @@ contract TestSGhoYield is TestSGhoBase {
 
     vm.warp(block.timestamp + 180 days);
     vm.prank(yManager);
-    sgho.setTargetRate(0);
+    sgho.setTargetRate(0, block.timestamp.toUint40());
 
     // Setting the rate to 0 checkpoints the yield accrued so far
     uint256 frozenIndex = _emulateYieldIndex(RAY, 1000, 180 days);
@@ -643,7 +645,7 @@ contract TestSGhoYield is TestSGhoBase {
 
   function test_yield_longHorizonLiveness() external {
     vm.prank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
     // Small deposit, so the accrued value stays under the supply cap
     vm.prank(user1);
     sgho.deposit(1 gwei, user1);
@@ -668,7 +670,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_zeroTargetRate() external {
     // Set target rate to 0
     vm.startPrank(yManager);
-    sgho.setTargetRate(0);
+    sgho.setTargetRate(0, block.timestamp.toUint40());
     vm.stopPrank();
 
     // User1 deposits 100 GHO
@@ -743,7 +745,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_yield_accrual_atSupplyCap() external {
     // Set a higher target rate to ensure significant yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(5000); // 50% annual rate to ensure significant yield
+    sgho.setTargetRate(5000, block.timestamp.toUint40()); // 50% annual rate to ensure significant yield
     vm.stopPrank();
 
     // Fill the vault to supply cap
@@ -925,7 +927,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_precision_yieldIndex_fuzz(uint256 timeSkip, uint16 rate) external pure {
     // Bound inputs to reasonable ranges
     timeSkip = bound(timeSkip, 1, 365 days * 10); // 1 second to 10 years
-    rate = uint16(bound(rate, 1, MAX_SAFE_RATE)); // 0.01% to 50%
+    rate = (bound(rate, 1, MAX_SAFE_RATE)).toUint16(); // 0.01% to 50%
 
     uint256 prevYieldIndex = RAY;
     uint256 newYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
@@ -968,7 +970,7 @@ contract TestSGhoYield is TestSGhoBase {
     vm.warp(block.timestamp + timeSkip);
     // Re-setting the rate checkpoints the index
     vm.prank(yManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
     uint256 contractYieldIndex = sgho.yieldIndex();
     uint256 emulatedYieldIndex = _emulateYieldIndex(prevYieldIndex, rate, timeSkip);
     assertEq(contractYieldIndex, emulatedYieldIndex, 'Yield index calculation mismatch');
@@ -1003,7 +1005,7 @@ contract TestSGhoYield is TestSGhoBase {
   function test_ExchangeRateUpdatedEvent_basic() external {
     // Set a target rate to ensure yield accrual
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% annual rate
+    sgho.setTargetRate(1000, block.timestamp.toUint40()); // 10% annual rate
     vm.stopPrank();
 
     // Initial state
@@ -1018,7 +1020,7 @@ contract TestSGhoYield is TestSGhoBase {
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.ExchangeRateUpdated(block.timestamp, emulatedYieldIndex);
     vm.prank(yManager);
-    sgho.setTargetRate(1000);
+    sgho.setTargetRate(1000, block.timestamp.toUint40());
 
     // Verify yield index has increased
     uint256 newYieldIndex = sgho.yieldIndex();

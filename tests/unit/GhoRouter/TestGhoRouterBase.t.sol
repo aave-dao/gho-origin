@@ -45,7 +45,10 @@ contract TestGhoRouterBase is TestGhoBase {
             (
               address(GHO_TOKEN),
               SafeCast.toUint40(DEFAULT_SGHO_SUPPLY_CAP / 10 ** GHO_TOKEN.decimals()),
-              address(this)
+              address(this),
+              SafeCast.toUint120(WadRayMath.RAY),
+              SafeCast.toUint40(block.timestamp),
+              0
             )
           )
         )

@@ -5,6 +5,8 @@ import '../unit/TestSGhoBase.t.sol';
 
 /// forge-config: default.isolate = true
 contract sGhoOperations_Gas_Tests is TestSGhoBase {
+  using SafeCast for uint256;
+
   uint256 internal constant AMOUNT = 1_000 ether;
 
   function setUp() public override {
@@ -106,6 +108,81 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
     vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: 5 years since rate update');
   }
 
+  function test_gas_setTargetRate_schedule() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
+    vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled');
+  }
+
+  function test_gas_setTargetRate_scheduleApplied() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
+    vm.warp(block.timestamp + 2 days);
+    vm.prank(yManager);
+    sgho.setTargetRate(3000, (block.timestamp + 1 days).toUint40());
+    vm.snapshotGasLastCall('sGho.Operations', 'setTargetRate: scheduled, previous applied');
+  }
+
+  function test_gas_deposit_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _deposit();
+    vm.snapshotGasLastCall('sGho.Operations', 'deposit: rate scheduled, not yet due');
+  }
+
+  function test_gas_mint_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _mint();
+    vm.snapshotGasLastCall('sGho.Operations', 'mint: rate scheduled, not yet due');
+  }
+
+  function test_gas_withdraw_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _withdraw();
+    vm.snapshotGasLastCall('sGho.Operations', 'withdraw: rate scheduled, not yet due');
+  }
+
+  function test_gas_redeem_pendingRateNotDue() external {
+    _scheduleTargetRate();
+    _redeem();
+    vm.snapshotGasLastCall('sGho.Operations', 'redeem: rate scheduled, not yet due');
+  }
+
+  function test_gas_deposit_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _deposit();
+    vm.snapshotGasLastCall('sGho.Operations', 'deposit: scheduled rate due');
+  }
+
+  function test_gas_mint_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _mint();
+    vm.snapshotGasLastCall('sGho.Operations', 'mint: scheduled rate due');
+  }
+
+  function test_gas_withdraw_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _withdraw();
+    vm.snapshotGasLastCall('sGho.Operations', 'withdraw: scheduled rate due');
+  }
+
+  function test_gas_redeem_pendingRateDue() external {
+    _scheduleTargetRate();
+    vm.warp(block.timestamp + 2 days);
+    _redeem();
+    vm.snapshotGasLastCall('sGho.Operations', 'redeem: scheduled rate due');
+  }
+
+  function test_gas_cancelPendingTargetRate() external {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
+    vm.prank(yManager);
+    sgho.cancelPendingTargetRate();
+    vm.snapshotGasLastCall('sGho.Operations', 'cancelPendingTargetRate');
+  }
+
   /// @dev Warps to `elapsed` seconds after the last rate update, the start of the current accrual.
   function _warpSinceRateUpdate(uint256 elapsed) internal {
     vm.warp(sgho.lastUpdate() + elapsed);
@@ -134,6 +211,12 @@ contract sGhoOperations_Gas_Tests is TestSGhoBase {
 
   function _setTargetRate() internal {
     vm.prank(yManager);
-    sgho.setTargetRate(2000);
+    sgho.setTargetRate(2000, block.timestamp.toUint40());
+  }
+
+  /// @dev Schedules a rate change one day ahead.
+  function _scheduleTargetRate() internal {
+    vm.prank(yManager);
+    sgho.setTargetRate(2000, (block.timestamp + 1 days).toUint40());
   }
 }

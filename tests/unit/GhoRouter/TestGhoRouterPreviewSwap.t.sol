@@ -444,7 +444,7 @@ contract PreviewMatchesSwapTest is TestGhoRouterBase {
 
   function _enableSghoYield() internal {
     SGHO.grantRole(SGHO.YIELD_MANAGER_ROLE(), address(this));
-    SGHO.setTargetRate(1000);
+    SGHO.setTargetRate(1000, SafeCast.toUint40(block.timestamp));
   }
 
   function _accrueSghoYield(uint256 yieldDays) internal {

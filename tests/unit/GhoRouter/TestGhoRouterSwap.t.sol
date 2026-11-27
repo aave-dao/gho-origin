@@ -728,7 +728,7 @@ contract SwapFromSGhoTest is TestGhoRouterBase {
 
     // Turn on sGHO yield, then mint the caller shares while the index is still 1:1
     SGHO.grantRole(SGHO.YIELD_MANAGER_ROLE(), address(this));
-    SGHO.setTargetRate(1000); // 10% APR
+    SGHO.setTargetRate(1000, SafeCast.toUint40(block.timestamp)); // 10% APR
     _mintSgho(amount);
 
     // Let the index climb above 1:1 so redeemed GHO exceeds the shares burned.

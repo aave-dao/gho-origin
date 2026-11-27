@@ -9,35 +9,18 @@ import {IsGho} from '../../sgho/interfaces/IsGho.sol';
  */
 interface IsGhoSteward {
   /**
-   * @notice Formula for the `targetRate` (taking into account integer math) is:
-   *         `targetRate = amplification * floatRate / AMPLIFICATION_DENOMINATOR + fixedRate`,
-   *         where `AMPLIFICATION_DENOMINATOR` is 100_00,
-   *         `amplification`, `floatRate` and `fixedRate` are `uint16`
+   * @dev Event is emitted whenever the `targetRate` is updated.
+   * @param caller Message sender, who initiated the update
+   * @param targetRate Target rate set in `sGHO`
+   * @param effectiveAt Timestamp at which the target rate takes effect on `sGHO`
    */
-  struct RateConfig {
-    /// @notice Amplification factor
-    uint16 amplification;
-    /// @notice Representative of market conditions
-    uint16 floatRate;
-    /// @notice Nominal Amount
-    uint16 fixedRate;
-  }
+  event TargetRateUpdated(address indexed caller, uint16 targetRate, uint40 effectiveAt);
 
   /**
-   * @dev Event is emitted whenever the `rateConfig` is updated.
-   * @param caller Message sender, who initiated the update
-   * @param targetRate Target rate set in `sGHO` after update
-   * @param amplification Amplification factor used to calculate `targetRate`
-   * @param floatRate Float rate used to calculate `targetRate`
-   * @param fixedRate Fixed rate used to calculate `targetRate`
+   * @dev Event is emitted whenever a scheduled `targetRate` update is cancelled.
+   * @param caller Message sender, who initiated the cancellation
    */
-  event RateConfigUpdated(
-    address indexed caller,
-    uint16 targetRate,
-    uint16 amplification,
-    uint16 floatRate,
-    uint16 fixedRate
-  );
+  event TargetRateCancelled(address indexed caller);
 
   /**
    * @dev Event is emitted whenever the `supplyCap` is updated.
@@ -52,12 +35,7 @@ interface IsGhoSteward {
   error ZeroAddress();
 
   /**
-   * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
-   */
-  error MaxRateExceeded();
-
-  /**
-   * @dev Attempted to set the same rate, which is already set.
+   * @dev Attempted to set the rate already in force.
    */
   error RateUnchanged();
 
@@ -67,24 +45,25 @@ interface IsGhoSteward {
   error SupplyCapUnchanged();
 
   /**
-   * @notice Updates `targetRate` on `sGHO` and `rateConfig` inside the steward using new values.
-   * @dev `rateConfig_` must be different from the current `rateConfig`, otherwise the function will revert.
-   *
-   * If the value specified in the `rateConfig_` is identical to the current one, then the `msg.sender` role check will be skipped.
-   * Otherwise, it will be assumed that `msg.sender` is trying to update the variable and role check will be performed.
-   *
-   * For example, `msg.sender` could have 2 roles out of 3, but this does not prevent it from using
-   * this function and performing updates to the corresponding variables.
-   *
-   * To update all parameters at once the caller must have three roles:
-   *   - `AMPLIFICATION_MANAGER_ROLE`
-   *   - `FLOAT_RATE_MANAGER_ROLE`
-   *   - `FIXED_RATE_MANAGER_ROLE`
-   *
-   * @param rateConfig_ Set of parameters for calculating `targetRate`
-   * @return targetRate `targetRate` set in `sGHO`
+   * @notice Updates `targetRate` on `sGHO`, effective at `effectiveAt`.
+   * @dev Only callable by `RATE_MANAGER_ROLE`.
+   * @dev Reverts with `RateUnchanged` if `targetRate` is already in force. A scheduled update is
+   * overwritten; use `cancelTargetRate` to drop it instead.
+   * @dev Submitting the same `targetRate` and `effectiveAt` on the stewards of every chain keeps
+   * the yield indexes in sync. Passing the current timestamp applies immediately and is only
+   * suitable for single-chain deployments.
+   * @param targetRate New annual rate in basis points, compounded every second
+   * @param effectiveAt Timestamp at which the rate takes effect (must not be in the past)
    */
-  function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16);
+  function setTargetRate(uint16 targetRate, uint40 effectiveAt) external;
+
+  /**
+   * @notice Cancels the scheduled `targetRate` update on `sGHO`, without a checkpoint.
+   * @dev Only callable by `RATE_MANAGER_ROLE`. Reverts if no update is scheduled or it is already
+   * effective. Across chains, the cancel must execute before the pending `effectiveAt` on every
+   * chain.
+   */
+  function cancelTargetRate() external;
 
   /**
    * @notice Updates `supplyCap` on `sGHO`.
@@ -95,47 +74,14 @@ interface IsGhoSteward {
   function setSupplyCap(uint256 supplyCap_) external;
 
   /**
-   * @notice Calculates `targetRate` using `rateConfig_` struct.
-   * @dev Reverts if new `targetRate` exceeds `MAX_RATE`.
-   * @param rateConfig_ Set of parameters for calculating `targetRate`
-   * @return targetRate result `targetRate`
-   */
-  function previewTargetRate(RateConfig calldata rateConfig_) external view returns (uint16);
-
-  /**
-   * @notice Returns current `rateConfig`.
-   */
-  function getRateConfig() external view returns (RateConfig memory);
-
-  /**
    * @notice Returns `sGHO` address, wrapped in interface.
    */
   function sGHO() external view returns (IsGho);
 
   /**
-   * @notice Returns the max `targetRate` that can be set.
+   * @notice Returns role that can update the `targetRate`.
    */
-  function MAX_RATE() external view returns (uint16);
-
-  /**
-   * @notice Returns constant, on which `amplification` is divided by in the formula for calculating `targetRate`.
-   */
-  function AMPLIFICATION_DENOMINATOR() external view returns (uint16);
-
-  /**
-   * @notice Returns role that can update the `amplification` parameter.
-   */
-  function AMPLIFICATION_MANAGER_ROLE() external view returns (bytes32);
-
-  /**
-   * @notice Returns role that can update the `floatRate` parameter.
-   */
-  function FLOAT_RATE_MANAGER_ROLE() external view returns (bytes32);
-
-  /**
-   * @notice Returns role that can update the `fixedRate` parameter.
-   */
-  function FIXED_RATE_MANAGER_ROLE() external view returns (bytes32);
+  function RATE_MANAGER_ROLE() external view returns (bytes32);
 
   /**
    * @notice Returns role that can update the `supplyCap` parameter.

@@ -57,19 +57,6 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   uint256 internal _lastFundingTimestamp;
 
   /**
-   * @dev Checks the funding limits, sends any `source` left on this contract back to the
-   * collector, and emits `SGhoFunded`.
-   * @param source Token taken from the collector
-   * @param amount Amount of GHO to fund
-   */
-  modifier funds(address source, uint256 amount) {
-    _validateFunding(amount);
-    _;
-    _returnToCollector(source);
-    emit SGhoFunded(msg.sender, source, amount);
-  }
-
-  /**
    * @param owner Address granted `DEFAULT_ADMIN_ROLE`
    * @param riskCouncil Address granted every other role
    * @param sGho Address of the sGho contract
@@ -130,17 +117,21 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   }
 
   /// @inheritdoc IsGhoSteward
-  function fundSGho(
-    uint256 amount
-  ) external onlyRole(FUNDING_MANAGER_ROLE) funds(address(GHO), amount) {
+  function fundSGho(uint256 amount) external onlyRole(FUNDING_MANAGER_ROLE) {
+    uint256 balanceBefore = _validateFunding(amount);
+
     COLLECTOR.transfer(GHO, address(SGHO), amount);
+
+    _finalizeFunding({source: address(GHO), amount: amount, balanceBefore: balanceBefore});
   }
 
   /// @inheritdoc IsGhoSteward
   function fundSGhoFromAToken(
     address aToken,
     uint256 amount
-  ) external onlyRole(FUNDING_MANAGER_ROLE) funds(aToken, amount) {
+  ) external onlyRole(FUNDING_MANAGER_ROLE) {
+    uint256 balanceBefore = _validateFunding(amount);
+
     IPool pool = AToken(aToken).POOL();
     if (pool.getReserveAToken(address(GHO)) != aToken) {
       revert InvalidFundingSource();
@@ -148,19 +139,25 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
     COLLECTOR.transfer(IERC20(aToken), address(this), amount);
     pool.withdraw({asset: address(GHO), amount: amount, to: address(SGHO)});
+
+    _finalizeFunding({source: aToken, amount: amount, balanceBefore: balanceBefore});
   }
 
   /// @inheritdoc IsGhoSteward
   function fundSGhoFromVault(
     address vault,
     uint256 amount
-  ) external onlyRole(FUNDING_MANAGER_ROLE) funds(vault, amount) {
-    if (IERC4626(vault).asset() != address(GHO)) {
+  ) external onlyRole(FUNDING_MANAGER_ROLE) {
+    uint256 balanceBefore = _validateFunding(amount);
+
+    if (vault == address(SGHO) || IERC4626(vault).asset() != address(GHO)) {
       revert InvalidFundingSource();
     }
 
     COLLECTOR.transfer(IERC20(vault), address(this), IERC4626(vault).previewWithdraw(amount));
     IERC4626(vault).withdraw({assets: amount, receiver: address(SGHO), owner: address(this)});
+
+    _finalizeFunding({source: vault, amount: amount, balanceBefore: balanceBefore});
   }
 
   /// @inheritdoc IsGhoSteward
@@ -199,8 +196,9 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
    * @dev Checks the debounce, the per-funding cap and that sGho ends up holding at most its
    * liabilities plus `FUNDING_BUFFER_DURATION` of yield, then records the funding time.
    * @param amount Amount of GHO to fund
+   * @return The GHO held by sGho before the funding
    */
-  function _validateFunding(uint256 amount) internal {
+  function _validateFunding(uint256 amount) internal returns (uint256) {
     if (block.timestamp - _lastFundingTimestamp < MINIMUM_DELAY) {
       revert DebounceNotRespected();
     }
@@ -216,16 +214,27 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     }
 
     _lastFundingTimestamp = block.timestamp;
+
+    return GHO.balanceOf(address(SGHO));
   }
 
   /**
-   * @dev Sends any `token` left on this contract after a funding back to the collector.
-   * @param token The token taken from the collector
+   * @dev Checks sGho received `amount`, sends any `source` left on this contract back to the
+   * collector and emits `SGhoFunded`.
+   * @param source Token taken from the collector
+   * @param amount Amount of GHO funded
+   * @param balanceBefore The GHO held by sGho before the funding
    */
-  function _returnToCollector(address token) internal {
-    uint256 leftover = IERC20(token).balanceOf(address(this));
-    if (leftover != 0) {
-      IERC20(token).safeTransfer(address(COLLECTOR), leftover);
+  function _finalizeFunding(address source, uint256 amount, uint256 balanceBefore) internal {
+    if (GHO.balanceOf(address(SGHO)) < balanceBefore + amount) {
+      revert FundingNotReceived();
     }
+
+    uint256 leftover = IERC20(source).balanceOf(address(this));
+    if (leftover != 0) {
+      IERC20(source).safeTransfer(address(COLLECTOR), leftover);
+    }
+
+    emit SGhoFunded(msg.sender, source, amount);
   }
 }

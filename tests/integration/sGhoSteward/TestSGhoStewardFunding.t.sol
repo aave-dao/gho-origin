@@ -55,6 +55,25 @@ contract RoundingUpVault is MockERC4626 {
   }
 }
 
+/// @dev Sends one wei less than `assets` on `withdraw`
+contract ShortPayingVault is MockERC4626 {
+  constructor(
+    string memory name,
+    string memory symbol,
+    address asset
+  ) MockERC4626(name, symbol, asset) {}
+
+  function withdraw(
+    uint256 assets,
+    address receiver,
+    address owner
+  ) public override returns (uint256) {
+    uint256 shares = previewWithdraw(assets);
+    _withdraw(_msgSender(), receiver, owner, assets - 1, shares);
+    return shares;
+  }
+}
+
 /**
  * @title TestSGhoStewardFunding
  * @notice sGhoSteward funding against a real collector, aToken and static aToken on a local Aave
@@ -155,14 +174,22 @@ contract TestSGhoStewardFunding is Test {
     amount = bound(amount, 1, _expectedHeadroom());
     uint256 index = AAVE.normalizedIncome(address(GHO));
     uint256 scaledBefore = IScaledBalanceToken(A_GHO).scaledBalanceOf(COLLECTOR);
+    uint256 scaledBurned = Math.mulDiv(amount, WadRayMath.RAY, index, Math.Rounding.Ceil);
+    uint256 collectorGhoBefore = GHO.balanceOf(COLLECTOR);
 
     _assertFunds(A_GHO, amount);
 
     assertEq(
       scaledBefore - IScaledBalanceToken(A_GHO).scaledBalanceOf(COLLECTOR),
-      Math.mulDiv(amount, WadRayMath.RAY, index, Math.Rounding.Ceil),
+      scaledBurned,
+      'collector scaled aGHO'
+    );
+    assertEq(
+      IERC20(A_GHO).balanceOf(COLLECTOR),
+      Math.mulDiv(scaledBefore - scaledBurned, index, WadRayMath.RAY),
       'collector aGHO'
     );
+    assertEq(GHO.balanceOf(COLLECTOR), collectorGhoBefore, 'collector GHO');
   }
 
   function test_fundSGhoFromVault_staticAToken(uint256 amount, uint256 elapsed) external {
@@ -315,6 +342,30 @@ contract TestSGhoStewardFunding is Test {
     STEWARD.fundSGhoFromVault(stataUsdx, 1 ether);
   }
 
+  /// @dev Withdrawing from sGHO into sGHO would burn the collector's shares without adding GHO
+  function test_revert_fundSGhoFromVault_sGho() external {
+    deal(address(GHO), address(this), COLLECTOR_FUNDS);
+    GHO.approve(address(SGHO), COLLECTOR_FUNDS);
+    SGHO.deposit(COLLECTOR_FUNDS, COLLECTOR);
+    uint256 sharesBefore = SGHO.balanceOf(COLLECTOR);
+    assertGt(sharesBefore, 0, 'collector sGHO');
+
+    vm.expectRevert(IsGhoSteward.InvalidFundingSource.selector);
+    vm.prank(riskCouncil);
+    STEWARD.fundSGhoFromVault(address(SGHO), 1 ether);
+
+    assertEq(SGHO.balanceOf(COLLECTOR), sharesBefore, 'collector sGHO');
+  }
+
+  function test_revert_fundSGhoFromVault_notReceived() external {
+    IERC4626 vault = IERC4626(address(new ShortPayingVault('Vault GHO', 'spGHO', address(GHO))));
+    _depositInto(vault, COLLECTOR_FUNDS);
+
+    vm.expectRevert(IsGhoSteward.FundingNotReceived.selector);
+    vm.prank(riskCouncil);
+    STEWARD.fundSGhoFromVault(address(vault), 1 ether);
+  }
+
   function test_revert_fund_stewardNotFundsAdmin() external {
     sGhoSteward steward = new sGhoSteward({
       owner: governance,
@@ -339,6 +390,26 @@ contract TestSGhoStewardFunding is Test {
     STEWARD.setMaxFundingAmount(50_000 ether);
 
     assertEq(STEWARD.getMaxFundingAmount(), 50_000 ether, 'max funding amount');
+  }
+
+  /// @dev A zero cap blocks every funding
+  function test_setMaxFundingAmount_zero() external {
+    vm.expectEmit(address(STEWARD));
+    emit IsGhoSteward.MaxFundingAmountUpdated(governance, 0);
+    vm.prank(governance);
+    STEWARD.setMaxFundingAmount(0);
+
+    assertEq(STEWARD.getMaxFundingAmount(), 0, 'max funding amount');
+
+    bytes memory error = abi.encodeWithSelector(IsGhoSteward.FundingAmountExceeded.selector, 0);
+    vm.startPrank(riskCouncil);
+    vm.expectRevert(error);
+    STEWARD.fundSGho(1);
+    vm.expectRevert(error);
+    STEWARD.fundSGhoFromAToken(A_GHO, 1);
+    vm.expectRevert(error);
+    STEWARD.fundSGhoFromVault(address(STATA_GHO), 1);
+    vm.stopPrank();
   }
 
   function test_revert_setMaxFundingAmount_unchanged() external {

@@ -75,9 +75,14 @@ interface IsGhoSteward {
   error FundingHeadroomExceeded(uint256 headroom);
 
   /**
-   * @dev The aToken or vault does not redeem for the GHO of `sGHO`.
+   * @dev The aToken or vault does not redeem for GHO, or is `sGHO` itself.
    */
   error InvalidFundingSource();
+
+  /**
+   * @dev `sGHO` received less GHO than the amount funded.
+   */
+  error FundingNotReceived();
 
   /**
    * @dev Attempted to set the maximum funding amount already set.
@@ -143,8 +148,8 @@ interface IsGhoSteward {
 
   /**
    * @notice Withdraws GHO from an ERC4626 vault using shares held by the collector, and sends it to `sGHO`.
-   * @dev Same access and limits as `fundSGho`. `vault` must have GHO as its `asset`. Shares left
-   * after the withdrawal are returned to the collector.
+   * @dev Same access and limits as `fundSGho`. `vault` must have GHO as its `asset` and cannot be
+   * `sGHO`. Shares left after the withdrawal are returned to the collector.
    * @param vault ERC4626 vault over GHO, such as a static aToken or a tokenization spoke
    * @param amount Amount of GHO to send
    */
@@ -184,7 +189,7 @@ interface IsGhoSteward {
   function SGHO() external view returns (IsGho);
 
   /**
-   * @notice Returns the GHO token, the asset of `sGHO`.
+   * @notice Returns the GHO token.
    */
   function GHO() external view returns (IERC20);
 

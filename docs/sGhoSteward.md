@@ -31,10 +31,12 @@ Governance holds `DEFAULT_ADMIN_ROLE`. Every other role starts with the risk cou
 
 - `fundSGho(amount)`: GHO held by the collector.
 - `fundSGhoFromAToken(aToken, amount)`: GHO withdrawn from an Aave v3 pool, using a GHO aToken held by the collector. `aToken` must be the GHO aToken of its own pool.
-- `fundSGhoFromVault(vault, amount)`: GHO withdrawn from an ERC-4626 vault over GHO, such as a static aToken, using shares held by the collector. Shares the vault does not burn go back to the collector.
+- `fundSGhoFromVault(vault, amount)`: GHO withdrawn from an ERC-4626 vault over GHO, such as a static aToken, using shares held by the collector. `vault` cannot be `sGHO` itself. Shares the vault does not burn go back to the collector.
 
 Every funding is limited in three ways:
 
 - At most one funding per `MINIMUM_DELAY` (one day), from any source.
 - At most `getMaxFundingAmount()` per funding. Only `DEFAULT_ADMIN_ROLE` can change it.
 - After the funding, `sGHO` holds at most its liabilities (`totalAssets`) plus `FUNDING_BUFFER_DURATION` of yield at the current `targetRate`. `getFundingHeadroom()` returns how much can be funded now.
+
+A funding reverts if `sGHO` receives less GHO than `amount`.

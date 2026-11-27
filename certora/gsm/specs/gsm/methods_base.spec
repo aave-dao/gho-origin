@@ -85,7 +85,7 @@ function basicBuySellSetup( env e, address receiver){
 //*********************************************************************************************
 // The following ghosts and invariant are to avoid overflow in the balanceOf of GHO
 //*********************************************************************************************
-persistent ghost sumAllBalance() returns mathint {
+ghost sumAllBalance() returns mathint {
     init_state axiom sumAllBalance() == 0;
 }
 
@@ -99,13 +99,10 @@ hook Sload uint256 balance _ghoToken.balanceOf[KEY address a] {
 
 invariant inv_sumAllBalance_eq_totalSupply()
   sumAllBalance() == to_mathint(_ghoToken.totalSupply())
-  filtered {f -> f.contract == _ghoToken}
-/*  {
-    preserved rescueTokens(address token, address to, uint256 amount) with (env e) {
-      //      require token==GHO_TOKEN() || token==UNDERLYING_ASSET() || token==some_erc20;
-      require token==_ghoToken || token==the_underlyning || token==some_erc20;
-    }
-    }*/
+  // Base case: the ghost is initialized to 0, so it can only match the linked, pre-existing
+  // GHO token if that token starts with zero supply (the GSM specs don't verify GHO internals,
+  // so the initial totalSupply is otherwise symbolic and the base case can't be discharged).
+  { preserved constructor() { require _ghoToken.totalSupply() == 0; } }
 
 
 function priceLimits(env e) {

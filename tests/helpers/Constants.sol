@@ -25,6 +25,9 @@ contract Constants {
   bytes32 public constant GSM_TOKEN_RESCUER_ROLE = keccak256('TOKEN_RESCUER_ROLE');
   bytes32 public constant GSM_SWAP_FREEZER_ROLE = keccak256('SWAP_FREEZER_ROLE');
   bytes32 public constant GSM_LIQUIDATOR_ROLE = keccak256('LIQUIDATOR_ROLE');
+  bytes32 public constant GSM_BUY_ASSET_ROLE = keccak256('BUY_ASSET_ROLE');
+  bytes32 public constant GSM_SELL_ASSET_ROLE = keccak256('SELL_ASSET_ROLE');
+  bytes32 public constant GSM_SWAP_ACCESS_MANAGER_ROLE = keccak256('SWAP_ACCESS_MANAGER_ROLE');
 
   // admin role for GhoDirectFacilitator
   bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
@@ -57,6 +60,7 @@ contract Constants {
   uint128 constant DEFAULT_GSM_USDX_EXPOSURE = 100_000_000e6; // 6 decimals for USDX
   uint128 constant DEFAULT_GSM_USDX_AMOUNT = 100e6; // 6 decimals for USDX
   uint128 constant DEFAULT_GSM_GHO_AMOUNT = 100e18;
+  uint256 constant DEFAULT_SGHO_SUPPLY_CAP = 100_000_000e18;
 
   // Gho Stewards
   uint32 constant GHO_BORROW_RATE_CHANGE_MAX = 0.05e4;

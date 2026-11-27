@@ -13,13 +13,18 @@ import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol
 import {IERC20Errors} from 'openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol';
 import {IERC20Metadata as IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {PausableUpgradeable} from 'openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol';
 
 import {IsGho} from '../../src/contracts/sgho/interfaces/IsGho.sol';
 import {sGho} from '../../src/contracts/sgho/sGho.sol';
+import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol';
+import {SGhoYieldMath} from '../helpers/SGhoYieldMath.sol';
 
 contract TestSGhoBase is TestnetProcedures {
+  using SafeCast for uint256;
+
   using stdStorage for StdStorage;
   using Math for uint256;
 
@@ -39,7 +44,8 @@ contract TestSGhoBase is TestnetProcedures {
   address internal fundsAdmin; // Funds admin user
 
   uint16 internal constant MAX_SAFE_RATE = 50_00; // 50%
-  uint160 internal constant SUPPLY_CAP = 1_000_000 ether; // 1M GHO
+  uint40 internal constant SUPPLY_CAP_UNITS = 1_000_000; // 1M GHO (whole units, no decimals)
+  uint256 internal constant SUPPLY_CAP = uint256(SUPPLY_CAP_UNITS) * 1e18; // asset terms
 
   // Permit constants
   string internal constant VERSION = '1'; // Matches sGho constructor
@@ -59,17 +65,22 @@ contract TestSGhoBase is TestnetProcedures {
     gho = new TestnetERC20('Mock GHO', 'GHO', 18, poolAdmin);
 
     // Deploy sGho implementation and proxy
-    address sghoImpl = address(new sGho());
+    address sghoImpl = address(new sGhoInstance());
     sgho = sGho(
       address(
         new TransparentUpgradeableProxy(
           sghoImpl,
           Admin,
-          abi.encodeWithSelector(
-            sGho.initialize.selector,
-            address(gho),
-            SUPPLY_CAP,
-            address(this) // executor
+          abi.encodeCall(
+            sGhoInstance.initialize,
+            (
+              address(gho),
+              SUPPLY_CAP_UNITS,
+              address(this),
+              RAY.toUint120(),
+              block.timestamp.toUint40(),
+              uint16(0)
+            )
           )
         )
       )
@@ -83,7 +94,7 @@ contract TestSGhoBase is TestnetProcedures {
 
     // Set target rate as yield manager
     vm.startPrank(yManager);
-    sgho.setTargetRate(1000); // 10% APR
+    sgho.setTargetRate(1000, block.timestamp.toUint40()); // 10% annual rate
     vm.stopPrank();
 
     // Calculate domain separator for permits
@@ -106,23 +117,77 @@ contract TestSGhoBase is TestnetProcedures {
   // INTERNAL UTILITY FUNCTIONS
   // ========================================
 
-  /// @dev Emulates the yieldIndex calculation as in sGho._getCurrentYieldIndex(), using OpenZeppelin Math for all operations
+  /// @dev Spec: the checkpointed index compounded every second at `targetRate / year`, every
+  /// product rounded down
   function _emulateYieldIndex(
     uint256 prevYieldIndex,
     uint16 targetRate,
     uint256 timeSinceLastUpdate
   ) internal pure returns (uint256) {
-    if (targetRate == 0 || timeSinceLastUpdate == 0) return prevYieldIndex;
+    return SGhoYieldMath.accrue(prevYieldIndex, targetRate, timeSinceLastUpdate);
+  }
 
-    // Convert targetRate from basis points to ray
-    uint256 annualRateRay = (uint256(targetRate) * RAY) / 10000;
-    // Calculate the rate per second (new contract logic)
-    uint256 ratePerSecondRay = (annualRateRay * RAY) / 365 days;
-    uint256 ratePerSecondNormalized = ratePerSecondRay / RAY;
-    // Calculate accumulated rate and growth factor
-    uint256 accumulatedRate = ratePerSecondNormalized * timeSinceLastUpdate;
-    uint256 growthFactor = RAY + accumulatedRate;
-    return (prevYieldIndex * growthFactor) / RAY;
+  /// @dev Deploys a fresh sGho proxy with the same config as the one from `setUp`
+  function _deploySGho() internal returns (sGho) {
+    return _deploySGho(RAY.toUint120(), block.timestamp.toUint40(), 0);
+  }
+
+  /// @dev Deploys a fresh sGho proxy initialized with the given checkpoint (cold start)
+  function _deploySGho(
+    uint120 initialYieldIndex,
+    uint40 initialLastUpdate,
+    uint16 initialTargetRate
+  ) internal returns (sGho newSgho) {
+    address impl = address(new sGhoInstance());
+    newSgho = sGho(
+      address(
+        new TransparentUpgradeableProxy(
+          impl,
+          Admin,
+          abi.encodeCall(
+            sGhoInstance.initialize,
+            (
+              address(gho),
+              SUPPLY_CAP_UNITS,
+              address(this),
+              initialYieldIndex,
+              initialLastUpdate,
+              initialTargetRate
+            )
+          )
+        )
+      )
+    );
+    newSgho.grantRole(newSgho.YIELD_MANAGER_ROLE(), yManager);
+  }
+
+  // Mirrors sGho.sGhoStorageLocation
+  bytes32 internal constant SGHO_STORAGE_SLOT =
+    0x52190d4bcaca04cac5a7c2ae78ea3854d285be3b91819fb1b3ed9862d9a9a400;
+
+  /// @dev Reads the raw (persisted) sGho storage, bypassing the lazy pending-aware getters.
+  /// The plain casts truncate deliberately: they extract the fields of the packed slot.
+  function _rawStorage(
+    sGho target
+  )
+    internal
+    view
+    returns (
+      uint120 yieldIndex_,
+      uint40 lastUpdate_,
+      uint16 targetRate_,
+      uint40 pendingRateEffectiveAt_,
+      uint16 pendingTargetRate_
+    )
+  {
+    uint256 slot0 = uint256(vm.load(address(target), SGHO_STORAGE_SLOT));
+    yieldIndex_ = uint120(slot0);
+    lastUpdate_ = uint40(slot0 >> 120);
+    targetRate_ = uint16(slot0 >> 160);
+    pendingRateEffectiveAt_ = uint40(slot0 >> 216);
+    pendingTargetRate_ = uint16(
+      uint256(vm.load(address(target), bytes32(uint256(SGHO_STORAGE_SLOT) + 1)))
+    );
   }
 
   function _createPermitSignature(
@@ -140,17 +205,5 @@ contract TestSGhoBase is TestnetProcedures {
 
     bytes32 hash = keccak256(abi.encodePacked('\x19\x01', sgho.DOMAIN_SEPARATOR(), structHash));
     return vm.sign(privateKey, hash);
-  }
-
-  function _wadPow(uint256 base, uint256 exp) internal pure returns (uint256) {
-    uint256 res = 1e18; // WAD
-    while (exp > 0) {
-      if (exp % 2 == 1) {
-        res = (res * base) / 1e18;
-      }
-      base = (base * base) / 1e18;
-      exp /= 2;
-    }
-    return res;
   }
 }

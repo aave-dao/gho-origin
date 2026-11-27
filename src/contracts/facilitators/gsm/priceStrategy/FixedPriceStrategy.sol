@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Math} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {IGsmPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/interfaces/IGsmPriceStrategy.sol';
 
 /**
@@ -47,7 +47,7 @@ contract FixedPriceStrategy is IGsmPriceStrategy {
       assetAmount.mulDiv(
         PRICE_RATIO,
         _underlyingAssetUnits,
-        roundUp ? Math.Rounding.Up : Math.Rounding.Down
+        roundUp ? Math.Rounding.Ceil : Math.Rounding.Floor
       );
   }
 
@@ -57,7 +57,7 @@ contract FixedPriceStrategy is IGsmPriceStrategy {
       ghoAmount.mulDiv(
         _underlyingAssetUnits,
         PRICE_RATIO,
-        roundUp ? Math.Rounding.Up : Math.Rounding.Down
+        roundUp ? Math.Rounding.Ceil : Math.Rounding.Floor
       );
   }
 }

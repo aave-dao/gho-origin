@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoInitialization is TestSGhoBase {
+  using SafeCast for uint256;
+
   function test_constructor() external view {
     assertEq(sgho.GHO(), address(gho), 'GHO address mismatch');
     assertEq(sgho.DOMAIN_SEPARATOR(), DOMAIN_SEPARATOR_sGho, 'Domain separator mismatch');
@@ -55,45 +57,139 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_initialization() external {
     // Deploy a new sGho instance
-    address impl = address(new sGho());
-    sGho newSgho = sGho(
-      address(
-        new TransparentUpgradeableProxy(
-          impl,
-          address(this),
-          abi.encodeWithSelector(
-            sGho.initialize.selector,
-            address(gho),
-            SUPPLY_CAP,
-            address(this) // executor
-          )
-        )
-      )
-    );
+    sGho newSgho = _deploySGho();
 
     // Should work after initialization
     assertEq(newSgho.totalAssets(), 0, 'Should be initialized');
   }
 
-  function test_revert_initialize_twice() external {
-    // Deploy a new sGho instance
-    address impl = address(new sGho());
-    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-      impl,
-      address(this),
-      abi.encodeWithSelector(
-        sGho.initialize.selector,
-        address(gho),
-        SUPPLY_CAP,
-        address(this) // executor
-      )
-    );
+  function test_initializedVersion() external view {
+    assertEq(_initializedVersion(address(sgho)), 2, 'initialized version');
+  }
 
-    sGho newSgho = sGho(address(proxy));
+  function test_revert_initialize_twice() external {
+    sGho newSgho = _deploySGho();
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), SUPPLY_CAP, address(this));
+    sGhoInstance(address(newSgho)).initialize({
+      gho: address(gho),
+      initialSupplyCap: SUPPLY_CAP_UNITS,
+      owner: address(this),
+      initialYieldIndex: RAY.toUint120(),
+      initialLastUpdate: block.timestamp.toUint40(),
+      initialTargetRate: 0
+    });
+  }
+
+  function test_initialize_emitsYieldIndexSynced() external {
+    address impl = address(new sGhoInstance());
+    vm.expectEmit(true, true, true, true);
+    emit IsGho.YieldIndexSynced(RAY, block.timestamp, 1000);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          RAY.toUint120(),
+          block.timestamp.toUint40(),
+          uint16(1000)
+        )
+      )
+    );
+  }
+
+  /// @dev Cold start: initializing with a live deployment's checkpoint puts the new vault in
+  /// sync from the very first block.
+  function test_initialize_coldStartMatchesSourceChain() external {
+    // `sgho` from setUp is the live source: 10% annual rate running for 100 days
+    vm.warp(block.timestamp + 100 days);
+
+    sGho newSgho = _deploySGho(
+      sgho.yieldIndex().toUint120(),
+      sgho.lastUpdate().toUint40(),
+      sgho.targetRate()
+    );
+
+    assertEq(newSgho.yieldIndex(), sgho.yieldIndex(), 'Checkpoint index diverged');
+    assertEq(newSgho.lastUpdate(), sgho.lastUpdate(), 'Checkpoint timestamp diverged');
+    assertEq(newSgho.targetRate(), sgho.targetRate(), 'Rate diverged');
+    assertEq(newSgho.convertToAssets(RAY), sgho.convertToAssets(RAY), 'Live index diverged');
+
+    vm.warp(block.timestamp + 365 days);
+    assertEq(
+      newSgho.convertToAssets(RAY),
+      sgho.convertToAssets(RAY),
+      'Live index diverged over time'
+    );
+  }
+
+  function test_revert_initialize_timestampInFuture() external {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.SyncTimestampInFuture.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          RAY.toUint120(),
+          (block.timestamp + 1).toUint40(),
+          uint16(0)
+        )
+      )
+    );
+  }
+
+  function test_revert_initialize_indexBelowRay() external {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.YieldIndexTooLow.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          (RAY - 1).toUint120(),
+          block.timestamp.toUint40(),
+          uint16(0)
+        )
+      )
+    );
+  }
+
+  function test_revert_initialize_maxRateExceeded() external {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.MaxRateExceeded.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      Admin,
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (
+          address(gho),
+          SUPPLY_CAP_UNITS,
+          address(this),
+          RAY.toUint120(),
+          block.timestamp.toUint40(),
+          uint16(MAX_SAFE_RATE + 1)
+        )
+      )
+    );
+  }
+
+  function test_revision() external view {
+    assertEq(sGhoInstance(address(sgho)).SGHO_REVISION(), 2, 'Revision mismatch');
   }
 
   // ========================================
@@ -129,7 +225,7 @@ contract TestSGhoInitialization is TestSGhoBase {
   }
 
   function test_getter_supplyCap() external view {
-    assertEq(sgho.supplyCap(), SUPPLY_CAP, 'Supply cap should match constant');
+    assertEq(sgho.supplyCap(), SUPPLY_CAP_UNITS, 'Supply cap should match constant');
   }
 
   function test_getter_yieldIndex() external view {
@@ -138,6 +234,12 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_getter_lastUpdate() external view {
     assertEq(sgho.lastUpdate(), block.timestamp, 'Last update should be current timestamp');
+  }
+
+  function test_getter_pendingTargetRate() external view {
+    (uint16 pendingRate, uint40 pendingEffectiveAt) = sgho.pendingTargetRate();
+    assertEq(pendingRate, 0, 'Initial pending rate should be 0');
+    assertEq(pendingEffectiveAt, 0, 'Initial pending effective timestamp should be 0');
   }
 
   function test_getter_PAUSE_GUARDIAN_ROLE() external view {
@@ -189,15 +291,33 @@ contract TestSGhoInitialization is TestSGhoBase {
     assertEq(sgho.totalAssets(), 0, 'Initial total assets should be 0');
   }
 
-  function test_getter_ratePerSecond() external view {
-    uint256 targetRate = sgho.targetRate();
-    uint256 annualRateRay = (targetRate * RAY) / 10000;
-    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
-    uint256 expectedRatePerSecond = ratePerSecond / RAY;
-    assertEq(
-      sgho.ratePerSecond(),
-      expectedRatePerSecond,
-      'Rate per second should match calculated value'
+  function test_revert_initialize_zeroGho() external {
+    _assertInitializeReverts(address(0), address(this));
+  }
+
+  function test_revert_initialize_zeroOwner() external {
+    _assertInitializeReverts(address(gho), address(0));
+  }
+
+  function _assertInitializeReverts(address ghoToken, address owner) internal {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.ZeroAddressNotAllowed.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      address(this),
+      abi.encodeCall(
+        sGhoInstance.initialize,
+        (ghoToken, SUPPLY_CAP_UNITS, owner, RAY.toUint120(), block.timestamp.toUint40(), uint16(0))
+      )
     );
+  }
+
+  /// @dev Reads OpenZeppelin's initialized version from its ERC-7201 `Initializable` slot
+  function _initializedVersion(address proxy) internal view returns (uint64) {
+    bytes32 slot = keccak256(
+      abi.encode(uint256(keccak256('openzeppelin.storage.Initializable')) - 1)
+    ) & ~bytes32(uint256(0xff));
+    // `_initialized` is the low 64 bits of the slot, the truncation is intentional
+    return uint64(uint256(vm.load(proxy, slot)));
   }
 }

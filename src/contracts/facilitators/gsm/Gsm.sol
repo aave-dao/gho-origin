@@ -2,12 +2,12 @@
 pragma solidity ^0.8.10;
 
 import {VersionedInitializable} from 'aave-v3-origin/contracts/misc/aave-upgradeability/VersionedInitializable.sol';
-import {IERC20} from 'aave-v3-origin/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {GPv2SafeERC20} from 'aave-v3-origin/contracts/dependencies/gnosis/contracts/GPv2SafeERC20.sol';
-import {EIP712} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol';
-import {SignatureChecker} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/cryptography/SignatureChecker.sol';
-import {SafeCast} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
-import {AccessControl} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/access/AccessControl.sol';
+import {EIP712} from 'openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol';
+import {SignatureChecker} from 'openzeppelin-contracts/contracts/utils/cryptography/SignatureChecker.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {AccessControl} from 'openzeppelin-contracts/contracts/access/AccessControl.sol';
 import {IGhoFacilitator} from 'src/contracts/gho/interfaces/IGhoFacilitator.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';
 import {IGsmPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/interfaces/IGsmPriceStrategy.sol';
@@ -116,7 +116,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address ghoTreasury,
     uint128 exposureCap,
     address ghoReserve
-  ) external initializer {
+  ) public virtual initializer {
     require(admin != address(0), 'ZERO_ADDRESS_NOT_VALID');
     _grantRole(DEFAULT_ADMIN_ROLE, admin);
     _grantRole(CONFIGURATOR_ROLE, admin);
@@ -423,7 +423,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address originator,
     uint256 minAmount,
     address receiver
-  ) internal returns (uint256, uint256) {
+  ) internal virtual returns (uint256, uint256) {
     (
       uint256 assetAmount,
       uint256 ghoSold,
@@ -468,7 +468,7 @@ contract Gsm is AccessControl, VersionedInitializable, EIP712, IGsm {
     address originator,
     uint256 maxAmount,
     address receiver
-  ) internal returns (uint256, uint256) {
+  ) internal virtual returns (uint256, uint256) {
     (
       uint256 assetAmount,
       uint256 ghoBought,

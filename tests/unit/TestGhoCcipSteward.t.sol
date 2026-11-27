@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 import {RateLimiter} from 'src/contracts/dependencies/ccip/Ccip.sol';
 
 import './TestGhoBase.t.sol';
 
-contract TestGhoCcipSteward is TestGhoBase, GhoStewardProcedure {
+contract TestGhoCcipSteward is TestGhoBase {
   RateLimiter.Config rateLimitConfig =
     RateLimiter.Config({isEnabled: true, capacity: type(uint128).max, rate: 1e15});
   uint64 remoteChainSelector = 2;
@@ -97,11 +96,13 @@ contract TestGhoCcipSteward is TestGhoBase, GhoStewardProcedure {
 
   function testRevertUpdateBridgeLimitIfDisabled() public {
     // Deploy new Gho CCIP Steward with bridge limit disabled
-    GHO_CCIP_STEWARD = new GhoCcipSteward(
-      address(GHO_TOKEN),
-      address(GHO_TOKEN_POOL),
-      RISK_COUNCIL,
-      false
+    GHO_CCIP_STEWARD = GhoCcipSteward(
+      _deployGhoCcipSteward({
+        ghoToken: address(GHO_TOKEN),
+        ghoTokenPool: address(GHO_TOKEN_POOL),
+        riskCouncil: RISK_COUNCIL,
+        bridgeLimitEnabled: false
+      })
     );
 
     /// @dev Since block.timestamp starts at 0 this is a necessary condition (block.timestamp > `MINIMUM_DELAY`) for the timelocked contract methods to work.

@@ -42,7 +42,7 @@ contract TestGsmFullFlow is TestGhoBase {
     vm.startPrank(ALICE);
     USDX_TOKEN.approve(address(gsm), DEFAULT_GSM_USDX_AMOUNT);
     vm.expectEmit(true, true, true, true, address(gsm));
-    emit SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.SellAsset(ALICE, ALICE, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
     (uint256 assetAmount, uint256 ghoBought) = gsm.sellAsset(DEFAULT_GSM_USDX_AMOUNT, ALICE);
     vm.stopPrank();
 
@@ -66,7 +66,7 @@ contract TestGsmFullFlow is TestGhoBase {
     vm.startPrank(BOB);
     GHO_TOKEN.approve(address(gsm), DEFAULT_GSM_GHO_AMOUNT);
     vm.expectEmit(true, true, true, true, address(gsm));
-    emit BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
+    emit IGsm.BuyAsset(BOB, BOB, DEFAULT_GSM_USDX_AMOUNT, DEFAULT_GSM_GHO_AMOUNT, 0);
     (uint256 assetAmountBought, uint256 ghoSold) = gsm.buyAsset(DEFAULT_GSM_USDX_AMOUNT, BOB);
     vm.stopPrank();
 
@@ -95,7 +95,7 @@ contract TestGsmFullFlow is TestGhoBase {
     assertEq(level, 0, 'Unexpected level after burn');
 
     vm.expectEmit(true, false, false, true, address(GHO_TOKEN));
-    emit FacilitatorRemoved(address(facilitator));
+    emit IGhoToken.FacilitatorRemoved(address(facilitator));
     GHO_TOKEN.removeFacilitator(address(facilitator));
   }
 }

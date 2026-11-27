@@ -4,8 +4,11 @@ pragma solidity ^0.8.19;
 
 import {TestnetProcedures, TestnetERC20} from 'lib/aave-v3-origin/tests/utils/TestnetProcedures.sol';
 import {sGho} from '../../src/contracts/sgho/sGho.sol';
+import {sGhoInstance} from '../../src/contracts/sgho/instances/sGhoInstance.sol';
 import {TransparentUpgradeableProxy} from 'openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {SafeCast} from 'openzeppelin-contracts/contracts/utils/math/SafeCast.sol';
+import {SGhoYieldMath} from '../helpers/SGhoYieldMath.sol';
 
 /**
  * @title sGhoPrecisionTest
@@ -20,15 +23,16 @@ import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
  * 5. Actual Measurement Tests - Output real precision loss values for analysis
  */
 contract TestSGhoPrecision is TestnetProcedures {
+  using SafeCast for uint256;
+
   using Math for uint256;
 
   // Constants for precision calculations
   uint256 private constant RAY = 1e27;
-  uint256 private constant SECONDS_IN_YEAR = 365 days;
 
   // Contracts
   sGho internal sgho;
-  sGho internal sghoImpl;
+  sGhoInstance internal sghoImpl;
   TestnetERC20 internal gho;
 
   // Users
@@ -39,9 +43,9 @@ contract TestSGhoPrecision is TestnetProcedures {
   address internal fundsAdmin;
 
   // Test parameters
-  uint16 internal constant TEST_RATE_10_PERCENT = 1000; // 10% APR
-  uint16 internal constant TEST_RATE_50_PERCENT = 5000; // 50% APR
-  uint160 internal constant SUPPLY_CAP = 1000000e18; // 1M GHO
+  uint16 internal constant TEST_RATE_10_PERCENT = 1000; // 10% annual rate
+  uint16 internal constant TEST_RATE_50_PERCENT = 5000; // 50% annual rate
+  uint40 internal constant SUPPLY_CAP_UNITS = 1_000_000; // 1M GHO (whole units, no decimals)
 
   function setUp() public {
     // Setup users
@@ -55,7 +59,7 @@ contract TestSGhoPrecision is TestnetProcedures {
     gho = new TestnetERC20('GHO', 'GHO', 18, address(this));
 
     // Deploy sGho implementation
-    sghoImpl = new sGho();
+    sghoImpl = new sGhoInstance();
 
     // Deploy proxy
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
@@ -67,7 +71,14 @@ contract TestSGhoPrecision is TestnetProcedures {
     sgho = sGho(address(proxy));
 
     // Initialize sGho
-    sgho.initialize(address(gho), SUPPLY_CAP, admin);
+    sGhoInstance(address(sgho)).initialize(
+      address(gho),
+      SUPPLY_CAP_UNITS,
+      admin,
+      RAY.toUint120(),
+      block.timestamp.toUint40(),
+      0
+    );
 
     vm.startPrank(admin);
     sgho.grantRole(sgho.YIELD_MANAGER_ROLE(), yieldManager);
@@ -81,52 +92,7 @@ contract TestSGhoPrecision is TestnetProcedures {
 
     // Set initial rate
     vm.prank(yieldManager);
-    sgho.setTargetRate(TEST_RATE_10_PERCENT);
-  }
-
-  // ========================================
-  // RATE PER SECOND CALCULATION TESTS
-  // ========================================
-
-  function test_ratePerSecond_calculation_precision() public {
-    uint16[] memory rates = new uint16[](7);
-    rates[0] = 100; // 1%
-    rates[1] = 500; // 5%
-    rates[2] = 1000; // 10%
-    rates[3] = 2000; // 20%
-    rates[4] = 3000; // 30%
-    rates[5] = 4000; // 40%
-    rates[6] = 5000; // 50%
-
-    for (uint256 i = 0; i < rates.length; i++) {
-      uint16 rate = rates[i];
-
-      // Set rate in contract
-      vm.prank(yieldManager);
-      sgho.setTargetRate(rate);
-
-      // Get contract's rate per second
-      uint96 contractRatePerSecond = sgho.ratePerSecond();
-
-      // Calculate exact rate per second
-      uint256 exactRatePerSecond = calculateExactRatePerSecond(rate);
-
-      // Compare (should be identical due to integer math)
-      assertEq(contractRatePerSecond, exactRatePerSecond, 'Rate per second mismatch');
-
-      // Rate per second calculation should be exact
-      assertEq(contractRatePerSecond, exactRatePerSecond, 'Rate per second mismatch');
-    }
-  }
-
-  function test_ratePerSecond_zero_rate() public {
-    // Set target rate to 0
-    vm.prank(yieldManager);
-    sgho.setTargetRate(0);
-
-    // Rate per second should be 0
-    uint96 ratePerSecond = sgho.ratePerSecond();
-    assertEq(ratePerSecond, 0, 'Rate per second should be 0 for zero rate');
+    sgho.setTargetRate(TEST_RATE_10_PERCENT, block.timestamp.toUint40());
   }
 
   // ========================================
@@ -149,79 +115,53 @@ contract TestSGhoPrecision is TestnetProcedures {
       uint16 rate = rates[r];
 
       vm.prank(yieldManager);
-      sgho.setTargetRate(rate);
+      sgho.setTargetRate(rate, block.timestamp.toUint40());
 
       for (uint256 t = 0; t < timePeriods.length; t++) {
         uint256 timePeriod = timePeriods[t];
 
-        // Get initial yield index
         uint256 initialIndex = sgho.yieldIndex();
 
-        // Fast forward time
         vm.warp(block.timestamp + timePeriod);
 
-        // Trigger yield index update by calling a function
-        sgho.totalAssets();
+        // Re-setting the rate checkpoints the accrued index
+        vm.prank(yieldManager);
+        sgho.setTargetRate(rate, block.timestamp.toUint40());
 
-        // Get new yield index
-        uint256 newIndex = sgho.yieldIndex();
-
-        // Calculate expected growth factor
-        uint256 expectedGrowthFactor = calculateExpectedGrowthFactor(rate, timePeriod);
-        uint256 expectedNewIndex = (initialIndex * expectedGrowthFactor) / RAY;
-
-        // Calculate precision loss
-        uint256 precisionLoss = calculatePrecisionLoss(newIndex, expectedNewIndex);
-
-        // Precision loss analysis: Rate=rate, Time=timePeriod, Contract=newIndex, Expected=expectedNewIndex, Loss=precisionLoss
-
-        // For reasonable time periods, precision loss should be minimal
-        if (timePeriod <= 3600) {
-          // 1 hour
-          assertLt(precisionLoss, 1, 'Precision loss too high for 1 hour');
-        } else if (timePeriod <= 86400) {
-          // 1 day
-          assertLt(precisionLoss, 20, 'Precision loss too high for 1 day');
-        } else if (timePeriod <= 604800) {
-          // 1 week
-          assertLt(precisionLoss, 100, 'Precision loss too high for 1 week');
-        } else if (timePeriod <= 2592000) {
-          // 1 month
-          assertLt(precisionLoss, 500, 'Precision loss too high for 1 month');
-        }
+        // Compounded interest on the checkpointed index
+        assertEq(
+          sgho.yieldIndex(),
+          SGhoYieldMath.accrue(initialIndex, rate, timePeriod),
+          'Yield index accrual mismatch'
+        );
       }
     }
   }
 
   function test_yieldIndex_update_precision_multiple_updates() public {
-    uint16 rate = 1000; // 10% APR
+    uint16 rate = 1000; // 10% annual rate
     uint256 totalTime = 86400; // 1 day
     uint256 updateInterval = 3600; // 1 hour
 
     vm.prank(yieldManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
-    uint256 initialIndex = sgho.yieldIndex();
-    uint256 currentIndex = initialIndex;
+    uint256 expectedIndex = sgho.yieldIndex();
+    uint256 intervals = totalTime / updateInterval;
 
-    // Perform multiple updates
-    for (uint256 i = 0; i < totalTime / updateInterval; i++) {
+    // Checkpoint the index on every interval
+    for (uint256 i = 0; i < intervals; i++) {
       vm.warp(block.timestamp + updateInterval);
-      sgho.totalAssets(); // Trigger update
-      currentIndex = sgho.yieldIndex();
+      vm.prank(yieldManager);
+      sgho.setTargetRate(rate, block.timestamp.toUint40());
+      expectedIndex = SGhoYieldMath.accrue(expectedIndex, rate, updateInterval);
     }
 
-    // Calculate expected single update for total time
-    uint256 expectedGrowthFactor = calculateExpectedGrowthFactor(rate, totalTime);
-    uint256 expectedFinalIndex = (initialIndex * expectedGrowthFactor) / RAY;
-
-    // Calculate precision loss
-    uint256 precisionLoss = calculatePrecisionLoss(currentIndex, expectedFinalIndex);
-
-    // Multiple updates analysis: Final=currentIndex, Expected=expectedFinalIndex, Loss=precisionLoss
-
-    // Multiple updates should have very low precision loss
-    assertLt(precisionLoss, 5, 'Precision loss too high for multiple updates');
+    assertEq(
+      sgho.yieldIndex(),
+      expectedIndex,
+      'Multiple updates should match the per-interval accrual'
+    );
   }
 
   // ========================================
@@ -229,10 +169,10 @@ contract TestSGhoPrecision is TestnetProcedures {
   // ========================================
 
   function test_asset_share_conversion_precision() public {
-    uint16 rate = 1000; // 10% APR
+    uint16 rate = 1000; // 10% annual rate
 
     vm.prank(yieldManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     // Deposit some GHO
     uint256 depositAmount = 1000e18;
@@ -259,33 +199,28 @@ contract TestSGhoPrecision is TestnetProcedures {
   }
 
   function test_yield_accrual_precision() public {
-    uint16 rate = 1000; // 10% APR
+    uint16 rate = 1000; // 10% annual rate
 
     vm.prank(yieldManager);
-    sgho.setTargetRate(rate);
+    sgho.setTargetRate(rate, block.timestamp.toUint40());
 
     // Deposit GHO
     uint256 depositAmount = 10000e18;
     gho.approve(address(sgho), depositAmount);
     sgho.deposit(depositAmount, user1);
 
-    uint256 initialShares = sgho.balanceOf(user1);
+    uint256 shares = sgho.balanceOf(user1);
 
     // Fast forward and check yield accrual
     vm.warp(block.timestamp + 604800); // 1 week
 
-    uint256 finalShares = sgho.balanceOf(user1);
-
-    // Calculate expected yield
-    uint256 expectedGrowthFactor = calculateExpectedGrowthFactor(rate, 604800);
-    uint256 expectedShares = (initialShares * expectedGrowthFactor) / RAY;
-
-    uint256 precisionLoss = calculatePrecisionLoss(finalShares, expectedShares);
-
-    // Yield accrual analysis: Actual=finalShares, Expected=expectedShares, Loss=precisionLoss
-
-    // Yield accrual should be accurate
-    assertLt(precisionLoss, 50, 'Yield accrual precision loss too high');
+    // Compounded growth of the deposited assets over one week, exact to the wei
+    uint256 expectedIndex = SGhoYieldMath.accrue(RAY, rate, 604800);
+    assertEq(
+      sgho.previewRedeem(shares),
+      (depositAmount * expectedIndex) / RAY,
+      'Yield accrual mismatch'
+    );
   }
 
   // ========================================
@@ -295,18 +230,20 @@ contract TestSGhoPrecision is TestnetProcedures {
   function test_precision_edge_cases() public {
     // Test very short time periods
     vm.prank(yieldManager);
-    sgho.setTargetRate(5000); // 50% APR
+    sgho.setTargetRate(5000, block.timestamp.toUint40()); // 50% annual rate
 
     uint256 initialIndex = sgho.yieldIndex();
 
     // Test 1 second
     vm.warp(block.timestamp + 1);
-    sgho.totalAssets();
+    vm.prank(yieldManager);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
     uint256 oneSecondIndex = sgho.yieldIndex();
 
     // Test 1 minute
     vm.warp(block.timestamp + 59); // Total 60 seconds
-    sgho.totalAssets();
+    vm.prank(yieldManager);
+    sgho.setTargetRate(5000, block.timestamp.toUint40());
     uint256 oneMinuteIndex = sgho.yieldIndex();
 
     // Edge case analysis: 1 second index=oneSecondIndex, 1 minute index=oneMinuteIndex
@@ -353,22 +290,21 @@ contract TestSGhoPrecision is TestnetProcedures {
       for (uint256 p = 0; p < periods.length; p++) {
         // Reset state
         vm.prank(yieldManager);
-        sgho.setTargetRate(rates[r]);
+        sgho.setTargetRate(rates[r], block.timestamp.toUint40());
 
         uint256 initialIndex = sgho.yieldIndex();
 
-        // Fast forward and update
+        // Fast forward and checkpoint
         vm.warp(block.timestamp + periods[p]);
-        sgho.totalAssets();
+        vm.prank(yieldManager);
+        sgho.setTargetRate(rates[r], block.timestamp.toUint40());
 
         uint256 finalIndex = sgho.yieldIndex();
-        uint256 expectedGrowthFactor = calculateExpectedGrowthFactor(rates[r], periods[p]);
-        uint256 expectedIndex = (initialIndex * expectedGrowthFactor) / RAY;
+        uint256 expectedIndex = SGhoYieldMath.accrue(initialIndex, rates[r], periods[p]);
         uint256 precisionLoss = calculatePrecisionLoss(finalIndex, expectedIndex);
 
         emit log_named_uint('Rate (bps)', rates[r]);
         emit log_named_uint('Period (sec)', periods[p]);
-        emit log_named_uint('Linear Growth Factor', expectedGrowthFactor);
         emit log_named_uint('Contract Index', finalIndex);
         emit log_named_uint('Expected Index', expectedIndex);
         emit log_named_uint('Precision Loss (bps)', precisionLoss);
@@ -377,46 +313,8 @@ contract TestSGhoPrecision is TestnetProcedures {
     }
   }
 
-  function test_rate_per_second_actual_values() public {
-    emit log('=== RATE PER SECOND ACTUAL VALUES ===');
-
-    uint16[] memory rates = new uint16[](7);
-    rates[0] = 100; // 1%
-    rates[1] = 500; // 5%
-    rates[2] = 1000; // 10%
-    rates[3] = 2000; // 20%
-    rates[4] = 3000; // 30%
-    rates[5] = 4000; // 40%
-    rates[6] = 5000; // 50%
-
-    for (uint256 i = 0; i < rates.length; i++) {
-      uint16 rate = rates[i];
-
-      // Set rate in contract
-      vm.prank(yieldManager);
-      sgho.setTargetRate(rate);
-
-      // Get contract's rate per second
-      uint96 contractRatePerSecond = sgho.ratePerSecond();
-
-      // Calculate exact rate per second
-      uint256 exactRatePerSecond = calculateExactRatePerSecond(rate);
-
-      emit log_named_uint('Rate (bps)', rate);
-      emit log_named_uint('Contract Rate Per Second', contractRatePerSecond);
-      emit log_named_uint('Exact Rate Per Second', exactRatePerSecond);
-      emit log_named_uint(
-        'Difference',
-        contractRatePerSecond > exactRatePerSecond
-          ? contractRatePerSecond - exactRatePerSecond
-          : exactRatePerSecond - contractRatePerSecond
-      );
-      emit log('---');
-    }
-  }
-
-  function test_linear_growth_factors_for_python() public {
-    emit log('=== LINEAR GROWTH FACTORS FOR PYTHON ANALYSIS ===');
+  function test_growth_factors_for_python() public {
+    emit log('=== GROWTH FACTORS FOR PYTHON ANALYSIS ===');
 
     uint16[] memory rates = new uint16[](3);
     rates[0] = 1000; // 10%
@@ -432,16 +330,16 @@ contract TestSGhoPrecision is TestnetProcedures {
     periods[5] = 2592000; // 1 month
 
     emit log('// Python script can parse these values:');
-    emit log('// Format: Rate(bps), Period(sec), LinearGrowthFactor');
+    emit log('// Format: Rate(bps), Period(sec), GrowthFactor');
 
     for (uint256 r = 0; r < rates.length; r++) {
       for (uint256 p = 0; p < periods.length; p++) {
-        uint256 linearGrowthFactor = calculateExpectedGrowthFactor(rates[r], periods[p]);
+        uint256 growthFactor = calculateExpectedGrowthFactor(rates[r], periods[p]);
 
         // Output in a format that can be easily parsed by Python
         emit log_named_uint('PYTHON_DATA', rates[r]);
         emit log_named_uint('PYTHON_DATA', periods[p]);
-        emit log_named_uint('PYTHON_DATA', linearGrowthFactor);
+        emit log_named_uint('PYTHON_DATA', growthFactor);
 
         // Also output human-readable format
         string memory rateDesc = rates[r] == 1000 ? '10%' : rates[r] == 2500 ? '25%' : '50%';
@@ -455,35 +353,26 @@ contract TestSGhoPrecision is TestnetProcedures {
           ? '1w'
           : '1M';
 
-        emit log_named_string('Growth Factor', string.concat(rateDesc, ' APR, ', periodDesc));
-        emit log_named_uint('Value', linearGrowthFactor);
+        emit log_named_string(
+          'Growth Factor',
+          string.concat(rateDesc, ' annual rate, ', periodDesc)
+        );
+        emit log_named_uint('Value', growthFactor);
       }
     }
 
-    emit log('=== END LINEAR GROWTH FACTORS ===');
+    emit log('=== END GROWTH FACTORS ===');
   }
 
   // ========================================
   // HELPER FUNCTIONS
   // ========================================
 
-  function calculateExactRatePerSecond(uint16 rateBps) internal pure returns (uint256) {
-    // Exact calculation: (rate_bps / 10000) * RAY / SECONDS_IN_YEAR
-    return (uint256(rateBps) * RAY) / (10000 * SECONDS_IN_YEAR);
-  }
-
   function calculateExpectedGrowthFactor(
     uint16 rateBps,
     uint256 timeSeconds
   ) internal pure returns (uint256) {
-    // Calculate rate per second
-    uint256 ratePerSecond = calculateExactRatePerSecond(rateBps);
-
-    // Calculate accumulated rate
-    uint256 accumulatedRate = ratePerSecond * timeSeconds;
-
-    // Calculate growth factor: RAY + accumulatedRate
-    return RAY + accumulatedRate;
+    return SGhoYieldMath.accrue(RAY, rateBps, timeSeconds);
   }
 
   function calculatePrecisionLoss(

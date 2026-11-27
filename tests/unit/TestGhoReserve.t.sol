@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import './TestGhoBase.t.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
 contract TestGhoReserve is TestGhoBase {
   function testConstructor() public {
@@ -64,7 +63,7 @@ contract TestGhoReserve is TestGhoBase {
     assertEq(GHO_RESERVE.getLimit(address(this)), capacity);
 
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit GhoUsed(address(this), capacity / 2);
+    emit IGhoReserve.GhoUsed(address(this), capacity / 2);
     GHO_RESERVE.use(capacity / 2);
 
     (uint256 limit, uint256 used) = GHO_RESERVE.getUsage(address(this));
@@ -79,7 +78,9 @@ contract TestGhoReserve is TestGhoBase {
 
     uint256 value = type(uint128).max;
 
-    vm.expectRevert("SafeCast: value doesn't fit in 128 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 128, value + 1)
+    );
     GHO_RESERVE.setLimit(newEntity, value + 1);
 
     GHO_RESERVE.setLimit(newEntity, value);
@@ -103,7 +104,7 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(address(this));
     GHO_RESERVE.setLimit(address(this), 10_000 ether);
 
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     GHO_RESERVE.restore(10_000 ether);
   }
 
@@ -115,7 +116,7 @@ contract TestGhoReserve is TestGhoBase {
     assertEq(GHO_RESERVE.getLimit(address(this)), capacity);
 
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit GhoUsed(address(this), capacity / 2);
+    emit IGhoReserve.GhoUsed(address(this), capacity / 2);
     GHO_RESERVE.use(capacity / 2);
 
     (uint256 limit, uint256 used) = GHO_RESERVE.getUsage(address(this));
@@ -127,7 +128,7 @@ contract TestGhoReserve is TestGhoBase {
     GHO_TOKEN.approve(address(GHO_RESERVE), repayAmount);
 
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit GhoRestored(address(this), repayAmount);
+    emit IGhoReserve.GhoRestored(address(this), repayAmount);
     GHO_RESERVE.restore(repayAmount);
 
     (limit, used) = GHO_RESERVE.getUsage(address(this));
@@ -143,7 +144,9 @@ contract TestGhoReserve is TestGhoBase {
     uint256 value = type(uint128).max;
     GHO_RESERVE.setLimit(newEntity, value);
 
-    vm.expectRevert("SafeCast: value doesn't fit in 128 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 128, value + 1)
+    );
     vm.prank(newEntity);
     GHO_RESERVE.restore(value + 1);
   }
@@ -161,7 +164,7 @@ contract TestGhoReserve is TestGhoBase {
   function testAddEntity() public {
     address alice = makeAddr('alice');
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit EntityAdded(alice);
+    emit IGhoReserve.EntityAdded(alice);
     GHO_RESERVE.addEntity(address(alice));
 
     assertTrue(GHO_RESERVE.isEntity(alice));
@@ -171,7 +174,7 @@ contract TestGhoReserve is TestGhoBase {
     uint256 entitiesCount = GHO_RESERVE.totalEntities();
     address alice = makeAddr('alice');
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit EntityAdded(alice);
+    emit IGhoReserve.EntityAdded(alice);
     GHO_RESERVE.addEntity(alice);
 
     // Set already contains two entities from constructor
@@ -184,7 +187,13 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertAddEntityNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        ENTITY_MANAGER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_RESERVE.addEntity(ALICE);
   }
@@ -193,7 +202,7 @@ contract TestGhoReserve is TestGhoBase {
     uint256 limit = 1_000_000 ether;
     address alice = makeAddr('alice');
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit EntityAdded(alice);
+    emit IGhoReserve.EntityAdded(alice);
     GHO_RESERVE.addEntity(alice);
     GHO_RESERVE.setLimit(alice, limit);
 
@@ -204,7 +213,7 @@ contract TestGhoReserve is TestGhoBase {
     assertEq(GHO_RESERVE.getLimit(alice), 0);
 
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit EntityRemoved(alice);
+    emit IGhoReserve.EntityRemoved(alice);
     GHO_RESERVE.removeEntity(alice);
 
     assertFalse(GHO_RESERVE.isEntity(alice));
@@ -248,7 +257,13 @@ contract TestGhoReserve is TestGhoBase {
   }
 
   function testRevertRemoveEntityNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(ENTITY_MANAGER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        ENTITY_MANAGER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_RESERVE.removeEntity(ALICE);
   }
@@ -259,7 +274,7 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(address(alice));
 
     vm.expectEmit(true, true, true, true, address(GHO_RESERVE));
-    emit GhoLimitUpdated(alice, capacity);
+    emit IGhoReserve.GhoLimitUpdated(alice, capacity);
     GHO_RESERVE.setLimit(alice, capacity);
   }
 
@@ -273,12 +288,20 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(address(newEntity));
 
     uint256 value = type(uint128).max;
-    vm.expectRevert("SafeCast: value doesn't fit in 128 bits");
+    vm.expectRevert(
+      abi.encodeWithSignature('SafeCastOverflowedUintDowncast(uint8,uint256)', 128, value + 1)
+    );
     GHO_RESERVE.setLimit(newEntity, value + 1);
   }
 
   function testRevertSetLimitNoRole() public {
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(LIMIT_MANAGER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        LIMIT_MANAGER_ROLE
+      )
+    );
     vm.prank(ALICE);
     GHO_RESERVE.setLimit(ALICE, 1_000_000 ether);
   }
@@ -291,7 +314,7 @@ contract TestGhoReserve is TestGhoBase {
     deal(address(GHO_TOKEN), address(reserve), 5_000 ether);
 
     vm.expectEmit(true, true, true, true, address(reserve));
-    emit GhoTransferred(facilitator, amount);
+    emit IGhoReserve.GhoTransferred(facilitator, amount);
     reserve.transfer(facilitator, amount);
 
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 5_000 ether - amount);
@@ -302,7 +325,13 @@ contract TestGhoReserve is TestGhoBase {
     address facilitator = makeAddr('facilitator');
     uint256 amount = 1_000 ether;
 
-    vm.expectRevert(AccessControlErrorsLib.MISSING_ROLE(TRANSFER_ROLE, ALICE));
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        TRANSFER_ROLE
+      )
+    );
     vm.prank(ALICE);
     reserve.transfer(facilitator, amount);
   }
@@ -314,7 +343,7 @@ contract TestGhoReserve is TestGhoBase {
 
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 0);
 
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     reserve.transfer(facilitator, amount);
   }
 
@@ -326,7 +355,7 @@ contract TestGhoReserve is TestGhoBase {
     deal(address(GHO_TOKEN), address(reserve), amount);
 
     vm.expectEmit(true, true, true, true, address(reserve));
-    emit GhoTransferred(facilitator, amount);
+    emit IGhoReserve.GhoTransferred(facilitator, amount);
     reserve.transfer(facilitator, amount);
 
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 0);
@@ -339,7 +368,7 @@ contract TestGhoReserve is TestGhoBase {
 
     deal(address(GHO_TOKEN), address(reserve), amount);
 
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     reserve.transfer(facilitator, amount + 1);
   }
 
@@ -355,19 +384,19 @@ contract TestGhoReserve is TestGhoBase {
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), amount);
 
     vm.expectEmit(true, true, true, true, address(reserve));
-    emit GhoUsed(address(this), amount);
+    emit IGhoReserve.GhoUsed(address(this), amount);
     reserve.use(amount);
 
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), 0);
 
     // No GHO to transfer
-    vm.expectRevert();
+    vm.expectRevert(stdError.arithmeticError);
     reserve.transfer(facilitator, amount);
 
     GHO_TOKEN.approve(address(reserve), amount / 2);
 
     vm.expectEmit(true, true, true, true, address(reserve));
-    emit GhoRestored(address(this), amount / 2);
+    emit IGhoReserve.GhoRestored(address(this), amount / 2);
     reserve.restore(amount / 2);
 
     assertEq(GHO_TOKEN.balanceOf(address(reserve)), amount / 2);
@@ -405,5 +434,29 @@ contract TestGhoReserve is TestGhoBase {
     GHO_RESERVE.addEntity(makeAddr('alice'));
 
     assertEq(GHO_RESERVE.totalEntities(), 3);
+  }
+
+  function testRevertRenounceRoleBadConfirmation() public {
+    vm.expectRevert(IAccessControl.AccessControlBadConfirmation.selector);
+    vm.prank(ALICE);
+    GHO_RESERVE.renounceRole(ENTITY_MANAGER_ROLE, address(this));
+  }
+
+  function testRenounceRole() public {
+    assertTrue(GHO_RESERVE.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+    GHO_RESERVE.renounceRole(ENTITY_MANAGER_ROLE, address(this));
+    assertFalse(GHO_RESERVE.hasRole(ENTITY_MANAGER_ROLE, address(this)));
+  }
+
+  function testGrantRoleRevertsWithCustomError() public {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        ALICE,
+        DEFAULT_ADMIN_ROLE
+      )
+    );
+    vm.prank(ALICE);
+    GHO_RESERVE.grantRole(ENTITY_MANAGER_ROLE, ALICE);
   }
 }

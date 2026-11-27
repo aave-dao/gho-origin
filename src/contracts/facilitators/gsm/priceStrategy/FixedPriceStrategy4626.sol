@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Math} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/utils/math/Math.sol';
-import {IERC4626} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
+import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
 import {IGsmPriceStrategy} from 'src/contracts/facilitators/gsm/priceStrategy/interfaces/IGsmPriceStrategy.sol';
 
 /**
@@ -53,7 +53,7 @@ contract FixedPriceStrategy4626 is IGsmPriceStrategy {
       vaultAssets.mulDiv(
         PRICE_RATIO,
         _underlyingAssetUnits,
-        roundUp ? Math.Rounding.Up : Math.Rounding.Down
+        roundUp ? Math.Rounding.Ceil : Math.Rounding.Floor
       );
   }
 
@@ -62,7 +62,7 @@ contract FixedPriceStrategy4626 is IGsmPriceStrategy {
     uint256 vaultAssets = ghoAmount.mulDiv(
       _underlyingAssetUnits,
       PRICE_RATIO,
-      roundUp ? Math.Rounding.Up : Math.Rounding.Down
+      roundUp ? Math.Rounding.Ceil : Math.Rounding.Floor
     );
     // conversion of 4626 assets to 4626 shares
     return

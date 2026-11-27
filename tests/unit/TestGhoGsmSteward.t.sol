@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {GhoStewardProcedure} from 'src/deployments/contracts/procedures/GhoStewardProcedure.sol';
 import {IGhoGsmSteward} from 'src/contracts/misc/interfaces/IGhoGsmSteward.sol';
 import './TestGhoBase.t.sol';
 
-contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
+contract TestGhoGsmSteward is TestGhoBase {
   function setUp() public {
     // Deploy Gho GSM Steward
     FIXED_FEE_STRATEGY_FACTORY = new FixedFeeStrategyFactory();
@@ -131,7 +130,11 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
     uint128 oldExposureCap = GHO_GSM.getExposureCap();
     GHO_GSM.revokeRole(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD));
     vm.expectRevert(
-      AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD))
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        address(GHO_GSM_STEWARD),
+        GSM_CONFIGURATOR_ROLE
+      )
     );
     vm.prank(RISK_COUNCIL);
     GHO_GSM_STEWARD.updateGsmExposureCap(address(GHO_GSM), oldExposureCap + 1);
@@ -464,7 +467,11 @@ contract TestGhoGsmSteward is TestGhoBase, GhoStewardProcedure {
     uint256 sellFee = IGsmFeeStrategy(feeStrategy).getSellFee(1e4);
     GHO_GSM.revokeRole(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD));
     vm.expectRevert(
-      AccessControlErrorsLib.MISSING_ROLE(GSM_CONFIGURATOR_ROLE, address(GHO_GSM_STEWARD))
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        address(GHO_GSM_STEWARD),
+        GSM_CONFIGURATOR_ROLE
+      )
     );
     vm.prank(RISK_COUNCIL);
     GHO_GSM_STEWARD.updateGsmBuySellFees(address(GHO_GSM), buyFee + 1, sellFee + 1);

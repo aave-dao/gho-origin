@@ -7,10 +7,10 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 ## Key Features
 
 - **Full EIP-4626 Compliance**: Complete implementation of the ERC-4626 standard for tokenized vaults
-- **Automatic Yield Accrual**: Yield compounds linearly between operations and is tracked via a yield index
+- **Fixed-Rate Yield**: Yield compounds every second at a fixed target rate, tracked via a yield index
 - **Role-Based Access Control**: Granular permissions for yield management and emergency operations
 - **Permit Support**: Gasless deposits using EIP-2612 permits
-- **Supply Cap Management**: Configurable maximum vault capacity
+- **Supply Cap Management**: Configurable maximum vault capacity, set in whole GHO units (no decimals)
 
 ## Architecture
 
@@ -29,28 +29,50 @@ sGHO is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that allows
 
 ### How It Works
 
-1. **Yield Index**: Tracks cumulative yield multiplier (in RAY precision, 1e27)
-2. **Linear Accrual**: Yield compounds linearly (via index updates) between operations
-3. **Share Conversion**: Asset/share conversions use current yield index
+1. **Yield Index**: Tracks the accumulated value per share (in RAY precision, 1e27)
+2. **Per-Second Compounding**: The index grows to `index * (1 + targetRate / year) ^ timeElapsed` from its last checkpoint, so growth over a period depends only on its length. It is only checkpointed when a rate change takes effect, as of that change's timestamp, so user actions and their timing never change it. In between, conversions read the live accrued value
+3. **Share Conversion**: Asset/share conversions use the current yield index
 
 ### Key Parameters
 
-- **Target Rate**: Annual percentage rate in basis points (max 50% = 5000). Maximum rate can be higher with frequent updates.
-- **Rate Per Second**: Rate at which the index will increase for each second passed (calculated from the set Target Rate)
+- **Target Rate**: Fixed annual rate in basis points, compounded every second (max 50% = 5000)
 - **Yield Index**: Index used for share/asset conversions
+
+## Multi-Chain Synchronization
+
+sGHO can be deployed on multiple chains with an identical yield index, as long as every checkpoint happens at the same timestamp on every chain.
+
+### Scheduled Rate Updates
+
+`setTargetRate(newRate, effectiveAt)` schedules a rate change at an absolute timestamp. A multi-chain AIP passes the same `effectiveAt` on every chain, for example the expected execution time plus a 24-hour margin. The payload executes at a different moment on each chain, but the rate switches at the same instant everywhere.
+
+The update is applied lazily. Views resolve it once it is due. The next rate update, deposit or withdrawal persists it, with the checkpoint taken at `effectiveAt` rather than at execution or interaction time. Transfers do not persist it, so they stay free of the extra storage read. Because every chain checkpoints at the same `effectiveAt`, the index is identical across chains.
+
+Rules for operators:
+
+- To keep chains in sync, every scheduled update should be mirrored on all of them. Each checkpoint rounds the index, so even a same-rate update executed on one chain only changes its index there. The steward rejects a rate that is already in force.
+- A pending update can be overwritten by the next `setTargetRate` or dropped by `cancelPendingTargetRate`. To keep chains in sync, do either before the pending `effectiveAt` on every chain.
+- `effectiveAt == now` applies the update immediately at the chain-local time. Use it on single-chain deployments only.
+
+### Cold Start
+
+`initialize` takes the checkpoint values `yieldIndex()`, `lastUpdate()` and `targetRate()` read from a live deployment. Those getters already fold in a due scheduled update. The checkpoint timestamp may be in the past, so both deployments accrue identically from that point on, and the new chain needs no rate update of its own. A genesis deployment starts at `(RAY, now, 0)`. Do not set a rate through the new chain's steward on its own: it checkpoints that chain only. A pending update on the source chain is not carried over and has to be scheduled on the new chain too.
+
+There is no function to overwrite the checkpoint after initialization. If chains desync, the fix is to pause and upgrade the affected deployments.
 
 ## Role Management
 
 - `PAUSE_GUARDIAN_ROLE` : This role has permissions to pause/unpause any action related to sGho shares including deposits, withdrawals and transfers.
 - `TOKEN_RESCUER_ROLE` : This role has permissions to rescue tokens held on the contract
-- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate and the supply cap.
+- `YIELD_MANAGER_ROLE` : This role has permissions to update the yield target rate (immediately or scheduled), cancel a scheduled update, and update the supply cap.
+- `DEFAULT_ADMIN_ROLE` : This role manages all other roles.
 
 ## Security Considerations
 
 ### Built-in Protections
 
 - **Supply Cap**: Limits maximum vault capacity
-- **Rate Limits**: Maximum 50% annual rate to prevent excessive yield.
+- **Rate Limits**: Maximum 50% annual rate, compounded every second, to prevent excessive yield.
 - **Balance Checks**: Withdrawals limited by actual GHO balance
 
 ### Important Limitations
@@ -69,8 +91,6 @@ sGHO uses high-precision arithmetic to ensure accurate yield calculations and pr
 The following are key considerations for arithmetic precision in math operations:
 
 - **Yield Index**: Stored with RAY precision (1e27) to maintain accuracy over long periods
-- **Rate Calculations**: Annual rates converted to per-second rates with sufficient precision
+- **Rate Calculations**: The growth factor since the last checkpoint is `(RAY + rate / year) ^ timeElapsed`, computed by binary exponentiation and applied to the checkpointed index
 - **Share Conversions**: Asset-to-share and share-to-asset conversions use high-precision math
-- **Accumulated Interest**: Linear interest accumulation calculated with RAY precision
-
-For a comprehensive analysis of precision handling, edge cases, and mathematical considerations, see the [detailed precision analysis document](./sgho-precision-analysis/precision.md).
+- **Accumulated Interest**: Every operation rounds down, so the index never exceeds the exact growth

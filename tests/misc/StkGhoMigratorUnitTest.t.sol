@@ -1,0 +1,252 @@
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.27;
+
+import {IStkGhoMigrator} from 'src/contracts/misc/interfaces/IStkGhoMigrator.sol';
+import {StkGhoMigratorBaseTest} from './StkGhoMigratorBase.t.sol';
+import {IStakeToken} from 'src/contracts/misc/interfaces/IStakeToken.sol';
+import {Ownable} from 'openzeppelin-contracts/contracts/access/Ownable.sol';
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol';
+
+contract StkGhoMigratorUnitTest is StkGhoMigratorBaseTest {
+  function setUp() public {
+    _deployMigratorWithMockedTargets();
+  }
+
+  // --- Test Constructor ---
+
+  function test_Constructor_ApprovesSGhoMax() public {
+    _etchIntegrationTargets();
+    _mockGhoApprove(address(SGHO), type(uint256).max);
+
+    vm.expectCall(
+      address(GHO),
+      abi.encodeWithSelector(IERC20.approve.selector, address(SGHO), type(uint256).max)
+    );
+
+    _deployStkGhoMigrator({initialOwner: ownerMigrator, initialPauseGuardian: pauseGuardian});
+  }
+
+  // --- Test claimHelperRole ---
+
+  function test_ClaimHelperRole() public {
+    _mockClaimRoleAdmin(CLAIM_HELPER_ROLE);
+
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(IStakeToken.claimRoleAdmin.selector, CLAIM_HELPER_ROLE)
+    );
+
+    migrator.claimHelperRole();
+  }
+
+  // --- Tests migrate ---
+
+  function test_Migrate() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: stkGhoShares,
+      sGhoShares: 89e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, stkGhoShares);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, stkGhoShares);
+    assertEq(sGhoShares, 89e18);
+  }
+
+  function test_Migrate_GhoRedeemedAboveShares() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: 90.5e18,
+      sGhoShares: 89e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, 90.5e18);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, 90.5e18);
+    assertEq(sGhoShares, 89e18);
+  }
+
+  function test_Migrate_GhoRedeemedBelowShares() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: 80e18,
+      sGhoShares: 79e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, 80e18);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, 80e18);
+    assertEq(sGhoShares, 79e18);
+  }
+
+  function test_Migrate_DepositsOnlyRedeemedGho_WithPreexistingGhoBalance() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 7e18,
+      ghoRedeemed: stkGhoShares,
+      sGhoShares: 89e18
+    });
+
+    _expectMigrateCalls(stkGhoShares, stkGhoShares);
+    vm.prank(user);
+    (uint256 ghoRedeemed, uint256 sGhoShares) = migrator.migrate();
+
+    assertEq(ghoRedeemed, stkGhoShares);
+    assertEq(sGhoShares, 89e18);
+  }
+
+  function test_Revert_Migrate_CooldownPeriodNotZero() public {
+    _mockCooldownSeconds(1 days);
+
+    _expectNoStkGhoRedeem();
+    _expectNoDeposit();
+    vm.prank(user);
+    vm.expectRevert(IStkGhoMigrator.CooldownPeriodNotZero.selector);
+    migrator.migrate();
+  }
+
+  function test_Revert_Migrate_NoStkGhoSharesToRedeem() public {
+    _mockCooldownSeconds(0);
+    _mockStkGhoBalance(user, 0);
+
+    _expectNoStkGhoRedeem();
+    _expectNoDeposit();
+    vm.prank(user);
+    vm.expectRevert(IStkGhoMigrator.NoStkGhoSharesToRedeem.selector);
+    migrator.migrate();
+  }
+
+  function test_Revert_Migrate_NoSGhoSharesReceived() public {
+    uint256 stkGhoShares = 90e18;
+    _mockMigrate({
+      stkGhoShares: stkGhoShares,
+      ghoBalanceBefore: 0,
+      ghoRedeemed: stkGhoShares,
+      sGhoShares: 0
+    });
+
+    vm.prank(user);
+    vm.expectRevert(IStkGhoMigrator.NoSGhoSharesReceived.selector);
+    migrator.migrate();
+  }
+
+  // --- Tests rescue ---
+
+  function test_Rescue() public {
+    _mockTokenTransfer(address(GHO), user, 100e18);
+    vm.prank(ownerMigrator);
+    migrator.rescue(address(GHO), user, 100e18);
+  }
+
+  function test_Revert_Rescue_NotOwner() public {
+    vm.prank(user);
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    migrator.rescue(address(GHO), user, 100e18);
+  }
+
+  function test_Revert_Rescue_InvalidTokenAddress() public {
+    vm.prank(ownerMigrator);
+    vm.expectRevert(IStkGhoMigrator.InvalidAddress.selector);
+    migrator.rescue(address(0), user, 100e18);
+  }
+
+  function test_Revert_Rescue_InvalidAmount() public {
+    vm.prank(ownerMigrator);
+    vm.expectRevert(IStkGhoMigrator.InvalidAmount.selector);
+    migrator.rescue(address(GHO), user, 0);
+  }
+
+  // --- Tests setClaimHelperPendingAdmin ---
+  function test_SetClaimHelperPendingAdmin() public {
+    address newPendingAdmin = makeAddr('NEW_PENDING_ADMIN');
+
+    _mockSetPendingAdmin(CLAIM_HELPER_ROLE, newPendingAdmin);
+
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(
+        IStakeToken.setPendingAdmin.selector,
+        CLAIM_HELPER_ROLE,
+        newPendingAdmin
+      )
+    );
+
+    vm.prank(ownerMigrator);
+    migrator.setClaimHelperPendingAdmin(newPendingAdmin);
+  }
+
+  function _mockMigrate(
+    uint256 stkGhoShares,
+    uint256 ghoBalanceBefore,
+    uint256 ghoRedeemed,
+    uint256 sGhoShares
+  ) internal {
+    bytes[] memory ghoBalances = new bytes[](2);
+    ghoBalances[0] = abi.encode(ghoBalanceBefore);
+    ghoBalances[1] = abi.encode(ghoBalanceBefore + ghoRedeemed);
+
+    _mockCooldownSeconds(0);
+    _mockStkGhoBalance(user, stkGhoShares);
+    vm.mockCalls(
+      address(GHO),
+      abi.encodeWithSelector(IERC20.balanceOf.selector, address(migrator)),
+      ghoBalances
+    );
+    _mockCooldownOnBehalfOf(user);
+    _mockRedeemOnBehalf(user, address(migrator), stkGhoShares);
+    _mockSGhoDeposit(ghoRedeemed, user, sGhoShares);
+  }
+
+  function _expectMigrateCalls(uint256 stkGhoShares, uint256 ghoRedeemed) internal {
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(IStakeToken.cooldownOnBehalfOf.selector, user),
+      1
+    );
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(
+        IStakeToken.redeemOnBehalf.selector,
+        user,
+        address(migrator),
+        stkGhoShares
+      ),
+      1
+    );
+    vm.expectCall(
+      address(SGHO),
+      abi.encodeWithSelector(IERC4626.deposit.selector, ghoRedeemed, user),
+      1
+    );
+    vm.expectEmit(address(migrator));
+    emit IStkGhoMigrator.StkGhoMigrated(user, ghoRedeemed);
+  }
+
+  function _expectNoStkGhoRedeem() internal {
+    vm.expectCall(
+      address(STKGHO),
+      abi.encodeWithSelector(IStakeToken.cooldownOnBehalfOf.selector),
+      0
+    );
+    vm.expectCall(address(STKGHO), abi.encodeWithSelector(IStakeToken.redeemOnBehalf.selector), 0);
+  }
+
+  function _expectNoDeposit() internal {
+    vm.expectCall(address(SGHO), abi.encodeWithSelector(IERC4626.deposit.selector), 0);
+  }
+}

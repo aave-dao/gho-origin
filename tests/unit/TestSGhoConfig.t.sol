@@ -4,15 +4,17 @@ pragma solidity ^0.8.0;
 import './TestSGhoBase.t.sol';
 
 contract TestSGhoConfig is TestSGhoBase {
+  using SafeCast for uint256;
+
   // ========================================
   // ADMINISTRATIVE FUNCTIONS TESTS
   // ========================================
   function test_setTargetRate_event() external {
     vm.startPrank(yManager);
-    uint16 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% annual rate
     vm.expectEmit(true, true, true, true, address(sgho));
-    emit IsGho.TargetRateUpdated(newRate);
-    sgho.setTargetRate(newRate);
+    emit IsGho.TargetRateUpdated(newRate, block.timestamp);
+    sgho.setTargetRate(newRate, block.timestamp.toUint40());
     vm.stopPrank();
     assertEq(sgho.targetRate(), newRate, 'Target rate should be updated');
   }
@@ -21,20 +23,20 @@ contract TestSGhoConfig is TestSGhoBase {
     vm.startPrank(yManager);
     uint16 newRate = MAX_SAFE_RATE + 1;
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, block.timestamp.toUint40());
     vm.stopPrank();
   }
 
   function test_setTargetRate_atMaxRate() external {
     vm.startPrank(yManager);
-    sgho.setTargetRate(MAX_SAFE_RATE);
+    sgho.setTargetRate(MAX_SAFE_RATE, block.timestamp.toUint40());
     vm.stopPrank();
     assertEq(sgho.targetRate(), MAX_SAFE_RATE, 'Target rate should be updated to max rate');
   }
 
   function test_setSupplyCap_event() external {
     vm.startPrank(yManager);
-    uint160 newSupplyCap = 1000 ether;
+    uint40 newSupplyCap = 1000;
     vm.expectEmit(true, true, true, true, address(sgho));
     emit IsGho.SupplyCapUpdated(newSupplyCap);
     sgho.setSupplyCap(newSupplyCap);
@@ -43,17 +45,17 @@ contract TestSGhoConfig is TestSGhoBase {
   }
 
   function test_setTargetRate() external {
-    uint16 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% annual rate
 
     vm.startPrank(yManager);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, block.timestamp.toUint40());
     vm.stopPrank();
 
     assertEq(sgho.targetRate(), newRate, 'Target rate not set correctly');
   }
 
   function test_revert_setTargetRate_notYieldManager() external {
-    uint16 newRate = 2000; // 20% APR
+    uint16 newRate = 2000; // 20% annual rate
 
     vm.startPrank(user1);
     vm.expectRevert(
@@ -63,15 +65,27 @@ contract TestSGhoConfig is TestSGhoBase {
         sgho.YIELD_MANAGER_ROLE()
       )
     );
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, block.timestamp.toUint40());
     vm.stopPrank();
   }
 
   function test_revert_setTargetRate_rateGreaterThanMaxRate() external {
-    uint16 newRate = 5001; // 50.01% APR
+    uint16 newRate = 5001; // 50.01% annual rate
     vm.startPrank(yManager);
     vm.expectRevert(IsGho.MaxRateExceeded.selector);
-    sgho.setTargetRate(newRate);
+    sgho.setTargetRate(newRate, block.timestamp.toUint40());
     vm.stopPrank();
+  }
+
+  function test_revert_setSupplyCap_notYieldManager() external {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        user1,
+        sgho.YIELD_MANAGER_ROLE()
+      )
+    );
+    vm.prank(user1);
+    sgho.setSupplyCap(1000);
   }
 }

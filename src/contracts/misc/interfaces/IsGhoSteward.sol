@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IsGho} from '../../sgho/interfaces/IsGho.sol';
 
 /**
@@ -10,41 +9,18 @@ import {IsGho} from '../../sgho/interfaces/IsGho.sol';
  */
 interface IsGhoSteward {
   /**
-   * @notice Formula for the `targetRate` (taking into account integer math) is:
-   *         `targetRate = amplification * floatRate / AMPLIFICATION_DENOMINATOR + fixedRate`,
-   *         where `AMPLIFICATION_DENOMINATOR` is 100_00,
-   *         `amplification`, `floatRate` and `fixedRate` are `uint16`
-   */
-  struct RateConfig {
-    /// @notice Amplification factor
-    uint16 amplification;
-    /// @notice Representative of market conditions
-    uint16 floatRate;
-    /// @notice Nominal Amount
-    uint16 fixedRate;
-  }
-
-  /**
-   * @dev Event is emitted whenever the `rateConfig` is updated.
+   * @dev Event is emitted whenever the `targetRate` is updated.
    * @param caller Message sender, who initiated the update
-   * @param targetRate Target rate set in `sGHO` after update
-   * @param amplification Amplification factor used to calculate `targetRate`
-   * @param floatRate Float rate used to calculate `targetRate`
-   * @param fixedRate Fixed rate used to calculate `targetRate`
+   * @param targetRate Target rate set in `sGHO`
+   * @param effectiveAt Timestamp at which the target rate takes effect on `sGHO`
    */
-  event RateConfigUpdated(
-    address indexed caller,
-    uint16 targetRate,
-    uint16 amplification,
-    uint16 floatRate,
-    uint16 fixedRate
-  );
+  event TargetRateUpdated(address indexed caller, uint16 targetRate, uint40 effectiveAt);
 
   /**
-   * @dev Event is emitted whenever `GHO` token is sent to `sGHO`.
-   * @param amount Amount of `GHO` sent to `sGHO`.
+   * @dev Event is emitted whenever a scheduled `targetRate` update is cancelled.
+   * @param caller Message sender, who initiated the cancellation
    */
-  event SGhoFunded(uint256 amount);
+  event TargetRateCancelled(address indexed caller);
 
   /**
    * @dev Event is emitted whenever the `supplyCap` is updated.
@@ -54,40 +30,12 @@ interface IsGhoSteward {
   event SupplyCapUpdated(address indexed caller, uint256 supplyCap);
 
   /**
-   * @dev Event is emitted whenever `maxTransferAmount` is updated.
-   * @param caller Message sender, who initiated the update
-   * @param maxTransferAmount New maximum transfer amount
-   */
-  event MaxTransferAmountUpdated(address indexed caller, uint256 maxTransferAmount);
-
-  /**
    * @dev Attempted to set zero address.
    */
   error ZeroAddress();
 
   /**
-   * @dev Attempted to transfer zero amount.
-   */
-  error ZeroAmount();
-
-  /**
-   * @dev Attempted to transfer before minimum timelock delay has passed.
-   */
-  error DebounceNotRespected();
-
-  /**
-   * @dev Attempted to set rate greater than `MAX_RATE` defined in `sGHO`.
-   */
-  error MaxRateExceeded();
-
-  /**
-   * @dev Attempted to transfer `GHO` amount greater than maximum allowed transfer.
-   * @param maxTransfer The maximum amount of `GHO` that can be transferred
-   */
-  error MaxTransferExceeded(uint256 maxTransfer);
-
-  /**
-   * @dev Attempted to set the same rate, which is already set.
+   * @dev Attempted to set the rate already in force.
    */
   error RateUnchanged();
 
@@ -97,70 +45,33 @@ interface IsGhoSteward {
   error SupplyCapUnchanged();
 
   /**
-   * @dev Attempted to set the same `maxTransferAmount`, which is already set.
+   * @notice Updates `targetRate` on `sGHO`, effective at `effectiveAt`.
+   * @dev Only callable by `RATE_MANAGER_ROLE`.
+   * @dev Reverts with `RateUnchanged` if `targetRate` is already in force. A scheduled update is
+   * overwritten; use `cancelTargetRate` to drop it instead.
+   * @dev Submitting the same `targetRate` and `effectiveAt` on the stewards of every chain keeps
+   * the yield indexes in sync. Passing the current timestamp applies immediately and is only
+   * suitable for single-chain deployments.
+   * @param targetRate New annual rate in basis points, compounded every second
+   * @param effectiveAt Timestamp at which the rate takes effect (must not be in the past)
    */
-  error MaxTransferAmountUnchanged();
+  function setTargetRate(uint16 targetRate, uint40 effectiveAt) external;
 
   /**
-   * @notice Updates `targetRate` on `sGHO` and `rateConfig` inside the steward using new values.
-   * @dev `rateConfig_` must be different from the current `rateConfig`, otherwise the function will revert.
-   *
-   * If the value specified in the `rateConfig_` is identical to the current one, then the `msg.sender` role check will be skipped.
-   * Otherwise, it will be assumed that `msg.sender` is trying to update the variable and role check will be performed.
-   *
-   * For example, `msg.sender` could have 2 roles out of 3, but this does not prevent it from using
-   * this function and performing updates to the corresponding variables.
-   *
-   * To update all parameters at once the caller must have three roles:
-   *   - `AMPLIFICATION_MANAGER_ROLE`
-   *   - `FLOAT_RATE_MANAGER_ROLE`
-   *   - `FIXED_RATE_MANAGER_ROLE`
-   *
-   * @param rateConfig_ Set of parameters for calculating `targetRate`
-   * @return targetRate `targetRate` set in `sGHO`
+   * @notice Cancels the scheduled `targetRate` update on `sGHO`, without a checkpoint.
+   * @dev Only callable by `RATE_MANAGER_ROLE`. Reverts if no update is scheduled or it is already
+   * effective. Across chains, the cancel must execute before the pending `effectiveAt` on every
+   * chain.
    */
-  function setRateConfig(RateConfig calldata rateConfig_) external returns (uint16);
+  function cancelTargetRate() external;
 
   /**
    * @notice Updates `supplyCap` on `sGHO`.
-   * @dev Could be updated to any `uint160` value, reverts otherwise.
+   * @dev In whole GHO units (no decimals); reverts above `uint40`.
    * Only callable by `SUPPLY_CAP_MANAGER_ROLE`.
    * @param supplyCap_ New `supplyCap` to set.
    */
   function setSupplyCap(uint256 supplyCap_) external;
-
-  /**
-   * @notice Sends specified amount of `GHO` token to `sGHO`.
-   * @dev Specified amount must be held in the collector or will revert, unless
-   * withdrawFromAave is true. In that case, `GHO` will first be withdrawn from
-   * `AaveV3EthereumLido` pool to then be transfered. Specified amount of `aEthLidoGHO`
-   * must be held in the collector in that scenario or will revert.
-   * Only callable by `SGHO_FUNDING_ROLE`.
-   * This contract must be granted `FUNDS_ADMIN_ROLE` from the collector.
-   * @param amount Amount of GHO token to send.
-   * @param withdrawFromAave Whether to withdraw `GHO` from Aave Pool
-   */
-  function fundSGho(uint256 amount, bool withdrawFromAave) external;
-
-  /**
-   * @notice Updates the maximum amount of `GHO` that can be transferred in a single `fundSGho` call.
-   * @dev Only callable by `DEFAULT_ADMIN_ROLE`. Reverts if the new value equals the current one.
-   * @param maxAmount New maximum transfer amount (in wei)
-   */
-  function setMaxTransferAmount(uint256 maxAmount) external;
-
-  /**
-   * @notice Calculates `targetRate` using `rateConfig_` struct.
-   * @dev Reverts if new `targetRate` exceeds `MAX_RATE`.
-   * @param rateConfig_ Set of parameters for calculating `targetRate`
-   * @return targetRate result `targetRate`
-   */
-  function previewTargetRate(RateConfig calldata rateConfig_) external view returns (uint16);
-
-  /**
-   * @notice Returns current `rateConfig`.
-   */
-  function getRateConfig() external view returns (RateConfig memory);
 
   /**
    * @notice Returns `sGHO` address, wrapped in interface.
@@ -168,49 +79,12 @@ interface IsGhoSteward {
   function sGHO() external view returns (IsGho);
 
   /**
-   * @notice Returns the max `targetRate` that can be set.
+   * @notice Returns role that can update the `targetRate`.
    */
-  function MAX_RATE() external view returns (uint16);
-
-  /**
-   * @notice Returns constant, on which `amplification` is divided by in the formula for calculating `targetRate`.
-   */
-  function AMPLIFICATION_DENOMINATOR() external view returns (uint16);
-
-  /**
-   * @notice Returns role that can update the `amplification` parameter.
-   */
-  function AMPLIFICATION_MANAGER_ROLE() external view returns (bytes32);
-
-  /**
-   * @notice Returns role that can update the `floatRate` parameter.
-   */
-  function FLOAT_RATE_MANAGER_ROLE() external view returns (bytes32);
-
-  /**
-   * @notice Returns role that can update the `fixedRate` parameter.
-   */
-  function FIXED_RATE_MANAGER_ROLE() external view returns (bytes32);
+  function RATE_MANAGER_ROLE() external view returns (bytes32);
 
   /**
    * @notice Returns role that can update the `supplyCap` parameter.
    */
   function SUPPLY_CAP_MANAGER_ROLE() external view returns (bytes32);
-
-  /**
-   * @notice Returns role that can send `GHO` from collector to `sGHO`.
-   */
-  function SGHO_FUNDING_ROLE() external view returns (bytes32);
-
-  /**
-   * @notice Returns the minimum delay that must be respected between parameters update.
-   * @return The minimum delay between parameter updates (in seconds)
-   */
-  function MINIMUM_DELAY() external view returns (uint256);
-
-  /**
-   * @notice Returns the maximum amount that can be transfered at a time between timelocks.
-   * @return The maximum amount that can be transfered (in wei)
-   */
-  function getMaxTransferAmount() external view returns (uint256);
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IERC3156FlashLender} from 'src/contracts/dependencies/openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
+import {IERC3156FlashLender} from 'openzeppelin-contracts/contracts/interfaces/IERC3156FlashLender.sol';
 import {IPoolAddressesProvider} from 'aave-v3-origin/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IGhoFacilitator} from 'src/contracts/gho/interfaces/IGhoFacilitator.sol';
 import {IGhoToken} from 'src/contracts/gho/interfaces/IGhoToken.sol';

@@ -74,4 +74,16 @@ contract TestSGhoConfig is TestSGhoBase {
     sgho.setTargetRate(newRate);
     vm.stopPrank();
   }
+
+  function test_revert_setSupplyCap_notYieldManager() external {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        user1,
+        sgho.YIELD_MANAGER_ROLE()
+      )
+    );
+    vm.prank(user1);
+    sgho.setSupplyCap(1000);
+  }
 }

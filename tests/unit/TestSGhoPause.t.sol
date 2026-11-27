@@ -157,4 +157,48 @@ contract TestSGhoPause is TestSGhoBase {
     assertTrue(sgho.maxWithdraw(user1) > 0, 'maxWithdraw should be > 0 when unpaused again');
     assertTrue(sgho.maxRedeem(user1) > 0, 'maxRedeem should be > 0 when unpaused again');
   }
+
+  function test_revert_pause_notPauseGuardian() external {
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        user1,
+        sgho.PAUSE_GUARDIAN_ROLE()
+      )
+    );
+    vm.prank(user1);
+    sgho.pause();
+  }
+
+  function test_revert_unpause_notPauseGuardian() external {
+    sgho.pause();
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IAccessControl.AccessControlUnauthorizedAccount.selector,
+        user1,
+        sgho.PAUSE_GUARDIAN_ROLE()
+      )
+    );
+    vm.prank(user1);
+    sgho.unpause();
+  }
+
+  function test_revert_transfer_whilePaused() external {
+    vm.startPrank(user1);
+    gho.approve(address(sgho), 100 ether);
+    sgho.deposit(100 ether, user1);
+    sgho.approve(user2, 10 ether);
+    vm.stopPrank();
+
+    sgho.pause();
+
+    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    vm.prank(user1);
+    sgho.transfer(user2, 10 ether);
+
+    vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+    vm.prank(user2);
+    sgho.transferFrom(user1, user2, 10 ether);
+  }
 }

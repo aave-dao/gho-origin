@@ -1,0 +1,22 @@
+tests/integration/GhoRouter/TestGhoRouterStata.t.sol
+  s_3ac7e60bd238cf::t_2531228cd83844 180
+  s_3ac7e60bd238cf::t_fb3fa951895b7c 230-237,260-266,278-284,306-313,330,339-340,435-442,444-445,457-465
+  s_3ac7e60bd238cf::t_b4fb2d22b5b897 1-16,19-179,181-229,238-259,267-277,285-305,314-329,331-338,341-434,443,446-456,466-536
+  s_3ac7e60bd238cf::t_eeccb92cb886e5 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cd170a11104ee9744f256a76f0b1f304e61fecc",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

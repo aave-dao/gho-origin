@@ -1,0 +1,24 @@
+tests/unit/GhoRouter/TestGhoRouterStata.t.sol
+  s_3ac7e60bd238cf::t_c3ac27505e175d 100,102,119,121,160
+  s_3ac7e60bd238cf::t_440535b05030ca 90-91,122-123,135-136,356-360
+  s_3ac7e60bd238cf::t_8186d2705dfac1 390-391,396,406,410,412-417
+  s_3ac7e60bd238cf::t_2b37995cfedc76 137-146,341-355
+  s_3ac7e60bd238cf::t_377ff558d2f422 20-23,62-63,65,68-74,76-78,83,86-89,92,94-96,99,105-111,113-115,118,124-127,130,132-134,185-186,199,204,206,212,216,218-219,229,233-234,239,241,246,250,257,281-282,286-297,384-388,392-395,399-402,411
+  s_3ac7e60bd238cf::t_fc99022fd264c4 251-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3dd8b051389467a84b8cfb9fdae6592bc9db816",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

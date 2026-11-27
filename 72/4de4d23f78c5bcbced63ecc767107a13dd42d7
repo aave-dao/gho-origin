@@ -1,0 +1,27 @@
+docs/sgho.md
+  s_3ac7e60bd238cf::t_62543f9fcaeab1 62,66
+snapshots/sGho.Operations.json
+  s_3ac7e60bd238cf::t_a24fd31ebb702a 10
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3ac7e60bd238cf::t_1315cc546d4d3b 39-43,153-154
+src/contracts/sgho/sGho.sol
+  s_3ac7e60bd238cf::t_d8ff6893c29fbd 187,189-191
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3ac7e60bd238cf::t_eafc16c84c23e5 614-615,649-661
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "724de4d23f78c5bcbced63ecc767107a13dd42d7",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

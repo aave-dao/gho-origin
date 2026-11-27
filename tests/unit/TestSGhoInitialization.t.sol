@@ -55,18 +55,13 @@ contract TestSGhoInitialization is TestSGhoBase {
 
   function test_initialization() external {
     // Deploy a new sGho instance
-    address impl = address(new sGho());
+    address impl = address(new sGhoInstance());
     sGho newSgho = sGho(
       address(
         new TransparentUpgradeableProxy(
           impl,
           address(this),
-          abi.encodeWithSelector(
-            sGho.initialize.selector,
-            address(gho),
-            SUPPLY_CAP,
-            address(this) // executor
-          )
+          abi.encodeCall(sGhoInstance.initialize, (address(gho), SUPPLY_CAP_UNITS, address(this)))
         )
       )
     );
@@ -75,25 +70,22 @@ contract TestSGhoInitialization is TestSGhoBase {
     assertEq(newSgho.totalAssets(), 0, 'Should be initialized');
   }
 
+  function test_initializedVersion() external view {
+    assertEq(_initializedVersion(address(sgho)), 2, 'initialized version');
+  }
+
   function test_revert_initialize_twice() external {
     // Deploy a new sGho instance
-    address impl = address(new sGho());
+    address impl = address(new sGhoInstance());
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
       impl,
       address(this),
-      abi.encodeWithSelector(
-        sGho.initialize.selector,
-        address(gho),
-        SUPPLY_CAP,
-        address(this) // executor
-      )
+      abi.encodeCall(sGhoInstance.initialize, (address(gho), SUPPLY_CAP_UNITS, address(this)))
     );
-
-    sGho newSgho = sGho(address(proxy));
 
     // Should revert on second initialization via proxy
     vm.expectRevert();
-    newSgho.initialize(address(gho), SUPPLY_CAP, address(this));
+    sGhoInstance(address(proxy)).initialize(address(gho), SUPPLY_CAP_UNITS, address(this));
   }
 
   // ========================================
@@ -129,7 +121,7 @@ contract TestSGhoInitialization is TestSGhoBase {
   }
 
   function test_getter_supplyCap() external view {
-    assertEq(sgho.supplyCap(), SUPPLY_CAP, 'Supply cap should match constant');
+    assertEq(sgho.supplyCap(), SUPPLY_CAP_UNITS, 'Supply cap should match constant');
   }
 
   function test_getter_yieldIndex() external view {
@@ -189,15 +181,30 @@ contract TestSGhoInitialization is TestSGhoBase {
     assertEq(sgho.totalAssets(), 0, 'Initial total assets should be 0');
   }
 
-  function test_getter_ratePerSecond() external view {
-    uint256 targetRate = sgho.targetRate();
-    uint256 annualRateRay = (targetRate * RAY) / 10000;
-    uint256 ratePerSecond = (annualRateRay * RAY) / 365 days;
-    uint256 expectedRatePerSecond = ratePerSecond / RAY;
-    assertEq(
-      sgho.ratePerSecond(),
-      expectedRatePerSecond,
-      'Rate per second should match calculated value'
+  function test_revert_initialize_zeroGho() external {
+    _assertInitializeReverts(address(0), address(this));
+  }
+
+  function test_revert_initialize_zeroOwner() external {
+    _assertInitializeReverts(address(gho), address(0));
+  }
+
+  function _assertInitializeReverts(address ghoToken, address owner) internal {
+    address impl = address(new sGhoInstance());
+    vm.expectRevert(IsGho.ZeroAddressNotAllowed.selector);
+    new TransparentUpgradeableProxy(
+      impl,
+      address(this),
+      abi.encodeCall(sGhoInstance.initialize, (ghoToken, SUPPLY_CAP_UNITS, owner))
     );
+  }
+
+  /// @dev Reads OpenZeppelin's initialized version from its ERC-7201 `Initializable` slot
+  function _initializedVersion(address proxy) internal view returns (uint64) {
+    bytes32 slot = keccak256(
+      abi.encode(uint256(keccak256('openzeppelin.storage.Initializable')) - 1)
+    ) & ~bytes32(uint256(0xff));
+    // `_initialized` is the low 64 bits of the slot, the truncation is intentional
+    return uint64(uint256(vm.load(proxy, slot)));
   }
 }

@@ -387,50 +387,29 @@ contract TestSGhoERC4626 is TestSGhoBase {
   }
 
   function test_4626_maxTypePreview() external view {
-    // Preview functions should handle max uint256 gracefully and never revert
-    uint256 maxPreviewDeposit = sgho.previewDeposit(type(uint256).max);
-    uint256 maxPreviewMint = sgho.previewMint(type(uint256).max);
-
-    // Preview functions should return the theoretical conversion result regardless of supply cap
-    // They are pure conversion functions that don't enforce limits
-    assertTrue(
-      maxPreviewDeposit > 0,
-      'previewDeposit should return positive value for max uint256'
-    );
-    assertTrue(maxPreviewMint > 0, 'previewMint should return positive value for max uint256');
+    // Conversions use mulDiv (512-bit intermediate), so preview handles max uint256 without reverting
+    assertGt(sgho.previewDeposit(type(uint256).max), 0, 'previewDeposit should handle max uint256');
+    assertGt(sgho.previewMint(type(uint256).max), 0, 'previewMint should handle max uint256');
   }
 
   function test_4626_previewWithdrawMaxType() external {
-    vm.startPrank(user1);
-    uint256 depositAmount = 100 ether;
-    sgho.deposit(depositAmount, user1);
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
 
-    // Preview withdraw with max uint256 should perform conversion calculation
-    // It should return the theoretical shares needed for max uint256 assets
-    uint256 maxPreviewWithdraw = sgho.previewWithdraw(type(uint256).max);
-    assertTrue(
-      maxPreviewWithdraw > 0,
-      'previewWithdraw should return positive value for max uint256'
+    assertGt(
+      sgho.previewWithdraw(type(uint256).max),
+      0,
+      'previewWithdraw should handle max uint256'
     );
-    vm.stopPrank();
   }
 
   function test_4626_previewRedeemMaxType() external {
-    vm.startPrank(user1);
-    uint256 depositAmount = 100 ether;
-    sgho.deposit(depositAmount, user1);
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
     uint256 shares = sgho.balanceOf(user1);
 
-    // Preview redeem with max uint256 should perform conversion calculation
-    // It should return the theoretical assets for max uint256 shares
     uint256 maxPreviewRedeem = sgho.previewRedeem(type(uint256).max);
-    assertTrue(maxPreviewRedeem > 0, 'previewRedeem should return positive value for max uint256');
-    // Remove the incorrect assertion - previewRedeem with max uint256 should return a very large number, not the user's shares
-    assertTrue(
-      maxPreviewRedeem > shares,
-      'previewRedeem should return a value greater than user shares for max uint256'
-    );
-    vm.stopPrank();
+    assertGt(maxPreviewRedeem, shares, 'previewRedeem should handle max uint256');
   }
 
   // ========================================
@@ -499,5 +478,91 @@ contract TestSGhoERC4626 is TestSGhoBase {
       expectedMaxMint,
       'maxMint should be remaining capacity in shares'
     );
+  }
+
+  // ========================================
+  // ROUNDING AT A NON-RAY INDEX
+  // ========================================
+
+  /// @dev Index after one year at the 10% rate from setUp. Conversions at this index have a
+  /// remainder, so the rounding direction shows in the result
+  function _indexAfterOneYear() internal pure returns (uint256) {
+    return _emulateYieldIndex(RAY, 1000, 365 days);
+  }
+
+  function test_4626_mint_roundsAssetsUp() external {
+    vm.warp(block.timestamp + 365 days);
+    uint256 index = _indexAfterOneYear();
+    uint256 shares = 1 ether;
+    uint256 expectedAssets = (shares * index + RAY - 1) / RAY;
+    assertTrue((shares * index) % RAY != 0, 'rounding has no effect');
+
+    uint256 ghoBefore = gho.balanceOf(user1);
+    vm.prank(user1);
+    uint256 assets = sgho.mint(shares, user1);
+
+    assertEq(assets, expectedAssets, 'mint must round assets up');
+    assertEq(ghoBefore - gho.balanceOf(user1), expectedAssets, 'GHO pulled');
+    assertEq(sgho.balanceOf(user1), shares, 'shares minted');
+  }
+
+  function test_4626_withdraw_roundsSharesUp() external {
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    vm.warp(block.timestamp + 365 days);
+    uint256 index = _indexAfterOneYear();
+    uint256 assets = 1 ether;
+    uint256 expectedShares = (assets * RAY + index - 1) / index;
+    assertTrue((assets * RAY) % index != 0, 'rounding has no effect');
+
+    vm.prank(user1);
+    uint256 shares = sgho.withdraw(assets, user1, user1);
+
+    assertEq(shares, expectedShares, 'withdraw must round shares up');
+    assertEq(sgho.balanceOf(user1), 100 ether - expectedShares, 'shares burned');
+  }
+
+  function test_4626_mint_exactlyMaxMint() external {
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    vm.warp(block.timestamp + 365 days);
+    vm.prank(yManager);
+    sgho.setSupplyCap(200);
+
+    uint256 index = _indexAfterOneYear();
+    uint256 remaining = 200 ether - (100 ether * index) / RAY;
+    uint256 expectedMaxMint = (remaining * RAY) / index;
+    assertTrue((remaining * RAY) % index != 0, 'rounding has no effect');
+    assertEq(sgho.maxMint(user2), expectedMaxMint, 'maxMint must round down');
+
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        ERC4626.ERC4626ExceededMaxMint.selector,
+        user2,
+        expectedMaxMint + 1,
+        expectedMaxMint
+      )
+    );
+    vm.prank(user2);
+    sgho.mint(expectedMaxMint + 1, user2);
+
+    vm.prank(user2);
+    sgho.mint(expectedMaxMint, user2);
+    assertEq(sgho.balanceOf(user2), expectedMaxMint, 'maxMint not mintable');
+    assertLe(sgho.totalAssets(), 200 ether, 'supply cap exceeded');
+  }
+
+  function test_4626_maxRedeem_limitedByVaultBalance() external {
+    vm.prank(user1);
+    sgho.deposit(100 ether, user1);
+    // The yield is not funded, so the vault's GHO balance is the limit
+    vm.warp(block.timestamp + 365 days);
+
+    uint256 index = _indexAfterOneYear();
+    uint256 vaultGho = gho.balanceOf(address(sgho));
+    uint256 expectedMaxRedeem = (vaultGho * RAY) / index;
+    assertTrue((vaultGho * RAY) % index != 0, 'rounding has no effect');
+    assertLt(expectedMaxRedeem, sgho.balanceOf(user1), 'balance not limiting');
+    assertEq(sgho.maxRedeem(user1), expectedMaxRedeem, 'maxRedeem must round down');
   }
 }

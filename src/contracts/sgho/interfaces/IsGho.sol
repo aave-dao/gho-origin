@@ -17,6 +17,11 @@ interface IsGho {
   error ZeroAddressNotAllowed();
 
   /**
+   * @notice Thrown if the yield accrued since the last checkpoint exceeds the supported range.
+   */
+  error YieldIndexOverflow();
+
+  /**
    * @dev Emitted when the target rate is updated.
    * @param newRate The new target rate.
    */
@@ -51,7 +56,6 @@ interface IsGho {
    * @notice Deposits GHO into the vault using permit and mints sGHO shares to the receiver.
    * @dev This function allows users to deposit GHO without requiring a separate approve transaction.
    * The permit is used to approve the vault to spend the user's GHO tokens.
-   * The yield index is updated before the deposit to ensure correct share calculation.
    * @param assets The amount of GHO to deposit.
    * @param receiver The address that will receive the sGHO shares.
    * @param deadline Maximum timestamp at which intent can be executed/signature is valid (must be in the future)
@@ -80,22 +84,23 @@ interface IsGho {
   /**
    * @notice Sets the target rate for yield generation.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
-   * The new rate must be less than 50% (5000 basis points).
-   * @param newRate The new target rate in basis points (e.g., 1000 for 10%).
+   * The new rate must not exceed `MAX_SAFE_RATE` (5000 basis points).
+   * @param newRate The new annual rate in basis points, compounded every second
+   * (e.g., 1000 for 10%).
    */
   function setTargetRate(uint16 newRate) external;
 
   /**
    * @notice Sets the supply cap for the vault.
    * @dev This function can only be called by an address with the YIELD_MANAGER role.
-   * @dev Supply cap is in asset terms.
+   * @dev Supply cap is in whole GHO units (no decimals).
    * @param newSupplyCap The new supply cap.
    */
-  function setSupplyCap(uint160 newSupplyCap) external;
+  function setSupplyCap(uint256 newSupplyCap) external;
 
   /**
    * @notice Returns the maximum safe rate for the vault.
-   * @dev Maximum safe annual yield rate in basis points (50%)
+   * @dev Maximum annual rate in basis points, compounded every second (50%)
    * @return The maximum safe rate.
    */
   function MAX_SAFE_RATE() external view returns (uint16);
@@ -131,33 +136,27 @@ interface IsGho {
    * @notice Returns the timestamp of the last time the yield index was updated.
    * @return The Unix timestamp of the last update.
    */
-  function lastUpdate() external view returns (uint64);
-
-  /**
-   * @notice Returns the current rate per second for yield generation.
-   * @dev The rate is expressed in basis points (1% = 100).
-   * @return The rate per second multiplied in RAY.
-   */
-  function ratePerSecond() external view returns (uint96);
+  function lastUpdate() external view returns (uint256);
 
   /**
    * @notice Returns the total supply cap of the vault.
-   * @dev Supply cap is in asset terms.
+   * @dev Supply cap is in whole GHO units (no decimals).
    * @return The total supply cap.
    */
-  function supplyCap() external view returns (uint160);
+  function supplyCap() external view returns (uint256);
 
   /**
-   * @notice Returns the current target annual percentage rate (APR) for yield generation.
-   * @dev The rate is expressed in basis points (1% = 100).
+   * @notice Returns the current target rate for yield generation.
+   * @dev Annual rate in basis points (1% = 100), compounded every second.
    * @return The target rate in basis points.
    */
   function targetRate() external view returns (uint16);
 
   /**
-   * @notice Returns the current yield index, representing the accumulated yield.
-   * @dev This index is used to calculate the value of sGHO in terms of GHO. Index scale is in RAY.
-   * @return The current yield index.
+   * @notice Returns the yield index at the last checkpoint.
+   * @dev Excludes yield accrued since the checkpoint; `convertToAssets(RAY)` gives the live index.
+   * Index scale is in RAY.
+   * @return The yield index at the last checkpoint.
    */
-  function yieldIndex() external view returns (uint176);
+  function yieldIndex() external view returns (uint256);
 }

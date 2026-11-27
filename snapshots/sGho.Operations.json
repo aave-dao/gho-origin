@@ -1,0 +1,18 @@
+{
+  "deposit: 1 year since rate update": "94766",
+  "deposit: 30 days since rate update": "94028",
+  "deposit: 5 years since rate update": "95264",
+  "mint: 1 year since rate update": "99998",
+  "mint: 30 days since rate update": "98891",
+  "mint: 5 years since rate update": "100745",
+  "redeem: 1 year since rate update": "76951",
+  "redeem: 30 days since rate update": "76213",
+  "redeem: 5 years since rate update": "77449",
+  "setTargetRate: 1 year since rate update": "41733",
+  "setTargetRate: 30 days since rate update": "41364",
+  "setTargetRate: 5 years since rate update": "41982",
+  "transfer": "58863",
+  "withdraw: 1 year since rate update": "76874",
+  "withdraw: 30 days since rate update": "76136",
+  "withdraw: 5 years since rate update": "77372"
+}

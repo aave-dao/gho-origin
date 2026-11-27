@@ -7,8 +7,8 @@ import {IERC4626} from 'openzeppelin-contracts/contracts/interfaces/IERC4626.sol
 import {SafeERC20} from 'openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol';
 import {Math} from 'openzeppelin-contracts/contracts/utils/math/Math.sol';
 import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
-import {AToken} from 'aave-v3-origin/contracts/protocol/tokenization/AToken.sol';
 import {IPool} from 'aave-v3-origin/contracts/interfaces/IPool.sol';
+import {AToken} from 'aave-v3-origin/contracts/protocol/tokenization/AToken.sol';
 import {MathUtils} from 'aave-v3-origin/contracts/protocol/libraries/math/MathUtils.sol';
 import {PercentageMath} from 'aave-v3-origin/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IsGho} from 'src/contracts/sgho/interfaces/IsGho.sol';
@@ -36,16 +36,19 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   uint256 public constant MINIMUM_DELAY = 1 days;
 
   /// @inheritdoc IsGhoSteward
-  uint256 public immutable FUNDING_BUFFER_DURATION;
+  uint256 public constant FUNDING_BUFFER_DURATION = 90 days;
 
-  /// @notice sGho contract address
-  IsGho internal immutable _sGho;
+  /// @inheritdoc IsGhoSteward
+  uint256 public constant INITIAL_MAX_FUNDING_AMOUNT = 100_000e18;
 
-  /// @notice GHO token, the asset of `_sGho`
-  IERC20 internal immutable _gho;
+  /// @inheritdoc IsGhoSteward
+  IsGho public immutable SGHO;
 
-  /// @notice Collector holding the GHO used to fund `_sGho`
-  ICollector internal immutable _collector;
+  /// @inheritdoc IsGhoSteward
+  IERC20 public immutable GHO;
+
+  /// @inheritdoc IsGhoSteward
+  ICollector public immutable COLLECTOR;
 
   /// @notice Maximum amount of GHO a single funding can send
   uint256 internal _maxFundingAmount;
@@ -54,21 +57,25 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   uint256 internal _lastFundingTimestamp;
 
   /**
+   * @dev Checks the funding limits, sends any `source` left on this contract back to the
+   * collector, and emits `SGhoFunded`.
+   * @param source Token taken from the collector
+   * @param amount Amount of GHO to fund
+   */
+  modifier funds(address source, uint256 amount) {
+    _validateFunding(amount);
+    _;
+    _returnToCollector(source);
+    emit SGhoFunded(msg.sender, source, amount);
+  }
+
+  /**
    * @param owner Address granted `DEFAULT_ADMIN_ROLE`
    * @param riskCouncil Address granted every other role
    * @param sGho Address of the sGho contract
    * @param collector Address of the collector funding sGho
-   * @param maxFundingAmount Initial maximum amount of GHO per funding
-   * @param fundingBufferDuration Seconds of yield at the current rate that funding may prepay
    */
-  constructor(
-    address owner,
-    address riskCouncil,
-    address sGho,
-    address collector,
-    uint256 maxFundingAmount,
-    uint256 fundingBufferDuration
-  ) {
+  constructor(address owner, address riskCouncil, address sGho, address collector) {
     if (
       owner == address(0) ||
       riskCouncil == address(0) ||
@@ -78,11 +85,10 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
       revert ZeroAddress();
     }
 
-    _sGho = IsGho(sGho);
-    _gho = IERC20(IsGho(sGho).GHO());
-    _collector = ICollector(collector);
-    _maxFundingAmount = maxFundingAmount;
-    FUNDING_BUFFER_DURATION = fundingBufferDuration;
+    SGHO = IsGho(sGho);
+    GHO = IERC20(IsGho(sGho).GHO());
+    COLLECTOR = ICollector(collector);
+    _maxFundingAmount = INITIAL_MAX_FUNDING_AMOUNT;
 
     _grantRole(DEFAULT_ADMIN_ROLE, owner);
 
@@ -97,71 +103,64 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
     uint16 targetRate,
     uint40 effectiveAt
   ) external onlyRole(RATE_MANAGER_ROLE) {
-    if (targetRate == _sGho.targetRate()) {
+    if (targetRate == SGHO.targetRate()) {
       revert RateUnchanged();
     }
 
-    _sGho.setTargetRate(targetRate, effectiveAt);
+    SGHO.setTargetRate(targetRate, effectiveAt);
     emit TargetRateUpdated(msg.sender, targetRate, effectiveAt);
   }
 
   /// @inheritdoc IsGhoSteward
   function cancelTargetRate() external onlyRole(RATE_MANAGER_ROLE) {
-    _sGho.cancelPendingTargetRate();
+    SGHO.cancelPendingTargetRate();
     emit TargetRateCancelled(msg.sender);
   }
 
   /// @inheritdoc IsGhoSteward
   function setSupplyCap(uint256 supplyCap) external onlyRole(SUPPLY_CAP_MANAGER_ROLE) {
-    uint256 currentSupplyCap = _sGho.supplyCap();
+    uint256 currentSupplyCap = SGHO.supplyCap();
 
     if (currentSupplyCap == supplyCap) {
       revert SupplyCapUnchanged();
     }
 
-    _sGho.setSupplyCap(supplyCap);
+    SGHO.setSupplyCap(supplyCap);
     emit SupplyCapUpdated(msg.sender, supplyCap);
   }
 
   /// @inheritdoc IsGhoSteward
-  function fundSGho(uint256 amount) external onlyRole(FUNDING_MANAGER_ROLE) {
-    _validateFunding(amount);
-
-    _collector.transfer(_gho, address(_sGho), amount);
-    emit SGhoFunded(msg.sender, address(_gho), amount);
+  function fundSGho(
+    uint256 amount
+  ) external onlyRole(FUNDING_MANAGER_ROLE) funds(address(GHO), amount) {
+    COLLECTOR.transfer(GHO, address(SGHO), amount);
   }
 
   /// @inheritdoc IsGhoSteward
   function fundSGhoFromAToken(
     address aToken,
     uint256 amount
-  ) external onlyRole(FUNDING_MANAGER_ROLE) {
+  ) external onlyRole(FUNDING_MANAGER_ROLE) funds(aToken, amount) {
     IPool pool = AToken(aToken).POOL();
-    if (pool.getReserveAToken(address(_gho)) != aToken) {
+    if (pool.getReserveAToken(address(GHO)) != aToken) {
       revert InvalidFundingSource();
     }
-    _validateFunding(amount);
 
-    _collector.transfer(IERC20(aToken), address(this), amount);
-    pool.withdraw({asset: address(_gho), amount: amount, to: address(_sGho)});
-    _returnToCollector(aToken);
-    emit SGhoFunded(msg.sender, aToken, amount);
+    COLLECTOR.transfer(IERC20(aToken), address(this), amount);
+    pool.withdraw({asset: address(GHO), amount: amount, to: address(SGHO)});
   }
 
   /// @inheritdoc IsGhoSteward
   function fundSGhoFromVault(
     address vault,
     uint256 amount
-  ) external onlyRole(FUNDING_MANAGER_ROLE) {
-    if (IERC4626(vault).asset() != address(_gho)) {
+  ) external onlyRole(FUNDING_MANAGER_ROLE) funds(vault, amount) {
+    if (IERC4626(vault).asset() != address(GHO)) {
       revert InvalidFundingSource();
     }
-    _validateFunding(amount);
 
-    _collector.transfer(IERC20(vault), address(this), IERC4626(vault).previewWithdraw(amount));
-    IERC4626(vault).withdraw({assets: amount, receiver: address(_sGho), owner: address(this)});
-    _returnToCollector(vault);
-    emit SGhoFunded(msg.sender, vault, amount);
+    COLLECTOR.transfer(IERC20(vault), address(this), IERC4626(vault).previewWithdraw(amount));
+    IERC4626(vault).withdraw({assets: amount, receiver: address(SGHO), owner: address(this)});
   }
 
   /// @inheritdoc IsGhoSteward
@@ -172,16 +171,6 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
     _maxFundingAmount = maxFundingAmount;
     emit MaxFundingAmountUpdated(msg.sender, maxFundingAmount);
-  }
-
-  /// @inheritdoc IsGhoSteward
-  function sGHO() external view returns (IsGho) {
-    return _sGho;
-  }
-
-  /// @inheritdoc IsGhoSteward
-  function COLLECTOR() external view returns (ICollector) {
-    return _collector;
   }
 
   /// @inheritdoc IsGhoSteward
@@ -196,13 +185,13 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
 
   /// @inheritdoc IsGhoSteward
   function getFundingHeadroom() public view returns (uint256) {
-    uint256 totalAssets = IERC4626(address(_sGho)).totalAssets();
+    uint256 totalAssets = IERC4626(address(SGHO)).totalAssets();
     uint256 buffer = Math.mulDiv(
       totalAssets,
-      uint256(_sGho.targetRate()) * FUNDING_BUFFER_DURATION,
+      uint256(SGHO.targetRate()) * FUNDING_BUFFER_DURATION,
       PercentageMath.PERCENTAGE_FACTOR * MathUtils.SECONDS_PER_YEAR
     );
-    uint256 balance = _gho.balanceOf(address(_sGho));
+    uint256 balance = GHO.balanceOf(address(SGHO));
     return totalAssets + buffer > balance ? totalAssets + buffer - balance : 0;
   }
 
@@ -230,13 +219,13 @@ contract sGhoSteward is AccessControl, IsGhoSteward {
   }
 
   /**
-   * @dev Sends any `token` left on this contract after a withdrawal back to the collector.
-   * @param token The aToken or vault share token used for the funding
+   * @dev Sends any `token` left on this contract after a funding back to the collector.
+   * @param token The token taken from the collector
    */
   function _returnToCollector(address token) internal {
     uint256 leftover = IERC20(token).balanceOf(address(this));
     if (leftover != 0) {
-      IERC20(token).safeTransfer(address(_collector), leftover);
+      IERC20(token).safeTransfer(address(COLLECTOR), leftover);
     }
   }
 }

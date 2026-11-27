@@ -66,9 +66,7 @@ contract sGhoStewardFundingForkTest is Test {
       owner: EXECUTOR,
       riskCouncil: riskCouncil,
       sGho: address(sgho),
-      collector: COLLECTOR,
-      maxFundingAmount: 100_000 ether,
-      fundingBufferDuration: 90 days
+      collector: COLLECTOR
     });
 
     bytes32 fundsAdminRole = ICollector(COLLECTOR).FUNDS_ADMIN_ROLE();

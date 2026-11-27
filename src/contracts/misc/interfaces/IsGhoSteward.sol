@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 import {ICollector} from 'aave-v3-origin/contracts/treasury/ICollector.sol';
 import {IsGho} from '../../sgho/interfaces/IsGho.sol';
 
@@ -178,9 +179,14 @@ interface IsGhoSteward {
   function COLLECTOR() external view returns (ICollector);
 
   /**
-   * @notice Returns `sGHO` address, wrapped in interface.
+   * @notice Returns the `sGHO` contract.
    */
-  function sGHO() external view returns (IsGho);
+  function SGHO() external view returns (IsGho);
+
+  /**
+   * @notice Returns the GHO token, the asset of `sGHO`.
+   */
+  function GHO() external view returns (IERC20);
 
   /**
    * @notice Returns role that can update the `targetRate`.
@@ -206,4 +212,9 @@ interface IsGhoSteward {
    * @notice Returns how many seconds of yield at the current `targetRate` funding may prepay.
    */
   function FUNDING_BUFFER_DURATION() external view returns (uint256);
+
+  /**
+   * @notice Returns the maximum amount of GHO per funding set at deployment.
+   */
+  function INITIAL_MAX_FUNDING_AMOUNT() external view returns (uint256);
 }

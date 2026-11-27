@@ -64,6 +64,7 @@ contract sGhoStewardTest is TestSGhoBase {
     assertEq(steward.FUNDING_MANAGER_ROLE(), FUNDING_MANAGER_ROLE);
     assertEq(steward.MINIMUM_DELAY(), 1 days);
     assertEq(steward.FUNDING_BUFFER_DURATION(), FUNDING_BUFFER_DURATION);
+    assertEq(steward.INITIAL_MAX_FUNDING_AMOUNT(), MAX_FUNDING_AMOUNT);
     assertEq(steward.getMaxFundingAmount(), MAX_FUNDING_AMOUNT);
     assertEq(steward.getLastFundingTimestamp(), 0);
     assertEq(address(steward.COLLECTOR()), collector);
@@ -79,7 +80,8 @@ contract sGhoStewardTest is TestSGhoBase {
     assertFalse(steward.hasRole(SUPPLY_CAP_MANAGER_ROLE, governance));
     assertFalse(steward.hasRole(FUNDING_MANAGER_ROLE, governance));
 
-    assertEq(address(steward.sGHO()), address(sgho));
+    assertEq(address(steward.SGHO()), address(sgho));
+    assertEq(address(steward.GHO()), address(gho));
   }
 
   function test_riskCouncilCannotGrantRoles() public {
@@ -598,9 +600,7 @@ contract sGhoStewardTest is TestSGhoBase {
         owner: owner,
         riskCouncil: council,
         sGho: sGhoAddress,
-        collector: collectorAddress,
-        maxFundingAmount: MAX_FUNDING_AMOUNT,
-        fundingBufferDuration: FUNDING_BUFFER_DURATION
+        collector: collectorAddress
       });
   }
 }

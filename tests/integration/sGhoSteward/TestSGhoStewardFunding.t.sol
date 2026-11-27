@@ -115,9 +115,7 @@ contract TestSGhoStewardFunding is Test {
       owner: governance,
       riskCouncil: riskCouncil,
       sGho: address(SGHO),
-      collector: COLLECTOR,
-      maxFundingAmount: MAX_FUNDING_AMOUNT,
-      fundingBufferDuration: FUNDING_BUFFER_DURATION
+      collector: COLLECTOR
     });
     AAVE.grantFundsAdmin(address(STEWARD));
 
@@ -322,9 +320,7 @@ contract TestSGhoStewardFunding is Test {
       owner: governance,
       riskCouncil: riskCouncil,
       sGho: address(SGHO),
-      collector: COLLECTOR,
-      maxFundingAmount: MAX_FUNDING_AMOUNT,
-      fundingBufferDuration: FUNDING_BUFFER_DURATION
+      collector: COLLECTOR
     });
 
     vm.expectRevert(ICollector.OnlyFundsAdmin.selector);

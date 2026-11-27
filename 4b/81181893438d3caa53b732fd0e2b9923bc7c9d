@@ -1,0 +1,53 @@
+docs/sgho.md
+  s_3ac7e60bd238cf::t_c1bae693ce082b 33
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 10,38,80,109,111
+  s_3ac7e60bd238cf::t_8b898204655371 53
+tests/unit/TestSGhoInitialization.t.sol
+  s_3ac7e60bd238cf::t_e7724805a8c676 103
+tests/unit/TestSGhoTargetRateSchedule.t.sol
+  s_3ac7e60bd238cf::t_e7724805a8c676 602,605,620,630
+  s_3ac7e60bd238cf::t_78e0b548eae895 433
+src/contracts/sgho/sGho.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 41,48,430-436,440,446-455
+  s_3ac7e60bd238cf::t_edfa81c229ab88 380-385,398-403,407-409,411-429,437-438,442-443,445
+tests/unit/TestSGhoYield.t.sol
+  s_3ac7e60bd238cf::t_f587053b0aa28a 100,141,172,174,185,189,209,215,221,227,233,238-239,241,415,449,451,511,526,626,886
+  s_3ac7e60bd238cf::t_f4bdc5aafea7da 53,167,252,464,547
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 9-52,98,125-132,134-136,140,142,146,148,150,157-164,166,168-171,173,175-184,186-188,191-196,201,204-208,210-214,216-220,222-226,228-232,234-237,240,242-251,278,286-292,310,312-313,318,323,326-332,335,348-350,352-354,358-359,366,368,373-381,404-405,408-414,416-448,450,452-463,465-466,503-510,512-525,527-546,646,651,744,748-749,755,773,782-788,800,802,817-822,824
+tests/helpers/SGhoYieldMath.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 1-15
+tests/fork/sGhoInstanceStoragePatch.fork.t.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 10,14,139-172,204,216-218,220,222-223,225,229,246,248-249,251
+tests/unit/TestSGhoConfig.t.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 14,48,58,73
+tests/unit/TestSGhoBase.t.sol
+  s_3ac7e60bd238cf::t_0316ee93d6c22b 95
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 23,118-119,125
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 116-117,149,196-197
+tests/unit/TestSGhoPause.t.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 80
+snapshots/sGho.Operations.json
+  s_3ac7e60bd238cf::t_5d612481867fef 2-6,8-9,11
+tests/unit/TestSGhoPrecision.t.sol
+  s_3ac7e60bd238cf::t_ee40c3b432dc06 11,46-47,131,134,142,152,157,172,202,217-218,303,316-317,333,337,342,356-360,364,375
+  s_3ac7e60bd238cf::t_0316ee93d6c22b 233
+tests/unit/TestSGhoSyncYieldIndex.t.sol
+  s_3ac7e60bd238cf::t_e7724805a8c676 170-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b81181893438d3caa53b732fd0e2b9923bc7c9d",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}

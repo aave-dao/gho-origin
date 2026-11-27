@@ -1,0 +1,23 @@
+docs/sgho.md
+  s_3ac7e60bd238cf::t_cfee9a37ee317f 10,38
+src/contracts/sgho/interfaces/IsGho.sol
+  s_3ac7e60bd238cf::t_cfee9a37ee317f 204-206,208
+tests/unit/TestSGhoYield.t.sol
+  s_3ac7e60bd238cf::t_cfee9a37ee317f 237,239,253-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afcecf734241f39f05eed691501b8ddd1a202b3d",
+  "prompts": {},
+  "sessions": {
+    "s_3ac7e60bd238cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c589adf7-fc59-4f60-9d3b-2c140f0f28ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alexandru Niculae <43644109+avniculae@users.noreply.github.com>"
+    }
+  }
+}
